@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { LeadSchema } from "@/lib/validation";
 import { leadsQueue } from "@/lib/queue";
 import { randomUUID } from "crypto";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
@@ -19,6 +20,15 @@ export async function POST(request: Request) {
 
     const lead = result.data;
     const jobId = randomUUID();
+
+    // Save to Prisma SQLite DB
+    await prisma.lead.create({
+      data: {
+        id: jobId,
+        ...lead,
+        status: "pending",
+      },
+    });
 
     // Enqueue the background job
     await leadsQueue.add(

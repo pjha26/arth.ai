@@ -41,6 +41,35 @@
   --font-body:    var(--font-manrope), 'Manrope', system-ui, sans-serif;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:            #18181B; /* Charcoal base */
+    --surface:       #27272A; /* Charcoal Soft */
+    --surface-raised: #3F3F46;
+    --border:        #3F3F46;
+    --border-strong: #52525B;
+    --charcoal:      #FAFAF8; /* Invert charcoal to ivory */
+    --charcoal-soft: #E8E6E1;
+    --saffron:       #C58B45; /* Saffron remains constant */
+    --saffron-50:    #4A3010;
+    --saffron-100:   #764C19;
+    --saffron-600:   #E2AD68;
+    --sage:          #5C7A62;
+    --sage-50:       #1A2E20;
+    --sage-100:      #2A4A33;
+    --text-primary:  #FAFAF8;
+    --text-secondary:#A1A1AA;
+    --text-muted:    #71717A;
+    --text-placeholder: #52525B;
+    
+    --shadow-xs:  0 1px 2px rgba(0,0,0,0.3);
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
+    --shadow-md:  0 2px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.3);
+    --shadow-lg:  0 4px 16px rgba(0,0,0,0.5), 0 24px 64px rgba(0,0,0,0.4);
+    --shadow-saffron: 0 4px 20px rgba(197, 139, 69, 0.15);
+  }
+}
+
 /* ─── Reset ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }

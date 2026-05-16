@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Lead {
+  id          String          @id @default(uuid())
+  fullName    String
+  email       String
+  companyName String
+  website     String
+  industry    String
+  companySize String
+  painPoints  String
+  status      String          @default("pending") // pending | processing | done | failed
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  stages      PipelineStage[]
+}
+
+model PipelineStage {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  stage     String   // enrich | ai_report | pdf | email
+  status    String   // running | done | failed
+  message   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -15,25 +15,60 @@ function SuccessContent() {
   const company = params.get("company") || "Your Company";
   const email   = params.get("email")   || "your inbox";
 
+  const jobId   = params.get("jobId");
+
   const [currentStage,    setCurrentStage]    = useState(0);
   const [completedStages, setCompletedStages] = useState<number[]>([]);
   const [elapsed,         setElapsed]         = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    let cumulative = 0;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    STAGES.forEach((stage, idx) => {
-      timers.push(setTimeout(() => setCurrentStage(idx), cumulative + 200));
-      cumulative += stage.duration;
-      timers.push(setTimeout(() => setCompletedStages(p => [...p, idx]), cumulative));
-    });
-    intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    return () => {
-      timers.forEach(clearTimeout);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/leads/${jobId}`);
+        const data = await res.json();
+        
+        if (data.success && data.lead) {
+          const { status, stages } = data.lead;
+          
+          const stageMap = { enrich: 0, ai_report: 1, pdf: 2, email: 3 };
+          let latestStage = 0;
+          let completed: number[] = [];
+
+          stages.forEach((s: any) => {
+            const sIdx = stageMap[s.stage as keyof typeof stageMap];
+            if (sIdx !== undefined) {
+              if (s.status === "done" && !completed.includes(sIdx)) {
+                completed.push(sIdx);
+              }
+              if (sIdx >= latestStage) latestStage = sIdx;
+            }
+          });
+
+          if (status === "done" || status === "success") {
+             completed = [0, 1, 2, 3];
+             latestStage = 4;
+          }
+
+          setCompletedStages(completed);
+          setCurrentStage(latestStage);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    checkStatus();
+    const pollInterval = setInterval(checkStatus, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [jobId]);
 
   const allDone = completedStages.length === STAGES.length;
 

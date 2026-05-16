@@ -53,13 +53,13 @@ export default function FormPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(final.data),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const err = await res.json();
-        setSubmitError(err?.message || "Something went wrong. Please try again.");
+        setSubmitError(data?.message || "Something went wrong. Please try again.");
         setIsSubmitting(false);
         return;
       }
-      router.push(`/success?company=${encodeURIComponent(final.data.companyName)}&email=${encodeURIComponent(final.data.email)}`);
+      router.push(`/success?company=${encodeURIComponent(final.data.companyName)}&email=${encodeURIComponent(final.data.email)}&jobId=${data.jobId}`);
     } catch {
       setSubmitError("Network error. Please check your connection.");
       setIsSubmitting(false);

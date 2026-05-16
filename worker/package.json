@@ -16,6 +16,8 @@
     "dotenv": "^16.0.0",
     "googleapis": "^144.0.0",
     "ioredis": "^5.3.0",
+    "p-retry": "^8.0.0",
+    "pino": "^10.3.1",
     "puppeteer": "^22.0.0",
     "resend": "^4.0.0"
   }

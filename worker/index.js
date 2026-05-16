@@ -7,8 +7,27 @@ import { sendEmail } from "./services/emailService.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
 import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config({ path: "../.env.local" });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const prisma = new PrismaClient({
+  datasourceUrl: `file:${path.resolve(__dirname, "../arth.db")}`,
+});
+
+async function logStage(leadId, stageName, status, message = null) {
+  try {
+    await prisma.pipelineStage.create({
+      data: { leadId, stage: stageName, status, message },
+    });
+  } catch (e) {
+    console.error("Failed to log stage:", e.message);
+  }
+}
 
 const connection = new IORedis(process.env.UPSTASH_REDIS_URL, {
   maxRetriesPerRequest: null,
@@ -29,24 +48,37 @@ const worker = new Worker(
     let status = "success";
 
     try {
+      await prisma.lead.update({
+        where: { id: jobId },
+        data: { status: "processing" },
+      });
+
       // ── Step 1: Enrich ──
       console.log(`[Job ${jobId}] Step 1/4: Enriching company data...`);
+      await logStage(jobId, "enrich", "running");
       const enriched = await enrich(lead);
+      await logStage(jobId, "enrich", "done");
       console.log(`[Job ${jobId}] Enrichment complete.`);
 
       // ── Step 2: AI Report ──
       console.log(`[Job ${jobId}] Step 2/4: Generating AI report...`);
+      await logStage(jobId, "ai_report", "running");
       const report = await generateAiReport(lead, enriched);
+      await logStage(jobId, "ai_report", "done");
       console.log(`[Job ${jobId}] AI report generated.`);
 
       // ── Step 3: PDF ──
       console.log(`[Job ${jobId}] Step 3/4: Generating PDF...`);
+      await logStage(jobId, "pdf", "running");
       const pdfBuffer = await generatePDF(lead, enriched, report);
+      await logStage(jobId, "pdf", "done");
       console.log(`[Job ${jobId}] PDF generated (${Math.round(pdfBuffer.length / 1024)} KB).`);
 
       // ── Step 4: Email ──
       console.log(`[Job ${jobId}] Step 4/4: Sending email...`);
+      await logStage(jobId, "email", "running");
       await sendEmail(lead, pdfBuffer, report);
+      await logStage(jobId, "email", "done");
       console.log(`[Job ${jobId}] Email sent to ${lead.email}.`);
 
       // ── BONUS Step 5: Drive Upload ──
@@ -69,10 +101,20 @@ const worker = new Worker(
         console.warn(`[Job ${jobId}] Sheets log failed (non-critical):`, e.message);
       }
 
+      await prisma.lead.update({
+        where: { id: jobId },
+        data: { status: "done" },
+      });
       console.log(`[Job ${jobId}] ✓ Pipeline complete for ${lead.companyName}\n`);
     } catch (err) {
       status = "failed";
       console.error(`[Job ${jobId}] ✗ Pipeline failed:`, err.message);
+
+      await logStage(jobId, "error", "failed", err.message);
+      await prisma.lead.update({
+        where: { id: jobId },
+        data: { status: "failed" },
+      });
 
       // Still try to log the failure to Sheets
       try {
