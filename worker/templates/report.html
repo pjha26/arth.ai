@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Intelligence Report — {{COMPANY_NAME}}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
+
+  :root {
+    --indigo: #6366f1;
+    --violet: #8b5cf6;
+    --bg-dark: #07070f;
+    --bg-card: #0f0f1e;
+    --text-primary: #f1f0ff;
+    --text-secondary: #9b99c0;
+    --text-muted: #5a5880;
+    --border: rgba(255,255,255,0.08);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #f43f5e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 210mm; background: var(--bg-dark); color: var(--text-primary); font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ── Cover Page ── */
+  .cover {
+    width: 210mm;
+    min-height: 297mm;
+    background: linear-gradient(145deg, #07070f 0%, #0d0a2e 50%, #07070f 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cover-grid {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .cover-glow {
+    position: absolute;
+    top: -80px; left: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cover-glow-2 {
+    position: absolute;
+    bottom: -60px; right: -60px;
+    width: 350px; height: 350px;
+    background: radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cover-header {
+    position: relative;
+    z-index: 2;
+    padding: 36px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .arth-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #a5b4fc, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cover-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #a5b4fc;
+    background: rgba(99,102,241,0.15);
+    border: 1px solid rgba(99,102,241,0.3);
+    padding: 5px 14px;
+    border-radius: 100px;
+  }
+
+  .cover-body {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    text-align: center;
+  }
+
+  .company-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 16px;
+    margin-bottom: 24px;
+    background: rgba(255,255,255,0.08);
+    padding: 8px;
+  }
+
+  .logo-fallback {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--indigo), var(--violet));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 24px;
+  }
+
+  .cover-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--indigo);
+    margin-bottom: 12px;
+  }
+
+  .cover-company {
+    font-family: 'Syne', sans-serif;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #f1f0ff 0%, #c4b5fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cover-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    font-weight: 500;
+  }
+
+  .cover-meta {
+    display: flex;
+    gap: 32px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .cover-meta span { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .cover-meta strong { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+
+  .cover-footer {
+    position: relative;
+    z-index: 2;
+    padding: 28px 48px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ── Content Pages ── */
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 48px;
+    background: var(--bg-dark);
+    page-break-after: always;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--indigo);
+  }
+
+  .page-header-company {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ── Section Headers ── */
+  .section-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--indigo);
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    line-height: 1.2;
+  }
+
+  /* ── Score Cards ── */
+  .scores-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .score-card {
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 14px;
+    padding: 20px 16px;
+    text-align: center;
+  }
+
+  .score-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a5b4fc, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .score-value.overall {
+    font-size: 44px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #e879f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .score-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  /* ── Score Bar ── */
+  .score-bar-row {
+    margin-bottom: 16px;
+  }
+
+  .score-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .score-bar-track {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  }
+
+  /* ── Content blocks ── */
+  .content-block {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .content-block p {
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+  }
+
+  .content-block-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--indigo);
+    margin-bottom: 10px;
+  }
+
+  /* ── Pain Points ── */
+  .pain-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(244,63,94,0.06);
+    border: 1px solid rgba(244,63,94,0.15);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .pain-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Opportunities ── */
+  .opportunity-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    border-left: 3px solid var(--indigo);
+  }
+
+  .opp-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .opp-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--indigo);
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  .opp-title {
+    font-weight: 700;
+    font-size: 14px;
+    flex: 1;
+    color: var(--text-primary);
+  }
+
+  .impact-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 100px;
+    flex-shrink: 0;
+  }
+
+  .impact-badge.high { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .impact-badge.medium { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .impact-badge.low { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+
+  .opp-desc {
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+
+  /* ── Steps ── */
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+  }
+
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--indigo), var(--violet));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .step-item p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding-top: 3px;
+  }
+
+  /* ── Back cover ── */
+  .back-cover {
+    width: 210mm;
+    min-height: 297mm;
+    background: linear-gradient(145deg, #07070f 0%, #0d0a2e 50%, #07070f 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .back-cover-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .back-cover-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 30%, #c084fc 70%, #e879f9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .back-cover-tagline {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 48px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .divider-line {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--indigo), var(--violet));
+    border-radius: 100px;
+    margin: 32px auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .prepared-for {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .prepared-company {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .back-cta {
+    display: inline-block;
+    padding: 14px 36px;
+    border-radius: 100px;
+    background: linear-gradient(135deg, var(--indigo), var(--violet));
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 16px;
+  }
+
+  .back-footer {
+    position: absolute;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── COVER PAGE ── -->
+<div class="cover">
+  <div class="cover-grid"></div>
+  <div class="cover-glow"></div>
+  <div class="cover-glow-2"></div>
+
+  <div class="cover-header">
+    <div class="arth-logo">arth.ai</div>
+    <div class="cover-badge">AI Intelligence Report</div>
+  </div>
+
+  <div class="cover-body">
+    {{LOGO_HTML}}
+    <div class="cover-label">Confidential Intelligence Report</div>
+    <div class="cover-company">{{COMPANY_NAME}}</div>
+    <div class="cover-subtitle">AI Readiness & Opportunity Audit</div>
+
+    <div class="cover-meta">
+      <span><strong>{{INDUSTRY}}</strong>Industry</span>
+      <span><strong>{{COMPANY_SIZE}}</strong>Company Size</span>
+      <span><strong>{{DATE}}</strong>Report Date</span>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>Prepared for: {{FULL_NAME}} · {{EMAIL}}</span>
+    <span>arth.ai — AI-powered inbound personalization</span>
+  </div>
+</div>
+
+<!-- ── PAGE 2: Executive Summary + Scores ── -->
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-logo">arth.ai</div>
+    <div class="page-header-company">{{COMPANY_NAME}} · Intelligence Report</div>
+  </div>
+
+  <div class="section-label">Overview</div>
+  <div class="section-title">Executive Summary & AI Readiness Score</div>
+
+  <!-- Score Cards -->
+  <div class="scores-grid">
+    <div class="score-card">
+      <div class="score-value overall">{{SCORE_OVERALL}}</div>
+      <div class="score-label">Overall Score</div>
+    </div>
+    <div class="score-card">
+      <div class="score-value">{{SCORE_DIGITAL}}</div>
+      <div class="score-label">Digital Readiness</div>
+    </div>
+    <div class="score-card">
+      <div class="score-value">{{SCORE_AUTOMATION}}</div>
+      <div class="score-label">Automation Potential</div>
+    </div>
+    <div class="score-card">
+      <div class="score-value">{{SCORE_GROWTH}}</div>
+      <div class="score-label">Growth Index</div>
+    </div>
+  </div>
+
+  <!-- Score Bars -->
+  <div class="content-block" style="margin-bottom: 24px;">
+    <div class="content-block-title">Score Breakdown</div>
+    <div class="score-bar-row">
+      <div class="score-bar-header"><span>Digital Readiness</span><span>{{SCORE_DIGITAL}}/10</span></div>
+      <div class="score-bar-track"><div class="score-bar-fill" style="width: calc({{SCORE_DIGITAL}} * 10%)"></div></div>
+    </div>
+    <div class="score-bar-row">
+      <div class="score-bar-header"><span>Automation Potential</span><span>{{SCORE_AUTOMATION}}/10</span></div>
+      <div class="score-bar-track"><div class="score-bar-fill" style="width: calc({{SCORE_AUTOMATION}} * 10%)"></div></div>
+    </div>
+    <div class="score-bar-row" style="margin-bottom: 0;">
+      <div class="score-bar-header"><span>Growth Index</span><span>{{SCORE_GROWTH}}/10</span></div>
+      <div class="score-bar-track"><div class="score-bar-fill" style="width: calc({{SCORE_GROWTH}} * 10%)"></div></div>
+    </div>
+  </div>
+
+  <!-- Executive Summary -->
+  <div class="content-block">
+    <div class="content-block-title">Executive Summary</div>
+    <p>{{EXECUTIVE_SUMMARY}}</p>
+  </div>
+</div>
+
+<!-- ── PAGE 3: Market + Digital ── -->
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-logo">arth.ai</div>
+    <div class="page-header-company">{{COMPANY_NAME}} · Market Intelligence</div>
+  </div>
+
+  <div class="section-label">Market Analysis</div>
+  <div class="section-title">Market Position & Digital Presence</div>
+
+  <div class="content-block">
+    <div class="content-block-title">📈 Market Position</div>
+    <p>{{MARKET_POSITION}}</p>
+  </div>
+
+  <div class="content-block">
+    <div class="content-block-title">🌐 Digital Presence</div>
+    <p>{{DIGITAL_PRESENCE}}</p>
+  </div>
+
+  <div class="section-label" style="margin-top: 32px;">Challenges</div>
+  <div class="section-title" style="font-size: 20px;">Identified Pain Points</div>
+
+  {{PAIN_POINTS_HTML}}
+</div>
+
+<!-- ── PAGE 4: AI Opportunities ── -->
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-logo">arth.ai</div>
+    <div class="page-header-company">{{COMPANY_NAME}} · AI Opportunities</div>
+  </div>
+
+  <div class="section-label">Personalized Intelligence</div>
+  <div class="section-title">AI Automation Opportunities</div>
+
+  {{OPPORTUNITIES_HTML}}
+</div>
+
+<!-- ── PAGE 5: Next Steps ── -->
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-logo">arth.ai</div>
+    <div class="page-header-company">{{COMPANY_NAME}} · Action Plan</div>
+  </div>
+
+  <div class="section-label">Action Plan</div>
+  <div class="section-title">Recommended Next Steps</div>
+
+  {{STEPS_HTML}}
+
+  <div class="content-block" style="margin-top: 32px; background: rgba(99,102,241,0.06); border-color: rgba(99,102,241,0.2);">
+    <div class="content-block-title" style="color: #a5b4fc;">ℹ️ About This Report</div>
+    <p>This report was generated autonomously by arth.ai's inbound intelligence pipeline within minutes of your form submission. Data was enriched from multiple public sources including Wikipedia, Clearbit, DuckDuckGo, and your company website. AI analysis was performed by Google Gemini 1.5 Flash. Scores are indicative and based on publicly available signals.</p>
+  </div>
+</div>
+
+<!-- ── BACK COVER ── -->
+<div class="back-cover">
+  <div class="back-cover-glow"></div>
+  <div class="back-cover-logo">arth.ai</div>
+  <div class="back-cover-tagline">AI-powered inbound personalization platform</div>
+
+  <div class="divider-line"></div>
+
+  <div class="prepared-for">This report was prepared exclusively for</div>
+  <div class="prepared-company">{{COMPANY_NAME}}</div>
+
+  <a class="back-cta" href="mailto:hello@arth.ai">Reply to discuss your report →</a>
+  <div style="font-size: 11px; color: var(--text-muted); position: relative; z-index: 1;">
+    Respond to the email that delivered this report
+  </div>
+
+  <div class="back-footer">
+    arth.ai · AI-Powered Inbound Personalization · hello@arth.ai
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "arth-ai-worker",
+  "version": "1.0.0",
+  "description": "arth.ai BullMQ background worker",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "axios": "^1.7.0",
+    "bullmq": "^5.0.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "googleapis": "^144.0.0",
+    "ioredis": "^5.3.0",
+    "puppeteer": "^22.0.0",
+    "resend": "^4.0.0"
+  }
+}
