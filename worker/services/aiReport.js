@@ -11,6 +11,9 @@ You must respond ONLY with valid JSON matching the exact schema provided. No mar
  * Returns a parsed JSON object with all report sections.
  */
 export async function generateAiReport(lead, enriched) {
+  if (!genAI) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
   const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
     systemInstruction: SYSTEM_INSTRUCTION,

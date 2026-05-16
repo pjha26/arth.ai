@@ -58,23 +58,23 @@ export async function buildCompanyProfile(slug: string): Promise<CompanyProfile>
   // 4. Gemini — generate personalized page copy
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   const prompt = `
-You are writing copy for arth.ai, an AI-powered inbound personalization platform, creating a personalized landing page for ${name} (${domain}).
+You are writing copy for arth.ai, an AI-powered inbound personalization platform, creating a personalized landing page intended to sell arth.ai TO ${name} (${domain}).
 
 Context about ${name}: ${description || `${name} is a well-known technology company.`}
 
 Generate a JSON object with these fields:
 {
   "industry": "One short phrase e.g. 'FinTech & Payments' or 'SaaS Productivity'",
-  "headline": "A 6-12 word headline showing how arth.ai helps ${name} specifically. Should mention their industry. No quotes.",
+  "headline": "A 6-12 word headline showing how arth.ai can help ${name} specifically. Must include the word 'arth.ai' and '${name}'. No quotes.",
   "painPoints": ["Pain point 1 specific to ${name}'s industry and scale", "Pain point 2", "Pain point 3"],
   "aiOpportunities": ["AI opportunity 1 specific to ${name}'s business", "AI opportunity 2", "AI opportunity 3"],
-  "ctaLine": "One sentence about why a company like ${name} should try arth.ai. Max 20 words."
+  "ctaLine": "One sentence about why ${name} should try arth.ai. Max 20 words."
 }
 
 Be specific to ${name}'s actual business. No generic filler. Respond with raw JSON only.`;
 
   let industry = "Technology";
-  let headline = `How ${name} can turn every inbound lead into a personalized experience.`;
+  let headline = `How arth.ai helps ${name} turn every inbound lead into a personalized experience.`;
   let painPoints = ["Manual lead qualification slows response time", "Generic follow-ups fail to convert warm leads", "Sales team spends hours on company research"];
   let aiOpportunities = ["Automated prospect research on every form submit", "AI-generated personalized audit reports", "Instant email delivery before competitors respond"];
   let ctaLine = `See how arth.ai can transform ${name}'s inbound experience.`;

@@ -1,13 +1,10 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.EMAIL_FROM || "arth.ai Reports <onboarding@resend.dev>";
-const REPLY_TO = process.env.EMAIL_REPLY_TO || "hello@arth.ai";
-
-/**
- * Sends the audit report PDF to the prospect via Resend.
- */
 export async function sendEmail(lead, pdfBuffer, report) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const FROM_EMAIL = process.env.EMAIL_FROM || "arth.ai Reports <onboarding@resend.dev>";
+  const REPLY_TO = process.env.EMAIL_REPLY_TO || "hello@arth.ai";
+  
   const scores = report.auditScores;
   const overall = Math.round(
     (scores.digitalReadiness + scores.automationPotential + scores.growthIndex) / 3

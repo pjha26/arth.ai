@@ -11,7 +11,8 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const slug = params.company.toLowerCase();
+  const resolvedParams = await params;
+  const slug = resolvedParams.company.toLowerCase();
   const name = slug.charAt(0).toUpperCase() + slug.slice(1);
   return {
     title: `${name} × arth.ai — Personalized Inbound Intelligence`,
@@ -20,7 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CompanyPage({ params }: Props) {
-  const slug = params.company.toLowerCase();
+  const resolvedParams = await params;
+  const slug = resolvedParams.company.toLowerCase();
   const profile = await buildCompanyProfile(slug);
 
   return (
@@ -66,7 +68,7 @@ export default async function CompanyPage({ params }: Props) {
               border: "1.5px solid #E0DDD8", background: "white",
               color: "#71717A",
             }}>
-              {profile.name} × arth.ai &nbsp;·&nbsp; {profile.industry}
+              arth.ai for {profile.name} &nbsp;·&nbsp; {profile.industry}
             </span>
           </div>
 
@@ -99,7 +101,7 @@ export default async function CompanyPage({ params }: Props) {
             textDecoration: "none", letterSpacing: "-0.01em",
             boxShadow: "0 4px 20px rgba(197,139,69,0.25)",
           }}>
-            Get {profile.name}'s AI Audit →
+            Get an AI Audit for {profile.name} →
           </Link>
 
           <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "#A1A1AA", marginTop: "0.85rem" }}>
@@ -174,7 +176,7 @@ export default async function CompanyPage({ params }: Props) {
             fontFamily: "var(--font-heading)", fontSize: "0.95rem", fontWeight: 700,
             textDecoration: "none", letterSpacing: "-0.01em",
           }}>
-            Get {profile.name}'s Free Audit →
+            Get a free audit for {profile.name} →
           </Link>
         </div>
       </section>

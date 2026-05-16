@@ -7,17 +7,16 @@ import { sendEmail } from "./services/emailService.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
 import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client/index.js";
+const { PrismaClient } = pkg;
 import path from "path";
 import { fileURLToPath } from "url";
 
-dotenv.config({ path: "../.env.local" });
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const prisma = new PrismaClient({
-  datasourceUrl: `file:${path.resolve(__dirname, "../arth.db")}`,
-});
+
+dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
+const prisma = new PrismaClient({ log: ['error'] });
 
 async function logStage(leadId, stageName, status, message = null) {
   try {

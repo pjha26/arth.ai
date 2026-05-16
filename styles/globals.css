@@ -1,3 +1,122 @@
+
+@import "tailwindcss";
+
+@theme {
+  --color-surface-container: #f0eded;
+  --color-surface-tint: #845411;
+  --color-outline: #837567;
+  --color-surface-dim: #dcd9d9;
+  --color-primary: #845411;
+  --color-surface-container-low: #f6f3f2;
+  --color-on-secondary-fixed: #052010;
+  --color-on-tertiary-container: #30302c;
+  --color-tertiary-fixed: #e5e2dc;
+  --color-on-secondary-fixed-variant: #324d39;
+  --color-error: #ba1a1a;
+  --color-inverse-on-surface: #f3f0ef;
+  --color-surface-variant: #e5e2e1;
+  --color-on-surface: #1b1b1b;
+  --color-secondary-fixed: #cbead0;
+  --color-on-surface-variant: #514538;
+  --color-tertiary-fixed-dim: #c9c6c1;
+  --color-tertiary-container: #989792;
+  --color-inverse-surface: #313030;
+  --color-on-tertiary-fixed: #1c1c18;
+  --color-primary-fixed-dim: #fbba6f;
+  --color-on-error-container: #93000a;
+  --color-secondary-container: #c8e8cd;
+  --color-error-container: #ffdad6;
+  --color-primary-container: #c58b45;
+  --color-surface-bright: #fcf9f8;
+  --color-background: #fcf9f8;
+  --color-on-tertiary-fixed-variant: #474743;
+  --color-on-background: #1b1b1b;
+  --color-on-primary-fixed: #2b1700;
+  --color-surface-container-highest: #e5e2e1;
+  --color-secondary-fixed-dim: #afceb4;
+  --color-tertiary: #5f5e5a;
+  --color-on-primary-fixed-variant: #663d00;
+  --color-on-tertiary: #ffffff;
+  --color-secondary: #496550;
+  --color-primary-fixed: #ffddba;
+  --color-on-secondary-container: #4d6954;
+  --color-surface: #fcf9f8;
+  --color-on-error: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-primary-container: #462800;
+  --color-outline-variant: #d5c3b3;
+  --color-on-primary: #ffffff;
+  --color-surface-container-high: #eae7e7;
+  --color-inverse-primary: #fbba6f;
+  --color-on-secondary: #ffffff;
+  --radius: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+  --spacing-container-max: 1280px;
+  --spacing-stack-sm: 8px;
+  --spacing-stack-lg: 32px;
+  --spacing-unit: 8px;
+  --spacing-margin-desktop: 64px;
+  --spacing-section-gap: 80px;
+  --spacing-margin-mobile: 20px;
+  --spacing-stack-md: 16px;
+  --spacing-gutter: 24px;
+  --font-display-lg-mobile: Newsreader, serif;
+  --font-mono-ui: Geist, sans-serif;
+  --font-headline-md: Newsreader, serif;
+  --font-headline-sm: Geist, sans-serif;
+  --font-body-md: Geist, sans-serif;
+  --font-display-lg: Newsreader, serif;
+  --font-body-lg: Geist, sans-serif;
+  --font-label-caps: Geist, sans-serif;
+  --text-display-lg-mobile: 40px;
+  --text-display-lg-mobile--line-height: 48px;
+  --text-display-lg-mobile--letter-spacing: -0.02em;
+  --text-display-lg-mobile--font-weight: 400;
+  --text-mono-ui: 14px;
+  --text-mono-ui--line-height: 20px;
+  --text-mono-ui--font-weight: 400;
+  --text-headline-md: 32px;
+  --text-headline-md--line-height: 40px;
+  --text-headline-md--font-weight: 400;
+  --text-headline-sm: 24px;
+  --text-headline-sm--line-height: 32px;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 500;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-md--font-weight: 400;
+  --text-display-lg: 64px;
+  --text-display-lg--line-height: 72px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 400;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-lg--font-weight: 400;
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.1em;
+  --text-label-caps--font-weight: 600;
+}
+
+/* Stitch Styles */
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        @keyframes fadeInReveal {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal {
+            opacity: 0;
+            animation: fadeInReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+    
 /* ─── Design Tokens ──────────────────────────────────────────── */
 :root {
   /* Palette */
