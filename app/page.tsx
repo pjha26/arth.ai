@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 
 export default function LandingPage() {
@@ -87,10 +88,10 @@ export default function LandingPage() {
               "10,000+ reports sent",
               "No credit card needed",
             ].map((s, i, arr) => (
-              <>
-                <span key={s} style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", fontWeight: 500, color: "#71717A" }}>{s}</span>
+              <React.Fragment key={s}>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", fontWeight: 500, color: "#71717A" }}>{s}</span>
                 {i < arr.length - 1 && <div style={{ width: 1, height: 13, background: "#D4D2CE", margin: "0 1.75rem", flexShrink: 0 }} />}
-              </>
+              </React.Fragment>
             ))}
           </div>
         </div>
