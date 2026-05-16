@@ -3,8 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
 
-// ISR: regenerate every 6 hours
-export const revalidate = 21600;
+// Force dynamic rendering so cache is busted
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: { company: string };
