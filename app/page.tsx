@@ -35,15 +35,29 @@ export default function LandingPage() {
 </div>
 <h1 className="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface max-w-[800px] mb-stack-lg leading-tight reveal delay-100">Your website should understand visitors before humans do.</h1>
 <p className="font-body-lg text-body-lg text-on-surface-variant max-w-[600px] mb-stack-lg reveal delay-200">ArthAI helps you understand what your visitors need the moment they arrive, so you can give them a hand without being pushy.</p>
-<div className="flex flex-col sm:flex-row gap-stack-md mt-stack-md w-full sm:w-auto reveal delay-300">
-<button className="bg-primary text-on-primary px-8 py-4 rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-all duration-300 font-body-md w-full sm:w-auto">
-                    Experience Adaptive AI
-                </button>
-<Link href="/form"  className="bg-transparent text-on-surface border border-outline-variant px-8 py-4 rounded-lg hover:bg-surface-container transition-all duration-300 font-body-md w-full sm:w-auto">Book a Demo</Link>
-</div>
-<div className="mt-section-gap w-full max-w-[1000px] mx-auto rounded-xl border border-outline-variant/30 bg-surface-container-low overflow-hidden aspect-[16/9] relative reveal delay-300">
-<img className="w-full h-full object-cover opacity-90" data-alt="A high-fidelity UI mockup for a SaaS hero section showing a 'Storytelling UI' of personalization in action." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrA9OabDHZ5l4es5CM9h5uLI9cSnf4i8jyN_47XxwjMaiO3FJNuH4U_wXMFPGU2Q6g_YJFCrqi7suEMcABP16-1xav_bpC181k0RYwuRsw50qK5LCjVrCR6iWwJimWFoHXEdE8gvXR7sPXNVrrO5hQMgaZIt-vidyGzSF-B9Q2Qh9SJtOoEIXVq1CWD4dVdxMSQIXo65g7KmT5u03Ou48IjXMRwlBa9oxvLYSSmzhrePoZokiTEIL6Dx2uVBtAncBUfxSQVL67Kv5m"/>
-<div className="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent opacity-50"></div>
+<div className="mt-section-gap w-full max-w-[800px] mx-auto rounded-xl border border-outline-variant/30 bg-surface-container-low p-8 text-center reveal delay-300">
+  <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4">Try the dynamic personalization engine right now</h3>
+  <p className="font-body-md text-on-surface-variant mb-6">Type any company name below (e.g. Netflix, Apple, Airbnb) to see how ArthAI instantly generates a personalized page for them.</p>
+  
+  <form 
+    onSubmit={(e) => {
+      e.preventDefault();
+      const val = (e.currentTarget.elements.namedItem('company') as HTMLInputElement).value;
+      if(val) window.location.href = '/' + encodeURIComponent(val.toLowerCase().replace(/\s+/g, ''));
+    }}
+    className="flex flex-col sm:flex-row gap-4 max-w-[500px] mx-auto"
+  >
+    <input 
+      name="company"
+      type="text" 
+      placeholder="Enter a company name..." 
+      className="flex-1 px-4 py-3 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:border-primary transition-colors"
+      required
+    />
+    <button type="submit" className="bg-primary text-on-primary px-6 py-3 rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-all font-bold">
+      Generate Page
+    </button>
+  </form>
 </div>
 {/* Trust Signals */}
 <div className="mt-section-gap w-full text-center reveal">
