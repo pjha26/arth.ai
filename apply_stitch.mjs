@@ -10,7 +10,7 @@ async function run() {
 
   // 2. Convert class to className
   bodyContent = bodyContent.replace(/class="/g, 'className="');
-  
+
   // 3. Convert comments
   bodyContent = bodyContent.replace(/<!--([\s\S]*?)-->/g, '{/*$1*/}');
 
@@ -48,12 +48,12 @@ export default function LandingPage() {
     const config = new Function('return ' + configStr)();
 
     let themeCSS = '\n@import "tailwindcss";\n\n@theme {\n';
-    
+
     // Colors
     for (const [k, v] of Object.entries(config.theme.extend.colors || {})) {
       themeCSS += `  --color-${k}: ${v};\n`;
     }
-    
+
     // Radii
     for (const [k, v] of Object.entries(config.theme.extend.borderRadius || {})) {
       const name = k === 'DEFAULT' ? 'radius' : `radius-${k}`;
@@ -78,7 +78,7 @@ export default function LandingPage() {
       const lh = v[1]?.lineHeight;
       const ls = v[1]?.letterSpacing;
       const fw = v[1]?.fontWeight;
-      
+
       themeCSS += `  --text-${k}: ${size};\n`;
       if (lh) themeCSS += `  --text-${k}--line-height: ${lh};\n`;
       if (ls) themeCSS += `  --text-${k}--letter-spacing: ${ls};\n`;
@@ -98,9 +98,9 @@ export default function LandingPage() {
     // and append our theme.
     let globalsCSS = await fs.readFile('styles/globals.css', 'utf8');
     if (!globalsCSS.includes('@import "tailwindcss"')) {
-       globalsCSS = themeCSS + '\n' + globalsCSS;
+      globalsCSS = themeCSS + '\n' + globalsCSS;
     } else {
-       globalsCSS += '\n' + themeCSS;
+      globalsCSS += '\n' + themeCSS;
     }
     await fs.writeFile('styles/globals.css', globalsCSS);
     console.log("Updated styles/globals.css");

@@ -1,8 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from '@anthropic-ai/sdk';
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || "",
+});
 
 export interface CompanyProfile {
   name: string;
@@ -55,8 +57,7 @@ export async function buildCompanyProfile(slug: string): Promise<CompanyProfile>
     } catch {}
   }
 
-  // 4. Gemini — generate personalized page copy
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // 4. Anthropic Claude — generate personalized page copy
   const prompt = `
 You are writing copy for arth.ai, an AI-powered inbound personalization platform, creating a personalized landing page intended to sell arth.ai TO ${name} (${domain}).
 
@@ -71,7 +72,7 @@ Generate a JSON object with these fields:
   "ctaLine": "One sentence about why they should try arth.ai. Max 20 words. Do not use their company name."
 }
 
-Be specific to ${name}'s actual business. No generic filler. Respond with raw JSON only.`;
+Be specific to ${name}'s actual business. No generic filler. Respond with raw JSON only, no markdown formatting or text before/after.`;
 
   let industry = "Technology";
   let headline = `How arth.ai turns every inbound lead into a personalized experience.`;
@@ -80,16 +81,28 @@ Be specific to ${name}'s actual business. No generic filler. Respond with raw JS
   let ctaLine = `See how arth.ai can transform your inbound experience.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text()
-      .replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
-    const parsed = JSON.parse(text);
+    const response = await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 1000,
+      temperature: 0.7,
+      system: "You are an expert SaaS copywriter. Output strictly valid JSON without any markdown tags.",
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const cleanText = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(cleanText);
+    
     if (parsed.industry) industry = parsed.industry;
     if (parsed.headline) headline = parsed.headline;
     if (parsed.painPoints?.length) painPoints = parsed.painPoints;
     if (parsed.aiOpportunities?.length) aiOpportunities = parsed.aiOpportunities;
     if (parsed.ctaLine) ctaLine = parsed.ctaLine;
-  } catch {}
+  } catch (error) {
+    console.error("Anthropic API Error:", error);
+  }
 
   return { name, domain, logo, description, industry, headline, painPoints, aiOpportunities, ctaLine };
 }
