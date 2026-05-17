@@ -29,6 +29,7 @@ export async function enrich(lead) {
     ddg.abstract ? `About: ${ddg.abstract}` : null,
     scrape.title ? `Website title: ${scrape.title}` : null,
     scrape.description ? `Website description: ${scrape.description}` : null,
+    scrape.markdown ? `Website Content:\n${scrape.markdown}` : (scrape.headline ? `Website headline: ${scrape.headline}` : null),
     clearbit.domain ? `Domain: ${clearbit.domain}` : null,
   ]
     .filter(Boolean)
@@ -111,36 +112,67 @@ async function fetchDuckDuckGo(companyName) {
   };
 }
 
-// ── Cheerio Website Scraper ──
+// ── Website Scraper (Firecrawl -> Cheerio fallback) ──
 async function scrapeWebsite(url) {
-  const { data: html } = await axios.get(url, {
-    timeout: 8000,
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; arth.ai/1.0; +https://arth.ai)",
-    },
-    maxRedirects: 5,
-  });
+  // Try Firecrawl if API key is present
+  if (process.env.FIRECRAWL_API_KEY) {
+    try {
+      const { data } = await axios.post(
+        "https://api.firecrawl.dev/v1/scrape",
+        { url, formats: ["markdown"] },
+        {
+          headers: {
+            "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          timeout: 15000 // Firecrawl can take a bit longer
+        }
+      );
+      
+      if (data && data.success && data.data) {
+        return {
+          title: data.data.metadata?.title?.slice(0, 200) || null,
+          description: data.data.metadata?.description?.slice(0, 500) || null,
+          markdown: data.data.markdown?.slice(0, 1500) || null // Send up to 1500 chars of clean markdown
+        };
+      }
+    } catch (err) {
+      console.warn("[enrichment] Firecrawl failed, falling back to Cheerio:", err.message);
+    }
+  }
 
-  const $ = cheerio.load(html);
+  // Fallback to Cheerio
+  try {
+    const { data: html } = await axios.get(url, {
+      timeout: 8000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; arth.ai/1.0; +https://arth.ai)",
+      },
+      maxRedirects: 5,
+    });
 
-  const title =
-    $("title").first().text()?.trim().slice(0, 200) ||
-    $('meta[property="og:title"]').attr("content")?.trim() ||
-    null;
+    const $ = cheerio.load(html);
 
-  const description =
-    $('meta[name="description"]').attr("content")?.trim() ||
-    $('meta[property="og:description"]').attr("content")?.trim() ||
-    $('meta[name="twitter:description"]').attr("content")?.trim() ||
-    null;
+    const title =
+      $("title").first().text()?.trim().slice(0, 200) ||
+      $('meta[property="og:title"]').attr("content")?.trim() ||
+      null;
 
-  // Try to grab key headline text
-  const h1 = $("h1").first().text()?.trim().slice(0, 300) || null;
+    const description =
+      $('meta[name="description"]').attr("content")?.trim() ||
+      $('meta[property="og:description"]').attr("content")?.trim() ||
+      $('meta[name="twitter:description"]').attr("content")?.trim() ||
+      null;
 
-  return {
-    title: title?.slice(0, 200),
-    description: description?.slice(0, 500),
-    headline: h1,
-  };
+    const h1 = $("h1").first().text()?.trim().slice(0, 300) || null;
+
+    return {
+      title: title?.slice(0, 200),
+      description: description?.slice(0, 500),
+      headline: h1,
+    };
+  } catch (err) {
+    console.warn(`[enrichment] Cheerio scrape failed for ${url}:`, err.message);
+    return {};
+  }
 }

@@ -1,12 +1,35 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
+import { google } from "@ai-sdk/google";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence analyst at arth.ai, an AI-powered inbound personalization platform. 
 Your job is to analyze company information and produce structured, insightful, and highly personalized audit reports.
-You must respond ONLY with valid JSON matching the exact schema provided. No markdown, no explanations, just raw JSON.`;
+You must respond with valid JSON matching the exact schema provided.`;
+
+// Define the Zod schema for the AI response
+const reportSchema = z.object({
+  executiveSummary: z.string().describe("3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do."),
+  marketPosition: z.string().describe("2-3 sentences on their specific competitive landscape, market timing, and exact positioning."),
+  digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
+  painPoints: z.array(z.string()).min(1).describe("Specific pain points incorporating their exact stated challenge but applied to their specific business model (e.g. for e-commerce: high return rates due to sizing; for B2B: long sales cycles)."),
+  aiOpportunities: z.array(z.object({
+    title: z.string().describe("Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')"),
+    description: z.string().describe("2-3 sentences explaining exactly how this AI solves their specific pain point in their specific industry."),
+    impact: z.enum(["High", "Medium", "Low"])
+  })).min(1),
+  recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context."),
+  auditScores: z.object({
+    digitalReadiness: z.number().int().min(1).max(10).describe("Integer 1-10 based on digital presence and tech adoption signals"),
+    digitalReadinessReason: z.string().describe("1 sentence justifying this score based on specific evidence found."),
+    automationPotential: z.number().int().min(1).max(10).describe("Integer 1-10 based on stated challenges and industry"),
+    automationPotentialReason: z.string().describe("1 sentence justifying this score based on specific evidence found."),
+    growthIndex: z.number().int().min(1).max(10).describe("Integer 1-10 based on company size, industry growth, and market position"),
+    growthIndexReason: z.string().describe("1 sentence justifying this score based on specific evidence found.")
+  })
+});
 
 /**
- * Generates a structured AI report using Google Gemini 1.5 Flash.
+ * Generates a structured AI report using Google Gemini 1.5 Flash via Vercel AI SDK.
  * Returns a parsed JSON object with all report sections.
  */
 export async function generateAiReport(lead, enriched) {
@@ -15,39 +38,23 @@ export async function generateAiReport(lead, enriched) {
   let attempt = 0;
   while (attempt < 2) {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        systemInstruction: SYSTEM_INSTRUCTION,
+      // Vercel AI SDK handles the schema enforcement natively
+      const { object } = await generateObject({
+        model: google("gemini-1.5-flash"),
+        schema: reportSchema,
+        system: SYSTEM_INSTRUCTION,
+        prompt: prompt,
+        temperature: 0.7,
       });
 
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: 2500,
-          temperature: 0.7,
-        },
-      });
-
-      const text = result.response.text().trim();
-
-      // Strip markdown code fences if present
-      const cleaned = text
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-
-      const parsed = JSON.parse(cleaned);
-      validateReport(parsed);
-      return parsed;
+      return object;
     } catch (err) {
       attempt++;
       if (attempt >= 2) {
-        console.error("[aiReport] Gemini parse failed after retry:", err.message);
+        console.error("[aiReport] Gemini generation failed after retry:", err.message);
         return getFallbackReport(lead);
       }
-      console.warn("[aiReport] Parse failed, retrying...");
+      console.warn("[aiReport] Generation failed, retrying...", err.message);
     }
   }
 }
@@ -57,6 +64,7 @@ function buildPrompt(lead, enriched) {
 Analyze the following company and generate a hyper-personalized AI Intelligence Report. 
 You MUST heavily use the specific context of their actual business, products, target audience, and market position. 
 DO NOT use generic consulting buzzwords. If they are a fashion e-commerce brand, talk about fashion, sizing, returns, and visual search. If they are a SaaS company, talk about churn, onboarding, and integration.
+Be HYPER-SPECIFIC to this company. Do not use generic consulting language. Frame the AI opportunities specifically around their business domain (e.g., fashion, fintech, healthcare, SaaS).
 
 COMPANY INFORMATION:
 - Name: ${lead.companyName}
@@ -67,77 +75,7 @@ COMPANY INFORMATION:
 
 ENRICHED DATA:
 ${enriched.rawContext}
-
-Generate a response in this EXACT JSON format (no other text):
-{
-  "executiveSummary": "3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do.",
-  "marketPosition": "2-3 sentences on their specific competitive landscape, market timing, and exact positioning.",
-  "digitalPresence": "2-3 sentences reviewing their actual website features, digital maturity, and content strategy.",
-  "painPoints": [
-    "Specific pain point 1 incorporating their exact stated challenge but applied to their specific business model",
-    "Specific pain point 2 (e.g. for e-commerce: high return rates due to sizing; for B2B: long sales cycles)",
-    "Specific pain point 3"
-  ],
-  "aiOpportunities": [
-    {
-      "title": "Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')",
-      "description": "2-3 sentences explaining exactly how this AI solves their specific pain point in their specific industry.",
-      "impact": "High"
-    },
-    {
-      "title": "Second hyper-specific opportunity",
-      "description": "2-3 sentences.",
-      "impact": "High"
-    },
-    {
-      "title": "Third hyper-specific opportunity",
-      "description": "2-3 sentences.",
-      "impact": "Medium"
-    },
-    {
-      "title": "Fourth hyper-specific opportunity",
-      "description": "2-3 sentences.",
-      "impact": "Medium"
-    }
-  ],
-  "recommendedNextSteps": [
-    "Actionable step 1 specific to implementing the first opportunity",
-    "Actionable step 2 specific to their industry context",
-    "Actionable step 3",
-    "Actionable step 4"
-  ],
-  "auditScores": {
-    "digitalReadiness": <integer 1-10 based on digital presence and tech adoption signals>,
-    "digitalReadinessReason": "1 sentence justifying this score based on specific evidence found.",
-    "automationPotential": <integer 1-10 based on stated challenges and industry>,
-    "automationPotentialReason": "1 sentence justifying this score based on specific evidence found.",
-    "growthIndex": <integer 1-10 based on company size, industry growth, and market position>,
-    "growthIndexReason": "1 sentence justifying this score based on specific evidence found."
-  }
-}
-
-Be HYPER-SPECIFIC to this company. Do not use generic consulting language. Frame the AI opportunities specifically around their business domain (e.g., fashion, fintech, healthcare, SaaS).`;
-}
-
-function validateReport(report) {
-  const required = [
-    "executiveSummary",
-    "marketPosition",
-    "digitalPresence",
-    "painPoints",
-    "aiOpportunities",
-    "recommendedNextSteps",
-    "auditScores",
-  ];
-  for (const key of required) {
-    if (!report[key]) throw new Error(`Missing required field: ${key}`);
-  }
-  if (!Array.isArray(report.painPoints) || report.painPoints.length === 0) {
-    throw new Error("painPoints must be a non-empty array");
-  }
-  if (!Array.isArray(report.aiOpportunities) || report.aiOpportunities.length === 0) {
-    throw new Error("aiOpportunities must be a non-empty array");
-  }
+`;
 }
 
 function getFallbackReport(lead) {
