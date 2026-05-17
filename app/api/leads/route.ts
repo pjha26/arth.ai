@@ -3,6 +3,8 @@ import { LeadSchema } from "@/lib/validation";
 import { leadsQueue } from "@/lib/queue";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
+import path from "path";
+import fs from "fs";
 
 export async function POST(request: Request) {
   try {
@@ -85,7 +87,19 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ success: true, leads });
+    const reportsDir = path.join(process.cwd(), "public", "reports");
+    // Ensure the directory exists before checking
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+
+    const leadsWithPdf = leads.map((lead) => {
+      const pdfPath = path.join(reportsDir, `${lead.id}.pdf`);
+      const hasPdf = fs.existsSync(pdfPath);
+      return { ...lead, hasPdf };
+    });
+
+    return NextResponse.json({ success: true, leads: leadsWithPdf });
   } catch (error) {
     console.error("Error fetching leads:", error);
     return NextResponse.json(

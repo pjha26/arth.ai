@@ -10,6 +10,7 @@ type Lead = {
   industry: string;
   status: string;
   createdAt: string;
+  hasPdf: boolean;
 };
 
 export default function DashboardPage() {
@@ -184,7 +185,7 @@ export default function DashboardPage() {
                     {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
                   </div>
                   
-                  {lead.status === "done" ? (
+                  {lead.status === "done" && lead.hasPdf ? (
                     <a
                       href={`/api/leads/${lead.id}/download`}
                       download={`${lead.companyName.replace(/\s+/g, '_')}_Report.pdf`}
@@ -193,6 +194,16 @@ export default function DashboardPage() {
                       Download PDF
                       <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
                     </a>
+                  ) : lead.status === "done" && !lead.hasPdf ? (
+                    <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>hourglass_top</span>
+                      PDF finalising…
+                    </span>
+                  ) : lead.status === "failed" ? (
+                    <span style={{ fontSize: 13, color: "#EF4444", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>error_outline</span>
+                      Generation failed
+                    </span>
                   ) : (
                     <Link
                       href={`/success?company=${encodeURIComponent(lead.companyName)}&jobId=${lead.id}`}
