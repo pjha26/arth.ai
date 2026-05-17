@@ -17,26 +17,47 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchLeads() {
-      try {
-        const res = await fetch("/api/leads");
-        const data = await res.json();
-        
-        if (data.success) {
-          setLeads(data.leads);
-        } else {
-          setError(data.message || "Failed to load reports");
-        }
-      } catch (err) {
-        setError("Network error while fetching reports.");
-      } finally {
-        setLoading(false);
+  const fetchLeads = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const res = await fetch("/api/leads");
+      const data = await res.json();
+      
+      if (data.success) {
+        setLeads(data.leads);
+      } else {
+        setError(data.message || "Failed to load reports");
       }
+    } catch (err) {
+      setError("Network error while fetching reports.");
+    } finally {
+      if (showLoading) setLoading(false);
     }
+  };
 
-    fetchLeads();
+  useEffect(() => {
+    fetchLeads(true);
+    const interval = setInterval(() => fetchLeads(false), 3000);
+    return () => clearInterval(interval);
   }, []);
+
+  const deleteLead = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this report?")) return;
+    
+    try {
+      const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setLeads((prev) => prev.filter((l) => l.id !== id));
+      } else {
+        alert(data.message || "Failed to delete");
+      }
+    } catch (err) {
+      alert("Network error while deleting");
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--ivory)", color: "var(--charcoal-900)" }}>
@@ -131,15 +152,31 @@ export default function DashboardPage() {
                     </h3>
                   </div>
                   
-                  {lead.status === "done" ? (
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "rgba(217,119,87,0.1)", color: "var(--saffron-main)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
-                    </div>
-                  ) : (
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "rgba(28, 25, 23, 0.05)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>sync</span>
-                    </div>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button 
+                      onClick={(e) => deleteLead(lead.id, e)}
+                      style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "transparent", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "none", cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#FEE2E2"; e.currentTarget.style.color = "#EF4444"; }}
+                      onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
+                      title="Delete Report"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>delete</span>
+                    </button>
+
+                    {lead.status === "done" ? (
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "rgba(217,119,87,0.1)", color: "var(--saffron-main)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+                      </div>
+                    ) : lead.status === "failed" ? (
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "#FEE2E2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>error</span>
+                      </div>
+                    ) : (
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "rgba(28, 25, 23, 0.05)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20, animation: "spin-cw 1s linear infinite" }}>sync</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ marginTop: "auto", paddingTop: 32, display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid rgba(28, 25, 23, 0.05)" }}>
