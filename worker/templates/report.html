@@ -564,17 +564,20 @@
   <!-- Score Bars -->
   <div class="content-block" style="margin-bottom: 24px;">
     <div class="content-block-title">Score Breakdown</div>
-    <div class="score-bar-row">
+    <div class="score-bar-row" style="margin-bottom: 20px;">
       <div class="score-bar-header"><span>Digital Readiness</span><span>{{SCORE_DIGITAL}}/10</span></div>
       <div class="score-bar-track"><div class="score-bar-fill" style="width: calc({{SCORE_DIGITAL}} * 10%)"></div></div>
+      <p style="margin-top: 8px; font-size: 11.5px; color: var(--text-secondary);">{{REASON_DIGITAL}}</p>
     </div>
-    <div class="score-bar-row">
+    <div class="score-bar-row" style="margin-bottom: 20px;">
       <div class="score-bar-header"><span>Automation Potential</span><span>{{SCORE_AUTOMATION}}/10</span></div>
       <div class="score-bar-track"><div class="score-bar-fill" style="width: calc({{SCORE_AUTOMATION}} * 10%)"></div></div>
+      <p style="margin-top: 8px; font-size: 11.5px; color: var(--text-secondary);">{{REASON_AUTOMATION}}</p>
     </div>
     <div class="score-bar-row" style="margin-bottom: 0;">
       <div class="score-bar-header"><span>Growth Index</span><span>{{SCORE_GROWTH}}/10</span></div>
       <div class="score-bar-track"><div class="score-bar-fill" style="width: calc({{SCORE_GROWTH}} * 10%)"></div></div>
+      <p style="margin-top: 8px; font-size: 11.5px; color: var(--text-secondary);">{{REASON_GROWTH}}</p>
     </div>
   </div>
 
@@ -638,7 +641,7 @@
 
   <div class="content-block" style="margin-top: 32px; background: rgba(217,119,87,0.05); border-color: rgba(217,119,87,0.15);">
     <div class="content-block-title" style="color: var(--saffron-dark);">ℹ️ About This Report</div>
-    <p>This report was generated autonomously by ArthAI's inbound intelligence pipeline within minutes of your form submission. Data was enriched from multiple public sources including Wikipedia, Clearbit, DuckDuckGo, and your company website. AI analysis was performed by Google Gemini 1.5 Flash. Scores are indicative and based on publicly available signals.</p>
+    <p>This report was generated autonomously by ArthAI's inbound intelligence pipeline within minutes of your form submission. Data was enriched from multiple public sources including Wikipedia, Clearbit, DuckDuckGo, and your company website. Powered by ArthAI's proprietary intelligence pipeline. Scores are indicative and based on publicly available signals.</p>
   </div>
 </div>
 

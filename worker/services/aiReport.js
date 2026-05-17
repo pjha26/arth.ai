@@ -68,10 +68,6 @@ COMPANY INFORMATION:
 ENRICHED DATA:
 ${enriched.rawContext}
 
-${enriched.description ? `Description: ${enriched.description}` : ""}
-${enriched.websiteTitle ? `Website Title: ${enriched.websiteTitle}` : ""}
-${enriched.websiteDescription ? `Website Description: ${enriched.websiteDescription}` : ""}
-
 Generate a response in this EXACT JSON format (no other text):
 {
   "executiveSummary": "3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do.",
@@ -112,8 +108,11 @@ Generate a response in this EXACT JSON format (no other text):
   ],
   "auditScores": {
     "digitalReadiness": <integer 1-10 based on digital presence and tech adoption signals>,
+    "digitalReadinessReason": "1 sentence justifying this score based on specific evidence found.",
     "automationPotential": <integer 1-10 based on stated challenges and industry>,
-    "growthIndex": <integer 1-10 based on company size, industry growth, and market position>
+    "automationPotentialReason": "1 sentence justifying this score based on specific evidence found.",
+    "growthIndex": <integer 1-10 based on company size, industry growth, and market position>,
+    "growthIndexReason": "1 sentence justifying this score based on specific evidence found."
   }
 }
 
@@ -181,8 +180,11 @@ function getFallbackReport(lead) {
     ],
     auditScores: {
       digitalReadiness: 6,
+      digitalReadinessReason: "Website lacks advanced interactive elements but maintains a clean online presence.",
       automationPotential: 8,
+      automationPotentialReason: "High potential for automation in routine operational workflows.",
       growthIndex: 7,
+      growthIndexReason: "Stable market position with room for technology-driven expansion."
     },
   };
 }

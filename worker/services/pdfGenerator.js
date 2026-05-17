@@ -114,6 +114,9 @@ function injectData(template, lead, enriched, report) {
         (scores.digitalReadiness + scores.automationPotential + scores.growthIndex) / 3
       )
     )
+    .replace(/\{\{REASON_DIGITAL\}\}/g, escapeHtml(scores.digitalReadinessReason || ""))
+    .replace(/\{\{REASON_AUTOMATION\}\}/g, escapeHtml(scores.automationPotentialReason || ""))
+    .replace(/\{\{REASON_GROWTH\}\}/g, escapeHtml(scores.growthIndexReason || ""))
     .replace(/\{\{DESCRIPTION\}\}/g, escapeHtml(enriched.description || ""));
 }
 
