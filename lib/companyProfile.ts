@@ -2,9 +2,13 @@ import Anthropic from '@anthropic-ai/sdk';
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || "",
-});
+// Only create the client when a key is actually available so the page
+// doesn't crash with an auth error — it will fall back to default copy.
+function getAnthropicClient(): Anthropic | null {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key || key.trim() === "") return null;
+  return new Anthropic({ apiKey: key });
+}
 
 export interface CompanyProfile {
   name: string;
@@ -81,6 +85,13 @@ Be specific to ${name}'s actual business. No generic filler. Respond with raw JS
   let ctaLine = `See how arth.ai can transform your inbound experience.`;
 
   try {
+    const anthropic = getAnthropicClient();
+    if (!anthropic) {
+      console.warn("[companyProfile] ANTHROPIC_API_KEY not set — using default copy.");
+      // Skip to return with defaults
+      return { name, domain, logo, description, industry, headline, painPoints, aiOpportunities, ctaLine };
+    }
+
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 1000,

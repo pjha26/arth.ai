@@ -293,16 +293,20 @@ function SuccessContent() {
         </div>
 
         <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "#A1A1AA", textAlign: "center" }}>
-          Didn't receive the email? Check spam, or{" "}
-          <div className="flex gap-4">
-          <Link href="/dashboard" className="px-6 py-2 bg-[var(--charcoal-900)] text-[var(--ivory)] rounded-full text-sm font-medium hover:bg-black transition-colors">
+          Didn't receive the email? Check spam, or visit your{" "}
+          <Link href="/dashboard" style={{ color: "#A1A1AA", textDecoration: "underline" }}>
             Dashboard
           </Link>
-          <Link href="/form" className="px-6 py-2 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors">
-            Create another report
-          </Link>
-        </div>.
+          {" "}to download the PDF directly.
         </p>
+        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "0.5rem" }}>
+          <Link href="/dashboard" style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", background: "var(--charcoal-900)", color: "var(--ivory)", textDecoration: "none" }}>
+            View Dashboard
+          </Link>
+          <Link href="/form" style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", border: "1.5px solid #E0DDD8", background: "white", color: "#52525B", textDecoration: "none" }}>
+            Create Another Report
+          </Link>
+        </div>
       </div>
     </div>
   );
