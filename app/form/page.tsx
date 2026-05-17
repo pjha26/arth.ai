@@ -75,9 +75,14 @@ export default function FormPage() {
         <Link href="/" className="navbar-logo">
           <div className="logo-mark">a</div>arth.ai
         </Link>
-        <span style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: 500 }}>
-          Free AI Intelligence Audit
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <Link href="/dashboard" style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", color: "var(--charcoal)", fontWeight: 600, textDecoration: "none" }}>
+            Dashboard
+          </Link>
+          <span style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: 500 }}>
+            Free AI Intelligence Audit
+          </span>
+        </div>
       </nav>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "5rem 1.5rem 3rem" }}>
