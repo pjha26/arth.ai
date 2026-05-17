@@ -1,13 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-// Only create the client when a key is actually available so the page
-// doesn't crash with an auth error — it will fall back to default copy.
-function getAnthropicClient(): Anthropic | null {
-  const key = process.env.ANTHROPIC_API_KEY;
+function getGeminiClient(): GoogleGenerativeAI | null {
+  const key = process.env.GEMINI_API_KEY;
   if (!key || key.trim() === "") return null;
-  return new Anthropic({ apiKey: key });
+  return new GoogleGenerativeAI(key);
 }
 
 export interface CompanyProfile {
@@ -61,7 +59,22 @@ export async function buildCompanyProfile(slug: string): Promise<CompanyProfile>
     } catch {}
   }
 
-  // 4. Anthropic Claude — generate personalized page copy
+  // Default copy (used when Gemini key is missing or call fails)
+  let industry = "Technology";
+  let headline = `How arth.ai turns every inbound lead into a personalized experience.`;
+  let painPoints = [
+    "Manual lead qualification slows response time",
+    "Generic follow-ups fail to convert warm leads",
+    "Sales team spends hours on company research",
+  ];
+  let aiOpportunities = [
+    "Automated prospect research on every form submit",
+    "AI-generated personalized audit reports",
+    "Instant email delivery before competitors respond",
+  ];
+  let ctaLine = `See how arth.ai can transform your inbound experience.`;
+
+  // 4. Gemini — generate personalized page copy
   const prompt = `
 You are writing copy for arth.ai, an AI-powered inbound personalization platform, creating a personalized landing page intended to sell arth.ai TO ${name} (${domain}).
 
@@ -78,41 +91,38 @@ Generate a JSON object with these fields:
 
 Be specific to ${name}'s actual business. No generic filler. Respond with raw JSON only, no markdown formatting or text before/after.`;
 
-  let industry = "Technology";
-  let headline = `How arth.ai turns every inbound lead into a personalized experience.`;
-  let painPoints = ["Manual lead qualification slows response time", "Generic follow-ups fail to convert warm leads", "Sales team spends hours on company research"];
-  let aiOpportunities = ["Automated prospect research on every form submit", "AI-generated personalized audit reports", "Instant email delivery before competitors respond"];
-  let ctaLine = `See how arth.ai can transform your inbound experience.`;
-
   try {
-    const anthropic = getAnthropicClient();
-    if (!anthropic) {
-      console.warn("[companyProfile] ANTHROPIC_API_KEY not set — using default copy.");
-      // Skip to return with defaults
+    const genAI = getGeminiClient();
+    if (!genAI) {
+      console.warn("[companyProfile] GEMINI_API_KEY not set — using default copy.");
       return { name, domain, logo, description, industry, headline, painPoints, aiOpportunities, ctaLine };
     }
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 1000,
-      temperature: 0.7,
-      system: "You are an expert SaaS copywriter. Output strictly valid JSON without any markdown tags.",
-      messages: [
-        { role: 'user', content: prompt }
-      ]
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: "You are an expert SaaS copywriter. Output strictly valid JSON without any markdown tags.",
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    const cleanText = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
-    const parsed = JSON.parse(cleanText);
-    
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
+    });
+
+    const text = result.response.text().trim();
+    const cleaned = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    const parsed = JSON.parse(cleaned);
     if (parsed.industry) industry = parsed.industry;
     if (parsed.headline) headline = parsed.headline;
     if (parsed.painPoints?.length) painPoints = parsed.painPoints;
     if (parsed.aiOpportunities?.length) aiOpportunities = parsed.aiOpportunities;
     if (parsed.ctaLine) ctaLine = parsed.ctaLine;
   } catch (error) {
-    console.error("Anthropic API Error:", error);
+    console.error("[companyProfile] Gemini API error:", error);
   }
 
   return { name, domain, logo, description, industry, headline, painPoints, aiOpportunities, ctaLine };
