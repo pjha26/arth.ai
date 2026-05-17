@@ -1,15 +1,13 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence analyst at arth.ai, an AI-powered inbound personalization platform. 
 Your job is to analyze company information and produce structured, insightful, and highly personalized audit reports.
 You must respond ONLY with valid JSON matching the exact schema provided. No markdown, no explanations, just raw JSON.`;
 
 /**
- * Generates a structured AI report using Anthropic Claude 3.5 Sonnet.
+ * Generates a structured AI report using Google Gemini 1.5 Flash.
  * Returns a parsed JSON object with all report sections.
  */
 export async function generateAiReport(lead, enriched) {
@@ -18,17 +16,20 @@ export async function generateAiReport(lead, enriched) {
   let attempt = 0;
   while (attempt < 2) {
     try {
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20240620",
-        max_tokens: 2500,
-        temperature: 0.7,
-        system: SYSTEM_INSTRUCTION,
-        messages: [
-          { role: "user", content: prompt }
-        ]
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        systemInstruction: SYSTEM_INSTRUCTION,
       });
 
-      const text = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 2500,
+          temperature: 0.7,
+        },
+      });
+
+      const text = result.response.text().trim();
 
       // Strip markdown code fences if present
       const cleaned = text
@@ -43,7 +44,7 @@ export async function generateAiReport(lead, enriched) {
     } catch (err) {
       attempt++;
       if (attempt >= 2) {
-        console.error("[aiReport] Anthropic parse failed after retry:", err.message);
+        console.error("[aiReport] Gemini parse failed after retry:", err.message);
         return getFallbackReport(lead);
       }
       console.warn("[aiReport] Parse failed, retrying...");

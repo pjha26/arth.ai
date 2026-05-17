@@ -1,76 +1,95 @@
 "use client";
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const STAGES = [
-  { label: "Enriching company data",    icon: "🔍", duration: 12000 },
-  { label: "Running AI analysis",       icon: "🧠", duration: 30000 },
-  { label: "Generating PDF report",     icon: "📄", duration: 20000 },
-  { label: "Sending to your inbox",     icon: "📬", duration: 10000 },
+  { label: "Enriching company data",    icon: "🔍", key: "enrich"    },
+  { label: "Running AI analysis",       icon: "🧠", key: "ai_report" },
+  { label: "Generating PDF report",     icon: "📄", key: "pdf"       },
+  { label: "Sending to your inbox",     icon: "📬", key: "email"     },
 ];
 
 function SuccessContent() {
-  const params = useSearchParams();
+  const params  = useSearchParams();
   const company = params.get("company") || "Your Company";
   const email   = params.get("email")   || "your inbox";
-
   const jobId   = params.get("jobId");
 
-  const [currentStage,    setCurrentStage]    = useState(0);
-  const [completedStages, setCompletedStages] = useState<number[]>([]);
+  const [completedStages, setCompletedStages] = useState<string[]>([]);
+  const [activeStage,     setActiveStage]     = useState<string | null>(null);
+  const [leadStatus,      setLeadStatus]      = useState<string>("processing");
   const [elapsed,         setElapsed]         = useState(0);
+  const [pdfReady,        setPdfReady]        = useState(false);
+  const [emailSkipped,    setEmailSkipped]    = useState(false);
 
+  // Elapsed timer
   useEffect(() => {
-    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(interval);
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
   }, []);
 
+  // Real-time DB polling
   useEffect(() => {
     if (!jobId) return;
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`/api/leads/${jobId}`);
+        const res  = await fetch(`/api/leads/${jobId}`);
         const data = await res.json();
-        
-        if (data.success && data.lead) {
-          const { status, stages } = data.lead;
-          
-          const stageMap = { enrich: 0, ai_report: 1, pdf: 2, email: 3 };
-          let latestStage = 0;
-          let completed: number[] = [];
 
-          stages.forEach((s: any) => {
-            const sIdx = stageMap[s.stage as keyof typeof stageMap];
-            if (sIdx !== undefined) {
-              if (s.status === "done" && !completed.includes(sIdx)) {
-                completed.push(sIdx);
-              }
-              if (sIdx >= latestStage) latestStage = sIdx;
-            }
-          });
+        if (!data.success || !data.lead) return;
 
-          if (status === "done" || status === "success") {
-             completed = [0, 1, 2, 3];
-             latestStage = 4;
+        const { status, stages } = data.lead;
+        setLeadStatus(status);
+
+        const doneKeys: string[]   = [];
+        let   latestActive: string | null = null;
+
+        stages.forEach((s: { stage: string; status: string; message?: string }) => {
+          if (s.status === "done")    doneKeys.push(s.stage);
+          if (s.status === "running") latestActive = s.stage;
+
+          // Detect sandbox email skipped — message contains "sandbox" or "skipped"
+          if (
+            s.stage === "email" &&
+            s.status === "done" &&
+            s.message?.toLowerCase().includes("skipped")
+          ) {
+            setEmailSkipped(true);
           }
+        });
 
-          setCompletedStages(completed);
-          setCurrentStage(latestStage);
+        setCompletedStages(doneKeys);
+        setActiveStage(latestActive);
+
+        // PDF is ready once the 'pdf' stage is done
+        if (doneKeys.includes("pdf")) setPdfReady(true);
+
+        // If overall job is done or failed, mark all core stages complete
+        if (status === "done") {
+          setCompletedStages(["enrich", "ai_report", "pdf", "email"]);
+          setActiveStage(null);
+          setPdfReady(true);
         }
       } catch (err) {
-        console.error(err);
+        console.error("[success] Polling error:", err);
       }
     };
 
     checkStatus();
-    const pollInterval = setInterval(checkStatus, 3000);
-
-    return () => clearInterval(pollInterval);
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
   }, [jobId]);
 
-  const allDone = completedStages.length === STAGES.length;
+  const allDone = leadStatus === "done";
+  const hasFailed = leadStatus === "failed";
+
+  const stageStatus = (key: string) => {
+    if (completedStages.includes(key)) return "done";
+    if (activeStage === key)           return "active";
+    return "waiting";
+  };
 
   return (
     <div style={{ background: "#FAFAF8", minHeight: "100vh" }}>
@@ -99,12 +118,28 @@ function SuccessContent() {
         <div className="animate-fade-up" style={{ textAlign: "center", maxWidth: "480px" }}>
           {allDone ? (
             <>
-              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📬</div>
+              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🎉</div>
               <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", marginBottom: "0.65rem" }}>
-                Report sent. Check your inbox.
+                Your report is ready!
               </h1>
               <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.7 }}>
-                Your AI intelligence report has been delivered to <strong style={{ color: "#18181B" }}>{email}</strong>.
+                {emailSkipped
+                  ? <>Your AI intelligence report for <strong style={{ color: "#18181B" }}>{company}</strong> has been generated. Download it directly below.</>
+                  : <>Your AI intelligence report has been delivered to <strong style={{ color: "#18181B" }}>{email}</strong>. You can also download it directly below.</>
+                }
+              </p>
+            </>
+          ) : hasFailed ? (
+            <>
+              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚠️</div>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", marginBottom: "0.65rem" }}>
+                Pipeline note
+              </h1>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.7 }}>
+                {pdfReady
+                  ? <>Email delivery was restricted, but your PDF report for <strong style={{ color: "#18181B" }}>{company}</strong> was generated successfully. Download it below!</>
+                  : <>Something went wrong during processing. Please try submitting again.</>
+                }
               </p>
             </>
           ) : (
@@ -119,6 +154,44 @@ function SuccessContent() {
             </>
           )}
         </div>
+
+        {/* PDF Download — slides in once PDF is ready */}
+        {pdfReady && jobId && (
+          <div
+            className="animate-fade-up"
+            style={{
+              background: "linear-gradient(135deg, #FDF5E8, #FFFBF5)",
+              border: "1.5px solid #C58B45",
+              borderRadius: "14px",
+              padding: "1.5rem 2rem",
+              width: "100%", maxWidth: "400px",
+              boxShadow: "0 4px 20px rgba(197,139,69,0.15)",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📄</div>
+            <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "#18181B", marginBottom: "1rem" }}>
+              Your AI Intelligence Report is ready
+            </p>
+            <a
+              href={`/api/leads/${jobId}/download`}
+              download
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                background: "#C58B45", color: "white",
+                fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
+                padding: "0.65rem 1.5rem", borderRadius: "100px",
+                textDecoration: "none",
+                boxShadow: "0 4px 14px rgba(197,139,69,0.3)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = "#A97030")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "#C58B45")}
+            >
+              ↓ Download PDF Report
+            </a>
+          </div>
+        )}
 
         {/* Pipeline status card */}
         <div className="animate-fade-up delay-100" style={{
@@ -141,15 +214,16 @@ function SuccessContent() {
 
           {/* Stages */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {STAGES.map((stage, idx) => {
-              const done   = completedStages.includes(idx);
-              const active = currentStage === idx && !done;
-              const future = idx > currentStage;
+            {STAGES.map((stage) => {
+              const st = stageStatus(stage.key);
+              const done   = st === "done";
+              const active = st === "active";
+              const waiting = st === "waiting";
 
               return (
-                <div key={idx} style={{
+                <div key={stage.key} style={{
                   display: "flex", alignItems: "center", gap: "0.85rem",
-                  opacity: future ? 0.35 : 1,
+                  opacity: waiting ? 0.35 : 1,
                   transition: "opacity 0.5s ease",
                 }}>
                   {/* Status dot */}
@@ -175,6 +249,9 @@ function SuccessContent() {
                       transition: "color 0.4s ease",
                     }}>
                       {stage.label}
+                      {stage.key === "email" && emailSkipped && done && (
+                        <span style={{ fontSize: "0.72rem", color: "#A1A1AA", fontWeight: 400, marginLeft: "0.4rem" }}>(sandbox)</span>
+                      )}
                     </div>
 
                     {/* Active progress bar */}
@@ -213,7 +290,7 @@ function SuccessContent() {
         </div>
 
         <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "#A1A1AA", textAlign: "center" }}>
-          Didn't receive it? Check spam, or{" "}
+          Didn't receive the email? Check spam, or{" "}
           <Link href="/form" style={{ color: "#A97030", textDecoration: "none", fontWeight: 600 }}>
             resubmit with a different email
           </Link>.

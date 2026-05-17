@@ -11,12 +11,20 @@ import pkg from "@prisma/client/index.js";
 const { PrismaClient } = pkg;
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
-const prisma = new PrismaClient({ log: ['error'] });
+const prisma = new PrismaClient({ log: ["error"] });
+
+// Ensure the public/reports directory exists for local PDF storage
+const REPORTS_DIR = path.resolve(__dirname, "../public/reports");
+if (!fs.existsSync(REPORTS_DIR)) {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
+  console.log("[arth.ai worker] Created reports directory:", REPORTS_DIR);
+}
 
 async function logStage(leadId, stageName, status, message = null) {
   try {
@@ -44,7 +52,6 @@ const worker = new Worker(
     console.log(`\n[Job ${jobId}] Processing: ${lead.companyName}`);
 
     let driveLink = null;
-    let status = "success";
 
     try {
       await prisma.lead.update({
@@ -70,15 +77,47 @@ const worker = new Worker(
       console.log(`[Job ${jobId}] Step 3/4: Generating PDF...`);
       await logStage(jobId, "pdf", "running");
       const pdfBuffer = await generatePDF(lead, enriched, report);
+
+      // Persist the PDF locally so clients can download it directly
+      const pdfPath = path.join(REPORTS_DIR, `${jobId}.pdf`);
+      fs.writeFileSync(pdfPath, pdfBuffer);
+      console.log(`[Job ${jobId}] PDF saved locally at ${pdfPath}`);
+
       await logStage(jobId, "pdf", "done");
       console.log(`[Job ${jobId}] PDF generated (${Math.round(pdfBuffer.length / 1024)} KB).`);
 
-      // ── Step 4: Email ──
+      // ── Step 4: Email (non-fatal — sandbox restrictions handled gracefully) ──
       console.log(`[Job ${jobId}] Step 4/4: Sending email...`);
       await logStage(jobId, "email", "running");
-      await sendEmail(lead, pdfBuffer, report);
-      await logStage(jobId, "email", "done");
-      console.log(`[Job ${jobId}] Email sent to ${lead.email}.`);
+      try {
+        await sendEmail(lead, pdfBuffer, report);
+        await logStage(jobId, "email", "done");
+        console.log(`[Job ${jobId}] Email sent to ${lead.email}.`);
+      } catch (emailErr) {
+        // Sandbox Resend limitation — don't fail the whole pipeline over this
+        const isTestingRestriction =
+          emailErr?.message?.toLowerCase().includes("testing") ||
+          emailErr?.message?.toLowerCase().includes("sandbox") ||
+          emailErr?.message?.toLowerCase().includes("not verified") ||
+          emailErr?.statusCode === 403 ||
+          emailErr?.statusCode === 422;
+
+        if (isTestingRestriction) {
+          console.warn(
+            `[Job ${jobId}] Email skipped (Resend sandbox restriction): ${emailErr.message}`
+          );
+          await logStage(
+            jobId,
+            "email",
+            "done",
+            "Email skipped — Resend sandbox mode. PDF available for direct download."
+          );
+        } else {
+          // Real email failure — log it but still mark job as done so the PDF is accessible
+          console.error(`[Job ${jobId}] Email error (non-fatal):`, emailErr.message);
+          await logStage(jobId, "email", "done", `Email failed: ${emailErr.message}`);
+        }
+      }
 
       // ── BONUS Step 5: Drive Upload ──
       try {
@@ -106,7 +145,6 @@ const worker = new Worker(
       });
       console.log(`[Job ${jobId}] ✓ Pipeline complete for ${lead.companyName}\n`);
     } catch (err) {
-      status = "failed";
       console.error(`[Job ${jobId}] ✗ Pipeline failed:`, err.message);
 
       await logStage(jobId, "error", "failed", err.message);

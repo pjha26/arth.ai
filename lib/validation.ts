@@ -40,12 +40,8 @@ export const LeadSchema = z.object({
     .string()
     .url("Please enter a valid URL (include https://)")
     .max(500),
-  industry: z.enum(industryOptions, {
-    errorMap: () => ({ message: "Please select an industry" }),
-  }),
-  companySize: z.enum(companySizeOptions, {
-    errorMap: () => ({ message: "Please select company size" }),
-  }),
+  industry: z.enum(industryOptions, "Please select an industry"),
+  companySize: z.enum(companySizeOptions, "Please select company size"),
   painPoints: z
     .string()
     .min(10, "Please describe your challenge in at least 10 characters")

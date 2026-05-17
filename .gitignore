@@ -2,6 +2,17 @@
 
 # dependencies
 /node_modules
+/worker/node_modules
+
+# generated PDFs — local only
+/public/reports/
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+/prisma/*.db
 /.pnp
 .pnp.*
 .yarn/*
