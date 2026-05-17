@@ -105,6 +105,9 @@ function SuccessContent() {
           <div style={{ width: 24, height: 24, borderRadius: 6, background: "#18181B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
           <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "#18181B" }}>arth.ai</span>
         </Link>
+        <Link href="/dashboard" style={{ fontSize: "0.85rem", fontWeight: 600, color: "#18181B", textDecoration: "none" }}>
+          Dashboard
+        </Link>
       </nav>
 
       {/* Main */}
@@ -291,9 +294,14 @@ function SuccessContent() {
 
         <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "#A1A1AA", textAlign: "center" }}>
           Didn't receive the email? Check spam, or{" "}
-          <Link href="/form" style={{ color: "#A97030", textDecoration: "none", fontWeight: 600 }}>
-            resubmit with a different email
-          </Link>.
+          <div className="flex gap-4">
+          <Link href="/dashboard" className="px-6 py-2 bg-[var(--charcoal-900)] text-[var(--ivory)] rounded-full text-sm font-medium hover:bg-black transition-colors">
+            Dashboard
+          </Link>
+          <Link href="/form" className="px-6 py-2 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors">
+            Create another report
+          </Link>
+        </div>.
         </p>
       </div>
     </div>

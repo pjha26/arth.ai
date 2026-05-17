@@ -36,7 +36,7 @@ export async function GET(
     const pdfBuffer = fs.readFileSync(pdfPath);
     const fileName = `arth_ai_report_${lead.companyName.replace(/\s+/g, "_").toLowerCase()}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    return new Response(pdfBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
