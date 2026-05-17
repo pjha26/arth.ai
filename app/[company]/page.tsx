@@ -68,7 +68,7 @@ export default async function CompanyPage({ params }: Props) {
               border: "1.5px solid #E0DDD8", background: "white",
               color: "#71717A",
             }}>
-              arth.ai for {profile.name} &nbsp;·&nbsp; {profile.industry}
+              arth.ai Intelligence &nbsp;·&nbsp; {profile.industry}
             </span>
           </div>
 
@@ -82,16 +82,7 @@ export default async function CompanyPage({ params }: Props) {
             {profile.headline}
           </h1>
 
-          {profile.description && (
-            <p style={{
-              fontFamily: "var(--font-body)", fontSize: "0.95rem",
-              color: "#71717A", lineHeight: 1.8,
-              maxWidth: "520px", margin: "0 auto 2.5rem",
-            }}>
-              {profile.description.slice(0, 280)}
-              {profile.description.length > 280 ? "…" : ""}
-            </p>
-          )}
+          {/* Description removed to keep it generic */}
 
           <Link href={`/form?company=${encodeURIComponent(profile.name)}&website=https://${profile.domain}`} style={{
             display: "inline-flex", alignItems: "center", gap: "0.4rem",
@@ -101,7 +92,7 @@ export default async function CompanyPage({ params }: Props) {
             textDecoration: "none", letterSpacing: "-0.01em",
             boxShadow: "0 4px 20px rgba(197,139,69,0.25)",
           }}>
-            Get an AI Audit for {profile.name} →
+            Get your free AI Audit →
           </Link>
 
           <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "#A1A1AA", marginTop: "0.85rem" }}>
@@ -119,7 +110,7 @@ export default async function CompanyPage({ params }: Props) {
             The Challenge
           </p>
           <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", lineHeight: 1.2, marginBottom: "2rem" }}>
-            What {profile.name}'s inbound team<br />deals with every week.
+            What your inbound team<br />deals with every week.
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
             {profile.painPoints.map((p, i) => (
@@ -143,7 +134,7 @@ export default async function CompanyPage({ params }: Props) {
             AI Opportunities
           </p>
           <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", lineHeight: 1.2, marginBottom: "2rem" }}>
-            How arth.ai helps {profile.name}<br />convert faster.
+            How arth.ai helps you<br />convert faster.
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {profile.aiOpportunities.map((o, i) => (
@@ -164,7 +155,7 @@ export default async function CompanyPage({ params }: Props) {
       <section style={{ padding: "7rem 2rem", textAlign: "center" }}>
         <div style={{ maxWidth: "500px", margin: "0 auto" }}>
           <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", lineHeight: 1.15, marginBottom: "1.1rem" }}>
-            See what {profile.name}'s<br />AI audit would look like.
+            See what your<br />AI audit would look like.
           </h2>
           <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.8, marginBottom: "2.25rem" }}>
             {profile.ctaLine}
@@ -176,7 +167,7 @@ export default async function CompanyPage({ params }: Props) {
             fontFamily: "var(--font-heading)", fontSize: "0.95rem", fontWeight: 700,
             textDecoration: "none", letterSpacing: "-0.01em",
           }}>
-            Get a free audit for {profile.name} →
+            Get your free audit →
           </Link>
         </div>
       </section>

@@ -65,19 +65,19 @@ Context about ${name}: ${description || `${name} is a well-known technology comp
 Generate a JSON object with these fields:
 {
   "industry": "One short phrase e.g. 'FinTech & Payments' or 'SaaS Productivity'",
-  "headline": "A 6-12 word headline showing how arth.ai can help ${name} specifically. Must include the word 'arth.ai' and '${name}'. No quotes.",
-  "painPoints": ["Pain point 1 specific to ${name}'s industry and scale", "Pain point 2", "Pain point 3"],
-  "aiOpportunities": ["AI opportunity 1 specific to ${name}'s business", "AI opportunity 2", "AI opportunity 3"],
-  "ctaLine": "One sentence about why ${name} should try arth.ai. Max 20 words."
+  "headline": "A 6-12 word headline showing how arth.ai transforms inbound leads into personalized experiences. Do not mention any company names. No quotes.",
+  "painPoints": ["Pain point 1 specific to their industry and scale", "Pain point 2", "Pain point 3"],
+  "aiOpportunities": ["AI opportunity 1 specific to their business", "AI opportunity 2", "AI opportunity 3"],
+  "ctaLine": "One sentence about why they should try arth.ai. Max 20 words. Do not use their company name."
 }
 
 Be specific to ${name}'s actual business. No generic filler. Respond with raw JSON only.`;
 
   let industry = "Technology";
-  let headline = `How arth.ai helps ${name} turn every inbound lead into a personalized experience.`;
+  let headline = `How arth.ai turns every inbound lead into a personalized experience.`;
   let painPoints = ["Manual lead qualification slows response time", "Generic follow-ups fail to convert warm leads", "Sales team spends hours on company research"];
   let aiOpportunities = ["Automated prospect research on every form submit", "AI-generated personalized audit reports", "Instant email delivery before competitors respond"];
-  let ctaLine = `See how arth.ai can transform ${name}'s inbound experience.`;
+  let ctaLine = `See how arth.ai can transform your inbound experience.`;
 
   try {
     const result = await model.generateContent(prompt);
