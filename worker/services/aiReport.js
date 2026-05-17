@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence analyst at arth.ai, an AI-powered inbound personalization platform. 
 Your job is to analyze company information and produce structured, insightful, and highly personalized audit reports.
@@ -12,10 +11,11 @@ You must respond ONLY with valid JSON matching the exact schema provided. No mar
  */
 export async function generateAiReport(lead, enriched) {
   const prompt = buildPrompt(lead, enriched);
-
+  
   let attempt = 0;
   while (attempt < 2) {
     try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -54,7 +54,9 @@ export async function generateAiReport(lead, enriched) {
 
 function buildPrompt(lead, enriched) {
   return `
-Analyze the following company and generate a comprehensive AI Intelligence Report.
+Analyze the following company and generate a hyper-personalized AI Intelligence Report. 
+You MUST heavily use the specific context of their actual business, products, target audience, and market position. 
+DO NOT use generic consulting buzzwords. If they are a fashion e-commerce brand, talk about fashion, sizing, returns, and visual search. If they are a SaaS company, talk about churn, onboarding, and integration.
 
 COMPANY INFORMATION:
 - Name: ${lead.companyName}
@@ -72,41 +74,41 @@ ${enriched.websiteDescription ? `Website Description: ${enriched.websiteDescript
 
 Generate a response in this EXACT JSON format (no other text):
 {
-  "executiveSummary": "3-4 sentence company overview that is highly specific to this company's actual business, industry position, and context. Do NOT use generic phrases.",
-  "marketPosition": "2-3 sentences on competitive landscape, market timing, and positioning specific to their industry and company size.",
-  "digitalPresence": "2-3 sentences on their website, content strategy, and digital maturity based on available data.",
+  "executiveSummary": "3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do.",
+  "marketPosition": "2-3 sentences on their specific competitive landscape, market timing, and exact positioning.",
+  "digitalPresence": "2-3 sentences reviewing their actual website features, digital maturity, and content strategy.",
   "painPoints": [
-    "Specific pain point 1 derived from their stated challenge and industry",
-    "Specific pain point 2",
+    "Specific pain point 1 incorporating their exact stated challenge but applied to their specific business model",
+    "Specific pain point 2 (e.g. for e-commerce: high return rates due to sizing; for B2B: long sales cycles)",
     "Specific pain point 3"
   ],
   "aiOpportunities": [
     {
-      "title": "Specific AI opportunity title (5-8 words)",
-      "description": "2-3 sentences explaining the specific automation or AI opportunity and the measurable business impact for this company.",
+      "title": "Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')",
+      "description": "2-3 sentences explaining exactly how this AI solves their specific pain point in their specific industry.",
       "impact": "High"
     },
     {
-      "title": "Second opportunity title",
+      "title": "Second hyper-specific opportunity",
       "description": "2-3 sentences.",
       "impact": "High"
     },
     {
-      "title": "Third opportunity title",
+      "title": "Third hyper-specific opportunity",
       "description": "2-3 sentences.",
       "impact": "Medium"
     },
     {
-      "title": "Fourth opportunity title",
+      "title": "Fourth hyper-specific opportunity",
       "description": "2-3 sentences.",
       "impact": "Medium"
     }
   ],
   "recommendedNextSteps": [
-    "Specific actionable step 1 for this company",
-    "Specific actionable step 2",
-    "Specific actionable step 3",
-    "Specific actionable step 4"
+    "Actionable step 1 specific to implementing the first opportunity",
+    "Actionable step 2 specific to their industry context",
+    "Actionable step 3",
+    "Actionable step 4"
   ],
   "auditScores": {
     "digitalReadiness": <integer 1-10 based on digital presence and tech adoption signals>,
@@ -115,7 +117,7 @@ Generate a response in this EXACT JSON format (no other text):
   }
 }
 
-Be SPECIFIC to this company. Do not use generic consulting language. Reference their actual industry, size, and challenge.`;
+Be HYPER-SPECIFIC to this company. Do not use generic consulting language. Frame the AI opportunities specifically around their business domain (e.g., fashion, fintech, healthcare, SaaS).`;
 }
 
 function validateReport(report) {
@@ -145,7 +147,7 @@ function getFallbackReport(lead) {
     marketPosition: `Within the ${lead.industry} industry, companies of ${lead.companyName}'s size typically face competitive pressure to differentiate through operational efficiency and customer experience. Strategic AI adoption can provide a meaningful competitive advantage.`,
     digitalPresence: `${lead.companyName} has an established web presence at ${lead.website}. Optimizing their digital channels and automating customer-facing workflows could significantly improve conversion and retention.`,
     painPoints: [
-      lead.painPoints.slice(0, 150),
+      lead.painPoints,
       `Scaling operations without proportionally increasing headcount`,
       `Maintaining consistent quality and response times as the team grows`,
     ],
