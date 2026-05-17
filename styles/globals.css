@@ -498,7 +498,7 @@ body {
 .input-error-msg { font-size: 0.78rem; color: #EF4444; font-weight: 500; }
 
 select.input-field { cursor: pointer; }
-select.input-field option { background: white; color: var(--text-primary); }
+select.input-field option { background: var(--surface); color: var(--text-primary); }
 textarea.input-field { resize: vertical; line-height: 1.65; min-height: 120px; }
 
 /* ─── Step Indicator ─────────────────────────────────────────── */
