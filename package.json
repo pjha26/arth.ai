@@ -14,6 +14,7 @@
     "axios": "^1.16.1",
     "bullmq": "^5.76.9",
     "cheerio": "^1.2.0",
+    "date-fns": "^4.1.0",
     "googleapis": "^171.4.0",
     "ioredis": "^5.10.1",
     "next": "16.2.6",

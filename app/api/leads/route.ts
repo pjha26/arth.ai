@@ -71,3 +71,26 @@ export async function OPTIONS() {
     },
   });
 }
+
+export async function GET() {
+  try {
+    const leads = await prisma.lead.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        companyName: true,
+        industry: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ success: true, leads });
+  } catch (error) {
+    console.error("Error fetching leads:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch leads" },
+      { status: 500 }
+    );
+  }
+}

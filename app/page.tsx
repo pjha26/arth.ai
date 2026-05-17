@@ -81,6 +81,7 @@ export default function LandingPage() {
           ))}
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <Link href="/dashboard" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 500, marginRight: 8 }}>Dashboard</Link>
           <button style={{ background: "transparent", border: "none", fontSize: 16, color: "#514538", cursor: "pointer" }}>Login</button>
           <Link href="/form" style={{ background: "#845411", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none", transition: "all 0.3s" }}>Book a Demo</Link>
         </div>
