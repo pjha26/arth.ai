@@ -32,3 +32,29 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    
+    // Check if exists
+    const lead = await prisma.lead.findUnique({ where: { id } });
+    if (!lead) {
+      return NextResponse.json({ success: false, message: "Lead not found" }, { status: 404 });
+    }
+
+    // Delete lead (cascades to stages)
+    await prisma.lead.delete({ where: { id } });
+
+    return NextResponse.json({ success: true, message: "Lead deleted successfully" });
+  } catch (error) {
+    console.error("[arth.ai] Error deleting lead:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
