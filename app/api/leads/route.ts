@@ -21,6 +21,23 @@ export async function POST(request: Request) {
     }
 
     const lead = result.data;
+
+    // Deduplication check
+    const existingLead = await prisma.lead.findFirst({
+      where: { email: lead.email },
+    });
+
+    if (existingLead) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "A report for this email address has already been requested.",
+          existingLeadId: existingLead.id
+        },
+        { status: 409 }
+      );
+    }
+
     const jobId = randomUUID();
 
     // Save to Prisma SQLite DB
@@ -78,13 +95,11 @@ export async function GET() {
   try {
     const leads = await prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        companyName: true,
-        industry: true,
-        status: true,
-        createdAt: true,
-      },
+      include: {
+        stages: {
+          orderBy: { createdAt: "asc" }
+        }
+      }
     });
 
     const reportsDir = path.join(process.cwd(), "public", "reports");
