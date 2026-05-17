@@ -39,84 +39,111 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--ivory)] text-[var(--charcoal-900)] selection:bg-[var(--saffron-light)] selection:text-white">
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--ivory)", color: "var(--charcoal-900)" }}>
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 border-b border-[var(--charcoal-900)]/10 bg-[var(--ivory)]/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="font-newsreader text-2xl font-medium tracking-tight">
-            ArthAI
-          </Link>
-          <div className="flex items-center gap-6 text-sm font-medium text-[var(--text-secondary)]">
-            <Link href="/" className="hover:text-[var(--charcoal-900)] transition-colors">Home</Link>
-            <div className="w-px h-4 bg-[var(--charcoal-900)]/10"></div>
-            <span className="text-[var(--saffron-dark)] font-semibold">Dashboard</span>
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        height: 80, display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 64px", background: "rgba(250, 248, 245, 0.85)",
+        backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(28, 25, 23, 0.1)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <Link href="/" style={{ fontFamily: "Newsreader, serif", fontSize: 24, fontWeight: 700, color: "#1b1b1b", textDecoration: "none", letterSpacing: "-0.01em" }}>ArthAI</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 16, fontWeight: 500 }}>
+            <Link href="/" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Home</Link>
+            <div style={{ width: 1, height: 16, backgroundColor: "rgba(28, 25, 23, 0.1)" }}></div>
+            <span style={{ color: "var(--saffron-dark)", fontWeight: 600 }}>Dashboard</span>
           </div>
+        </div>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <button style={{ background: "transparent", border: "none", fontSize: 16, color: "#514538", cursor: "pointer" }}>Login</button>
+          <Link href="/form" style={{ background: "var(--saffron-dark)", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none", transition: "all 0.3s" }}>Book a Demo</Link>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 pt-36 pb-24">
-        <div className="mb-12">
-          <h1 className="font-newsreader text-4xl md:text-5xl font-medium tracking-tight mb-4 text-[var(--charcoal-900)]">
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "160px 40px 80px" }}>
+        <div style={{ marginBottom: 48 }}>
+          <h1 style={{ fontFamily: "Newsreader, serif", fontSize: 48, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--charcoal-900)", margin: "0 0 16px 0" }}>
             Your Intelligence Reports
           </h1>
-          <p className="text-[var(--text-secondary)] text-lg max-w-2xl">
+          <p style={{ color: "var(--text-secondary)", fontSize: 18, margin: 0, maxWidth: 600 }}>
             Access all generated AI readiness reports and opportunities for your leads.
           </p>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 24 }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-[var(--cream)] rounded-2xl border border-[var(--charcoal-900)]/5"></div>
+              <div key={i} style={{ height: 200, backgroundColor: "var(--cream)", borderRadius: 16, border: "1px solid rgba(28, 25, 23, 0.05)", opacity: 0.7 }}></div>
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 flex items-center gap-4">
+          <div style={{ backgroundColor: "#FEF2F2", color: "#DC2626", padding: 24, borderRadius: 16, border: "1px solid #FEE2E2", display: "flex", alignItems: "center", gap: 16 }}>
             <span className="material-symbols-outlined">error</span>
-            <p>{error}</p>
+            <p style={{ margin: 0 }}>{error}</p>
           </div>
         ) : leads.length === 0 ? (
-          <div className="text-center py-24 bg-[var(--cream)] rounded-3xl border border-[var(--charcoal-900)]/10 flex flex-col items-center">
-            <span className="material-symbols-outlined text-4xl text-[var(--saffron-light)] mb-4">description</span>
-            <h3 className="font-newsreader text-2xl font-medium text-[var(--charcoal-900)] mb-2">No reports yet</h3>
-            <p className="text-[var(--text-secondary)] mb-6 max-w-md">
+          <div style={{ textAlign: "center", padding: "80px 24px", backgroundColor: "var(--cream)", borderRadius: 24, border: "1px solid rgba(28, 25, 23, 0.1)", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--saffron-light)", marginBottom: 16 }}>description</span>
+            <h3 style={{ fontFamily: "Newsreader, serif", fontSize: 24, fontWeight: 500, color: "var(--charcoal-900)", margin: "0 0 8px 0" }}>No reports yet</h3>
+            <p style={{ color: "var(--text-secondary)", marginBottom: 24, maxWidth: 400 }}>
               Generate your first AI intelligence report by submitting a lead profile.
             </p>
-            <Link href="/form" className="px-6 py-3 bg-[var(--charcoal-900)] text-[var(--ivory)] rounded-full text-sm font-medium hover:bg-black transition-colors">
+            <Link href="/form" style={{ padding: "12px 32px", backgroundColor: "var(--charcoal-900)", color: "var(--ivory)", borderRadius: 9999, fontSize: 14, fontWeight: 500, textDecoration: "none" }}>
               Create a Report
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 24 }}>
             {leads.map((lead) => (
               <div 
                 key={lead.id} 
-                className="group relative bg-[var(--cream)] rounded-2xl border border-[var(--charcoal-900)]/10 p-8 hover:border-[var(--saffron-main)]/30 hover:shadow-xl hover:shadow-[var(--saffron-main)]/5 transition-all duration-300 flex flex-col"
+                style={{ 
+                  backgroundColor: "var(--cream)", 
+                  borderRadius: 20, 
+                  border: "1px solid rgba(28, 25, 23, 0.1)", 
+                  padding: 32,
+                  display: "flex",
+                  flexDirection: "column",
+                  transition: "all 0.2s ease",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = "var(--saffron-main)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(217,119,87,0.1)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(28, 25, 23, 0.1)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
+                }}
               >
-                <div className="flex justify-between items-start mb-6">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
                   <div>
-                    <div className="text-xs font-semibold text-[var(--saffron-dark)] uppercase tracking-wider mb-2">
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--saffron-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
                       {lead.industry}
                     </div>
-                    <h3 className="font-newsreader text-2xl font-medium text-[var(--charcoal-900)] leading-tight">
+                    <h3 style={{ fontFamily: "Newsreader, serif", fontSize: 28, fontWeight: 500, color: "var(--charcoal-900)", margin: 0, lineHeight: 1.1 }}>
                       {lead.companyName}
                     </h3>
                   </div>
                   
                   {lead.status === "done" ? (
-                    <div className="h-8 w-8 rounded-full bg-[var(--saffron-main)]/10 text-[var(--saffron-main)] flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-lg">check_circle</span>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "rgba(217,119,87,0.1)", color: "var(--saffron-main)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
                     </div>
                   ) : (
-                    <div className="h-8 w-8 rounded-full bg-[var(--charcoal-900)]/5 text-[var(--text-muted)] flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "rgba(28, 25, 23, 0.05)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>sync</span>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-auto pt-8 flex items-center justify-between border-t border-[var(--charcoal-900)]/5">
-                  <div className="text-xs text-[var(--text-muted)] font-medium">
+                <div style={{ marginTop: "auto", paddingTop: 32, display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid rgba(28, 25, 23, 0.05)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
                     {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
                   </div>
                   
@@ -124,18 +151,18 @@ export default function DashboardPage() {
                     <a
                       href={`/api/leads/${lead.id}/download`}
                       download={`${lead.companyName.replace(/\s+/g, '_')}_Report.pdf`}
-                      className="text-sm font-semibold text-[var(--saffron-main)] hover:text-[var(--saffron-dark)] flex items-center gap-1 transition-colors"
+                      style={{ fontSize: 14, fontWeight: 600, color: "var(--saffron-main)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
                     >
                       Download PDF
-                      <span className="material-symbols-outlined text-base">download</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
                     </a>
                   ) : (
                     <Link
                       href={`/success?company=${encodeURIComponent(lead.companyName)}&jobId=${lead.id}`}
-                      className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--charcoal-900)] flex items-center gap-1 transition-colors"
+                      style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
                     >
                       View Status
-                      <span className="material-symbols-outlined text-base">arrow_forward</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
                     </Link>
                   )}
                 </div>
