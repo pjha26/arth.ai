@@ -35,10 +35,13 @@ export async function learnFromReport(reportInsights, companyId, leadInput) {
     // 3. Update Industry Benchmarks
     const industry = leadInput.industry;
     if (industry && reportInsights.auditScores) {
+      const techCount = reportInsights.techStack ? reportInsights.techStack.length : 0;
+      
       const metrics = [
         { name: "digitalReadiness", value: reportInsights.auditScores.digitalReadiness },
         { name: "automationPotential", value: reportInsights.auditScores.automationPotential },
-        { name: "growthIndex", value: reportInsights.auditScores.growthIndex }
+        { name: "growthIndex", value: reportInsights.auditScores.growthIndex },
+        { name: "avg_tech_stack_size", value: techCount }
       ];
 
       for (const m of metrics) {
@@ -68,5 +71,27 @@ export async function learnFromReport(reportInsights, companyId, leadInput) {
     }
   } catch (error) {
     console.error(`[Self-Learning 🧠] Failed to process intelligence:`, error.message);
+  }
+}
+
+export async function getIndustryBenchmarks(industry) {
+  try {
+    const benchmarks = await prisma.industryBenchmark.findMany({
+      where: { industry }
+    });
+    
+    if (benchmarks.length === 0) return null;
+    
+    const formatted = {};
+    benchmarks.forEach(b => {
+      formatted[b.metric] = {
+        value: Number(b.value.toFixed(1)),
+        sampleSize: b.sampleSize
+      };
+    });
+    return formatted;
+  } catch (error) {
+    console.error(`[Self-Learning 🧠] Error fetching industry benchmarks:`, error.message);
+    return null;
   }
 }

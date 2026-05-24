@@ -3,6 +3,7 @@ import { generateText, generateObject, tool } from "ai";
 import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
 import { searchPastReports, getCompanyHistory } from "./vectorStore.js";
+import { getIndustryBenchmarks } from "./selfLearning.js";
 import { streamThought } from "./redisStream.js";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ You MUST compare their previous state to their current state. Note what gaps the
 
 // ─── 3. Writer Agent ─────────────────────────────────────────────────────
 
-async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory, jobId) {
+async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory, jobId, industryBenchmarks) {
   streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report...`);
   
   let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
@@ -145,6 +146,16 @@ Stated Challenge: ${lead.painPoints}
 Analysis Document:
 ${analysisData}
 `;
+
+  if (industryBenchmarks) {
+    prompt += `\n\nINDUSTRY BENCHMARKS FOR ${lead.industry.toUpperCase()} (CONTEXT):
+You MUST use these benchmarks to explicitly compare ${lead.companyName} against their peers in the 'executiveSummary' or 'marketPosition'.
+Data:
+- Average Digital Readiness: ${industryBenchmarks.digitalReadiness?.value || 'N/A'} (Based on ${industryBenchmarks.digitalReadiness?.sampleSize || 0} companies)
+- Average Automation Potential: ${industryBenchmarks.automationPotential?.value || 'N/A'}
+- Average Tech Stack Size: ${industryBenchmarks.avg_tech_stack_size?.value || 'N/A'} tools
+`;
+  }
 
   if (companyHistory) {
     prompt += `\n\nLONGITUDINAL HISTORY:
@@ -219,6 +230,11 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       streamThought(jobId, `[Orchestrator 🧠] Found exact historical match for ${lead.companyName}! Triggering longitudinal analysis.`);
     }
 
+    const industryBenchmarks = await getIndustryBenchmarks(lead.industry);
+    if (industryBenchmarks) {
+      streamThought(jobId, `[Orchestrator 🧠] Loaded industry benchmarks for ${lead.industry}.`);
+    }
+
     const researchData = await runResearchAgent(lead, jobId);
     const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory, jobId);
     
@@ -231,7 +247,7 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       iterations++;
       streamThought(jobId, `\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
       
-      draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory, jobId);
+      draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory, jobId, industryBenchmarks);
       const critique = await runCriticAgent(lead, draftReport, jobId);
       
       if (critique.approved) {
