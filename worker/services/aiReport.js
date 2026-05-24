@@ -30,6 +30,9 @@ const reportSchema = z.object({
 });
 
 const criticSchema = z.object({
+  specificityScore: z.number().min(1).max(10).describe("Are insights specific to THIS company?"),
+  actionabilityScore: z.number().min(1).max(10).describe("Can a sales rep act on this immediately?"),
+  accuracyScore: z.number().min(1).max(10).describe("Are claims verifiable?"),
   approved: z.boolean().describe("True if the report is highly specific and excellent, false if it uses generic buzzwords or lacks depth."),
   feedback: z.string().describe("Brutally honest feedback on what needs to be improved in the rewrite. Empty if approved.")
 });
@@ -164,8 +167,11 @@ Challenge: ${lead.painPoints}
 Draft:
 ${JSON.stringify(draftReport, null, 2)}
 
-Are the insights highly specific to their actual business model? Are there generic consulting buzzwords? Are the AI opportunities impactful and tailored?
-If it's generic, reject it and provide harsh feedback on exactly what needs to be rewritten.`;
+Score this intelligence report on:
+- Specificity (1-10): Are insights specific to THIS company?
+- Actionability (1-10): Can a sales rep act on this immediately?
+- Accuracy (1-10): Are claims verifiable?
+If any score < 7, reject it (approved: false) and provide harsh feedback on exactly what needs to be rewritten.`;
 
   const { object } = await generateObject({
     model: geminiModel,
@@ -174,6 +180,15 @@ If it's generic, reject it and provide harsh feedback on exactly what needs to b
     prompt: prompt,
     temperature: 0.2, // Low temp for consistent criticism
   });
+
+  // Enforce the rule: if any score < 7, it must be rejected
+  if (object.specificityScore < 7 || object.actionabilityScore < 7 || object.accuracyScore < 7) {
+    object.approved = false;
+    object.feedback = `[Eval Scores: Spec=${object.specificityScore}, Act=${object.actionabilityScore}, Acc=${object.accuracyScore}] ${object.feedback || 'Please improve the low scoring areas.'}`;
+    streamThought(jobId, `  -> 🎯 Evals failed: Spec=${object.specificityScore}, Act=${object.actionabilityScore}, Acc=${object.accuracyScore}`);
+  } else {
+    streamThought(jobId, `  -> 🎯 Evals passed: Spec=${object.specificityScore}, Act=${object.actionabilityScore}, Acc=${object.accuracyScore}`);
+  }
 
   return object;
 }
