@@ -141,7 +141,10 @@ const worker = new Worker(
 
       await prisma.lead.update({
         where: { id: jobId },
-        data: { status: "done" },
+        data: { 
+          status: "done",
+          aiSummary: report?.executiveSummary || null
+        },
       });
       console.log(`[Job ${jobId}] ✓ Pipeline complete for ${lead.companyName}\n`);
     } catch (err) {
