@@ -115,100 +115,104 @@ function expandPainPoints(tags, company, industry) {
   });
 }
 
-// ─── 1.5. Research Agent ─────────────────────────────────────────────────
+// ─── 2. Parallel Specialized Agents ────────────────────────────────────────
 
-async function runResearchAgent(lead, jobId) {
-  streamThought(jobId, `[Research Agent 🔍] Gathering raw data...`);
-  const { text } = await generateText({
+const researchAgentSchema = z.object({
+  companyOverview: z.string().describe("Detailed bullet points covering what the company actually does."),
+  keyProducts: z.array(z.string()).describe("List of core products/services."),
+  recentNews: z.string().describe("Summary of any recent news or public data found.")
+});
+
+const financialAgentSchema = z.object({
+  estimatedRevenue: z.string().describe("Estimated revenue or scale based on team size and domain."),
+  fundingStage: z.string().describe("Estimated funding stage."),
+  growthSignals: z.array(z.string()).describe("Signals of growth or hiring patterns.")
+});
+
+const techAgentSchema = z.object({
+  techStack: z.array(z.string()).describe("Detected technologies used by the company."),
+  engineeringFocus: z.string().describe("What their engineering or technical priorities seem to be."),
+  digitalMaturity: z.string().describe("Assessment of their digital maturity (High/Medium/Low).")
+});
+
+const marketAgentSchema = z.object({
+  competitors: z.array(z.string()).describe("List of likely competitors or similar players."),
+  marketPosition: z.string().describe("How they are positioning themselves against others."),
+  industryTrends: z.array(z.string()).describe("Key trends impacting this specific sub-industry.")
+});
+
+async function runParallelResearchAgent(lead, enrichedContext, jobId) {
+  streamThought(jobId, `[Research Agent 🔍] Gathering public data...`);
+  const trace = langfuse.trace({ name: "ResearchAgent", sessionId: lead.companyName, metadata: { jobId } });
+  const generation = trace.generation({ name: "research_generation", model: "gemini-2.5-flash" });
+  
+  const { object } = await generateObject({
     model: geminiModel,
-    system: "You are an Elite Data Scraper. Your job is to gather raw, factual information about the company. Use your tools to find out exactly what they do. Return a dense bulleted list of facts.",
-    prompt: `Research: ${lead.companyName} (${lead.website})`,
-    maxSteps: 4,
-    tools: {
-      scrape_website: tool({
-        description: "Scrape the company homepage.",
-        parameters: z.object({ url: z.string() }),
-        execute: async ({ url }) => {
-          streamThought(jobId, `  -> 🔍 Scraping ${url}`);
-          const data = await scrapeWebsite(url);
-          return data.markdown || data.description || "No content found.";
-        }
-      }),
-      search_news: tool({
-        description: "Find recent news or summaries about the company.",
-        parameters: z.object({ companyName: z.string() }),
-        execute: async ({ companyName }) => {
-          streamThought(jobId, `  -> 🔍 Searching news for ${companyName}`);
-          const data = await fetchDuckDuckGo(companyName);
-          return data.abstract || "No recent news found.";
-        }
-      })
-    }
+    schema: researchAgentSchema,
+    system: "You are an Elite Research Agent. Extract core business facts, products, and news from the raw context.",
+    prompt: `Analyze context for ${lead.companyName}:\n${enrichedContext}`
   });
-  return text;
+  
+  generation.end({ output: JSON.stringify(object) });
+  return object;
 }
 
-// ─── 2. Analysis Agent ───────────────────────────────────────────────────
+async function runParallelFinancialAgent(lead, enrichedContext, jobId) {
+  streamThought(jobId, `[Financial Agent 📈] Analyzing growth signals...`);
+  const trace = langfuse.trace({ name: "FinancialAgent", sessionId: lead.companyName, metadata: { jobId } });
+  const generation = trace.generation({ name: "financial_generation", model: "gemini-2.5-flash" });
 
-async function runAnalysisAgent(lead, researchData, enrichedContext, companyHistory, similarContext, jobId) {
-  streamThought(jobId, `[Analysis Agent 📊] Finding patterns...`);
-  
-  let prompt = `Analyze ${lead.companyName} in ${lead.industry}.
-Initial Context: ${enrichedContext}
-Raw Research: ${researchData}`;
-
-  if (similarContext) {
-    prompt += `\n\nSIMILAR COMPANIES (RAG CONTEXT):
-Look for patterns in these past similar companies (e.g. '3/5 were underinvesting in SEO') and explicitly highlight these patterns in your analysis.
-${similarContext}`;
-  }
-
-  if (companyHistory) {
-    prompt += `\n\nLONGITUDINAL HISTORY (VERY IMPORTANT):
-This company submitted a lead in the past. Here is their previous report:
-${companyHistory}
-You MUST compare their previous state to their current state. Note what gaps they closed, what new risks emerged, and how their pain points evolved.`;
-  }
-
-  const { text } = await generateText({
+  const { object } = await generateObject({
     model: geminiModel,
-    system: "You are a Principal Strategy Analyst. Review the raw data, use tools to find tech stack, hiring signals, and historical RAG patterns. Output a synthesized strategic analysis document.",
-    prompt: prompt,
-    maxSteps: 4,
-    tools: {
-      search_past_reports: tool({
-        description: "Search historical reports for similar companies.",
-        parameters: z.object({ query: z.string() }),
-        execute: async ({ query }) => {
-          streamThought(jobId, `  -> 📊 Searching RAG for "${query}"`);
-          return await searchPastReports(query);
-        }
-      }),
-      analyze_tech_stack: tool({
-        description: "Detect technologies used.",
-        parameters: z.object({ url: z.string() }),
-        execute: async ({ url }) => {
-          streamThought(jobId, `  -> 📊 Analyzing tech stack for ${url}`);
-          return `Detected likely technologies: React, Next.js, Node.js, Vercel, Tailwind CSS.`;
-        }
-      }),
-      find_hiring_signals: tool({
-        description: "Check for hiring signals.",
-        parameters: z.object({ companyName: z.string() }),
-        execute: async ({ companyName }) => {
-          streamThought(jobId, `  -> 📊 Finding hiring signals for ${companyName}`);
-          return `Recent hiring signals suggest expansion in engineering and sales.`;
-        }
-      })
-    }
+    schema: financialAgentSchema,
+    system: "You are a Financial Analyst Agent. Deduce funding stage, revenue scale, and growth signals based on team size, history, and domain.",
+    prompt: `Analyze context for ${lead.companyName}:\n${enrichedContext}`
   });
-  return text;
+
+  generation.end({ output: JSON.stringify(object) });
+  return object;
+}
+
+async function runParallelTechAgent(lead, enrichedContext, jobId) {
+  streamThought(jobId, `[Tech Agent ⚙️] Analyzing tech stack...`);
+  const trace = langfuse.trace({ name: "TechAgent", sessionId: lead.companyName, metadata: { jobId } });
+  const generation = trace.generation({ name: "tech_generation", model: "gemini-2.5-flash" });
+
+  const { object } = await generateObject({
+    model: geminiModel,
+    schema: techAgentSchema,
+    system: "You are a Solutions Architect Agent. Analyze the company's digital maturity, likely tech stack, and engineering priorities.",
+    prompt: `Analyze context for ${lead.companyName}:\n${enrichedContext}`
+  });
+
+  generation.end({ output: JSON.stringify(object) });
+  return object;
+}
+
+async function runParallelMarketAgent(lead, enrichedContext, similarContext, companyHistory, jobId) {
+  streamThought(jobId, `[Market Agent 🌍] Assessing competitive landscape...`);
+  const trace = langfuse.trace({ name: "MarketAgent", sessionId: lead.companyName, metadata: { jobId } });
+  const generation = trace.generation({ name: "market_generation", model: "gemini-2.5-flash" });
+
+  let prompt = `Analyze market context for ${lead.companyName} (${lead.industry}):\n${enrichedContext}`;
+  if (similarContext) prompt += `\n\nSimilar Companies Pattern Context:\n${similarContext}`;
+  if (companyHistory) prompt += `\n\nLongitudinal History Context:\n${companyHistory}`;
+  
+  const { object } = await generateObject({
+    model: geminiModel,
+    schema: marketAgentSchema,
+    system: "You are a Market Strategy Agent. Identify competitors, market positioning, and overarching industry trends.",
+    prompt: prompt
+  });
+
+  generation.end({ output: JSON.stringify(object) });
+  return object;
 }
 
 // ─── 3. Writer Agent ─────────────────────────────────────────────────────
 
-async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory, jobId, industryBenchmarks) {
-  streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report...`);
+async function runWriterAgent(lead, synthesisContextStr, previousFeedback, companyHistory, jobId, industryBenchmarks) {
+  streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report from synthesized multi-agent data...`);
   
   let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
 
@@ -223,8 +227,8 @@ STRICT RULES — violating any of these invalidates the report:
 8. Recommended next steps MUST be genuine recommendations the company can act on independently. NEVER include "Schedule a call with the arth.ai team" as a step.
 9. CONFIDENCE SCORING: For pain points and AI opportunities, strictly score your confidence (0.0 to 1.0) based on what data you ACTUALLY found in the context vs what you assume. Categorize as "verified" (found in context), "inferred" (likely based on context), or "speculative" (assumed industry standard). Provide supporting "evidence" strings.
 
-Analysis Document:
-${analysisData}
+Synthesized Multi-Agent Data:
+${synthesisContextStr}
 `;
 
   if (industryBenchmarks) {
@@ -424,8 +428,22 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       similarContext = similarCompanies.map((r, i) => `Case Study ${i+1} (${r.companyName}): ${r.content}`).join("\n\n");
     }
 
-    const researchData = await runResearchAgent(lead, jobId);
-    const analysisData = await runAnalysisAgent(lead, researchData, enrichedContextStr, companyHistory, similarContext, jobId);
+    const [researchData, financialData, techData, marketData] = await Promise.all([
+      runParallelResearchAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Research failed", e); return {}; }),
+      runParallelFinancialAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Financial failed", e); return {}; }),
+      runParallelTechAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Tech failed", e); return {}; }),
+      runParallelMarketAgent(lead, enrichedContextStr, similarContext, companyHistory, jobId).catch(e => { console.error("Market failed", e); return {}; })
+    ]);
+    
+    streamThought(jobId, `[Orchestrator 🧠] Parallel Agents Completed. Synthesizing data...`);
+
+    const synthesisContextStr = JSON.stringify({
+      ...enrichedContextObject,
+      researchInsights: researchData,
+      financialInsights: financialData,
+      techInsights: techData,
+      marketInsights: marketData
+    }, null, 2);
     
     let draftReport = null;
     let approved = false;
@@ -438,7 +456,7 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       
       if (!draftReport) {
         streamThought(jobId, `\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
-        draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory, jobId, industryBenchmarks);
+        draftReport = await runWriterAgent(lead, synthesisContextStr, criticFeedback, companyHistory, jobId, industryBenchmarks);
       } else {
         streamThought(jobId, `\n[Orchestrator 🧠] Rewriter Loop (Attempt ${iterations}/3)`);
         draftReport = await runSectionRewriter(lead, draftReport, failedSections, criticFeedback, jobId);
