@@ -377,6 +377,51 @@ If any score < 7, reject it (approved: false) and provide harsh feedback on exac
   return object;
 }
 
+// ─── 5. Verification Agent (Hallucination Detection) ─────────────────────
+
+async function runVerificationAgent(lead, draftReport, synthesisContextStr, jobId) {
+  streamThought(jobId, `[Verification Agent 🛡️] Detecting hallucinations...`);
+  
+  const prompt = `You are a strict Fact Checker and Hallucination Auditor.
+  
+Here is the raw source data for ${lead.companyName}:
+${synthesisContextStr}
+
+Here is the drafted report:
+${JSON.stringify(draftReport, null, 2)}
+
+TASK:
+1. Extract every factual claim from the draft (numbers, dates, company sizes, statistics, competitor names).
+2. Cross-check against the source data.
+3. If a claim is completely unsupported or fabricated by the AI, you MUST either:
+   a) Remove it from the text entirely.
+   b) Prefix it explicitly with "ESTIMATED: " or "~" if it is a reasonable deduction but not explicitly stated.
+4. Calculate the hallucinationScore: (Unverified Claims / Total Claims) * 100.
+5. Return the cleaned verifiedReport using the exact same JSON structure.`;
+
+  const trace = langfuse.trace({ name: "VerificationAgent", sessionId: lead.companyName, metadata: { jobId } });
+  const generation = trace.generation({ name: "verification", model: "gemini-2.5-flash" });
+
+  try {
+    const { object } = await generateObject({
+      model: geminiModel,
+      schema: z.object({
+        hallucinationScore: z.number().min(0).max(100),
+        verifiedReport: reportSchema
+      }),
+      system: "You are an uncompromising Fact Checker. You heavily penalize and remove AI hallucinations.",
+      prompt: prompt,
+      temperature: 0.1,
+    });
+    
+    generation.end({ output: JSON.stringify(object) });
+    return object;
+  } catch (err) {
+    console.warn("Verification failed, returning original draft", err.message);
+    return { hallucinationScore: 0, verifiedReport: draftReport };
+  }
+}
+
 // ─── Orchestrator ────────────────────────────────────────────────────────
 
 /**
@@ -478,7 +523,18 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       streamThought(jobId, `[Orchestrator 🧠] Max iterations reached. Proceeding with best draft.`);
     }
 
-    return draftReport || getFallbackReport(lead);
+    streamThought(jobId, `[Orchestrator 🧠] Initiating final Hallucination Detection...`);
+    const verificationResult = await runVerificationAgent(lead, draftReport, synthesisContextStr, jobId);
+    
+    try {
+      const trace = langfuse.trace({ name: "report_generation", sessionId: lead.companyName, metadata: { jobId } });
+      trace.score({ name: "hallucination_rate", value: verificationResult.hallucinationScore });
+      await langfuse.flushAsync();
+    } catch (e) {
+      console.warn("Langfuse hallucination score logging failed:", e.message);
+    }
+
+    return verificationResult.verifiedReport || getFallbackReport(lead);
   } catch (err) {
     streamThought(jobId, `[Orchestrator 🧠] Pipeline error: ${err.message}`);
     console.error("[Orchestrator 🧠] Pipeline error:", err.message);
