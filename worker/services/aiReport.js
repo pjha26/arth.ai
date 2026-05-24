@@ -19,6 +19,10 @@ const reportSchema = z.object({
     impact: z.enum(["High", "Medium", "Low"])
   })).min(1),
   recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context."),
+  deltaInsights: z.object({
+    changed: z.boolean().describe("True if significant shifts happened since the last audit."),
+    summary: z.string().describe("1-2 sentences summarizing the shift.")
+  }).optional().describe("Only include this if historical context was provided."),
   auditScores: z.object({
     digitalReadiness: z.number().int().min(1).max(10),
     digitalReadinessReason: z.string().describe("1 sentence justifying this score."),
@@ -199,11 +203,11 @@ If any score < 7, reject it (approved: false) and provide harsh feedback on exac
  * Executes a multi-agent workflow to generate a highly intelligent, 
  * peer-reviewed report for a given lead.
  */
-export async function generateAiReport(lead, enriched, jobId) {
+export async function generateAiReport(lead, enriched, jobId, companyId) {
   streamThought(jobId, `\n[Orchestrator 🧠] Starting multi-agent pipeline for ${lead.companyName}...`);
   
   try {
-    const companyHistory = await getCompanyHistory(lead.companyName);
+    const companyHistory = await getCompanyHistory(companyId);
     if (companyHistory) {
       streamThought(jobId, `[Orchestrator 🧠] Found exact historical match for ${lead.companyName}! Triggering longitudinal analysis.`);
     }

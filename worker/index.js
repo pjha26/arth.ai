@@ -27,10 +27,10 @@ if (!fs.existsSync(REPORTS_DIR)) {
   console.log("[arth.ai worker] Created reports directory:", REPORTS_DIR);
 }
 
-async function logStage(leadId, stageName, status, message = null) {
+async function logStage(reportId, stageName, status, message = null) {
   try {
     await prisma.pipelineStage.create({
-      data: { leadId, stage: stageName, status, message },
+      data: { reportId, stage: stageName, status, message },
     });
   } catch (e) {
     console.error("Failed to log stage:", e.message);
@@ -49,14 +49,14 @@ console.log("[arth.ai worker] Starting BullMQ worker...");
 const worker = new Worker(
   "leads",
   async (job) => {
-    const { lead, jobId, submittedAt } = job.data;
+    const { leadInput: lead, companyId, reportId, jobId, submittedAt } = job.data;
     console.log(`\n[Job ${jobId}] Processing: ${lead.companyName}`);
 
     let driveLink = null;
 
     try {
-      await prisma.lead.update({
-        where: { id: jobId },
+      await prisma.report.update({
+        where: { id: reportId },
         data: { status: "processing" },
       });
 
@@ -70,7 +70,7 @@ const worker = new Worker(
       // ── Step 2: AI Report ──
       console.log(`[Job ${jobId}] Step 2/4: Generating AI report...`);
       await logStage(jobId, "ai_report", "running");
-      const report = await generateAiReport(lead, enriched, jobId);
+      const report = await generateAiReport(lead, enriched, jobId, companyId);
       await logStage(jobId, "ai_report", "done");
       console.log(`[Job ${jobId}] AI report generated.`);
 
@@ -142,16 +142,19 @@ const worker = new Worker(
 
       // ── Step 7: Store Intelligence (RAG) ──
       try {
-        await storeReportIntelligence(lead, report);
+        await storeReportIntelligence(lead, report, companyId, reportId);
       } catch (e) {
         console.warn(`[Job ${jobId}] RAG vector storage failed:`, e.message);
       }
 
-      await prisma.lead.update({
-        where: { id: jobId },
+      await prisma.report.update({
+        where: { id: reportId },
         data: { 
           status: "done",
-          aiSummary: report?.executiveSummary || null
+          aiSummary: report?.executiveSummary || null,
+          insights: report || {},
+          deltaInsights: report?.deltaInsights || null,
+          generatedAt: new Date()
         },
       });
       console.log(`[Job ${jobId}] ✓ Pipeline complete for ${lead.companyName}\n`);
@@ -159,8 +162,8 @@ const worker = new Worker(
       console.error(`[Job ${jobId}] ✗ Pipeline failed:`, err.message);
 
       await logStage(jobId, "error", "failed", err.message);
-      await prisma.lead.update({
-        where: { id: jobId },
+      await prisma.report.update({
+        where: { id: reportId },
         data: { status: "failed" },
       });
 

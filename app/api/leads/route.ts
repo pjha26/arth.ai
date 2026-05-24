@@ -43,63 +43,100 @@ export async function POST(request: Request) {
       );
     }
 
-    const lead = result.data;
+    const leadInput = result.data;
 
-    // Deduplication check with 30-day cooldown
-    const existingLead = await prisma.lead.findFirst({
-      where: { email: lead.email },
+    // 1. Extract domain to use as unique company identifier
+    let domain = "";
+    try {
+      domain = new URL(leadInput.website).hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      // Fallback if URL parsing fails despite zod validation
+      domain = leadInput.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+    }
+
+    // 2. Upsert Company
+    const company = await prisma.company.upsert({
+      where: { domain },
+      update: {
+        name: leadInput.companyName,
+        industry: leadInput.industry,
+        size: leadInput.companySize,
+      },
+      create: {
+        domain,
+        name: leadInput.companyName,
+        industry: leadInput.industry,
+        size: leadInput.companySize,
+      }
+    });
+
+    // 3. Deduplication check: Has this company been audited in the last 30 days?
+    const existingReport = await prisma.report.findFirst({
+      where: { companyId: company.id },
       orderBy: { createdAt: 'desc' }
     });
 
-    if (existingLead) {
+    if (existingReport) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      if (existingLead.createdAt > thirtyDaysAgo) {
+      if (existingReport.createdAt > thirtyDaysAgo) {
         return NextResponse.json(
           { 
             success: false, 
-            message: "A report for this email address has already been requested within the last 30 days.",
-            existingLeadId: existingLead.id
+            message: "A report for this company has already been requested within the last 30 days.",
+            existingReportId: existingReport.id
           },
           { status: 409 }
         );
       }
     }
 
-    const jobId = randomUUID();
-
     // Fetch instant mirror preview data
-    const preview = await fetchCompanyPreview(lead.companyName);
+    const preview = await fetchCompanyPreview(leadInput.companyName);
 
-    // Save to Prisma SQLite DB
-    await prisma.lead.create({
+    // 4. Create Lead
+    const lead = await prisma.lead.create({
       data: {
-        id: jobId,
-        ...lead,
-        logo: preview.logo,
-        description: preview.description,
-        status: "pending",
-      },
+        companyId: company.id,
+        fullName: leadInput.fullName,
+        email: leadInput.email,
+        painPoints: leadInput.painPoints,
+      }
     });
 
-    // Enqueue the background job
+    // 5. Create Report Shell
+    const report = await prisma.report.create({
+      data: {
+        companyId: company.id,
+        status: "pending",
+        logo: preview.logo,
+        description: preview.description,
+      }
+    });
+
+    const jobId = report.id;
+
+    // 6. Enqueue the background job
     await leadsQueue.add(
-      "process-lead",
+      "process-report",
       {
-        lead,
+        leadId: lead.id,
+        companyId: company.id,
+        reportId: report.id,
+        leadInput,
         jobId,
         submittedAt: new Date().toISOString(),
       },
       { jobId }
     );
 
-    console.log(`[arth.ai] Lead enqueued: ${lead.companyName} (${jobId})`);
+    console.log(`[arth.ai] Report enqueued: ${company.name} (${jobId})`);
 
     return NextResponse.json(
       {
         success: true,
-        message: `Your AI report for ${lead.companyName} is being generated.`,
+        message: `Your AI report for ${company.name} is being generated.`,
         jobId,
       },
       { status: 202 }
@@ -127,9 +164,10 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const leads = await prisma.lead.findMany({
+    const reports = await prisma.report.findMany({
       orderBy: { createdAt: "desc" },
       include: {
+        company: true,
         stages: {
           orderBy: { createdAt: "asc" }
         }
@@ -142,17 +180,25 @@ export async function GET() {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
 
-    const leadsWithPdf = leads.map((lead) => {
-      const pdfPath = path.join(reportsDir, `${lead.id}.pdf`);
+    const reportsWithPdf = reports.map((report) => {
+      const pdfPath = path.join(reportsDir, `${report.id}.pdf`);
       const hasPdf = fs.existsSync(pdfPath);
-      return { ...lead, hasPdf };
+      // Map company data to the root for backwards compatibility in the admin UI
+      return { 
+        ...report, 
+        hasPdf,
+        companyName: report.company.name,
+        industry: report.company.industry,
+        email: "N/A (See Lead table)" 
+      };
     });
 
-    return NextResponse.json({ success: true, leads: leadsWithPdf });
+    // Return under "leads" key temporarily to avoid breaking frontend dashboard
+    return NextResponse.json({ success: true, leads: reportsWithPdf });
   } catch (error) {
-    console.error("Error fetching leads:", error);
+    console.error("Error fetching reports:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch leads" },
+      { success: false, message: "Failed to fetch reports" },
       { status: 500 }
     );
   }

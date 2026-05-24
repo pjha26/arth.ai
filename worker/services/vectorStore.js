@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // Configure the embedding model
 const embeddingModel = google.textEmbeddingModel('text-embedding-004');
 
-export async function storeReportIntelligence(lead, report) {
+export async function storeReportIntelligence(lead, report, companyId, reportId) {
   try {
     console.log(`[VectorStore] Embedding intelligence for ${lead.companyName}...`);
     
@@ -30,8 +30,8 @@ AI Opportunities Suggested: ${report.aiOpportunities.map(o => o.title).join(", "
     const embeddingStr = `[${embedding.join(',')}]`;
 
     await prisma.$executeRaw`
-      INSERT INTO "ReportChunk" (id, "leadId", content, embedding, "companyName", "industry", "createdAt")
-      VALUES (gen_random_uuid(), ${lead.id}, ${chunkContent}, ${embeddingStr}::vector, ${lead.companyName}, ${lead.industry}, NOW())
+      INSERT INTO "Embedding" (id, "companyId", "reportId", chunk, embedding, "createdAt")
+      VALUES (gen_random_uuid(), ${companyId}, ${reportId}, ${chunkContent}, ${embeddingStr}::vector, NOW())
     `;
 
     console.log(`[VectorStore] Successfully stored vectorized intelligence for ${lead.companyName}.`);
@@ -55,10 +55,11 @@ export async function searchPastReports(query) {
     // Retrieve top 3 similar past reports
     // Uses cosine similarity (<=>)
     const results = await prisma.$queryRaw`
-      SELECT "companyName", "industry", content, 
-             1 - (embedding <=> ${embeddingStr}::vector) as similarity
-      FROM "ReportChunk"
-      ORDER BY embedding <=> ${embeddingStr}::vector
+      SELECT c.name as "companyName", c.industry, e.chunk as content, 
+             1 - (e.embedding <=> ${embeddingStr}::vector) as similarity
+      FROM "Embedding" e
+      JOIN "Company" c ON c.id = e."companyId"
+      ORDER BY e.embedding <=> ${embeddingStr}::vector
       LIMIT 3
     `;
 
@@ -82,17 +83,17 @@ export async function searchPastReports(query) {
   }
 }
 
-export async function getCompanyHistory(companyName) {
+export async function getCompanyHistory(companyId) {
   try {
-    console.log(`[VectorStore] Checking exact history for ${companyName}...`);
-    const results = await prisma.reportChunk.findMany({
-      where: { companyName },
+    console.log(`[VectorStore] Checking exact history for companyId: ${companyId}...`);
+    const results = await prisma.embedding.findMany({
+      where: { companyId },
       orderBy: { createdAt: 'desc' },
       take: 1
     });
 
     if (results.length > 0) {
-      return results[0].content;
+      return results[0].chunk;
     }
     return null;
   } catch (error) {

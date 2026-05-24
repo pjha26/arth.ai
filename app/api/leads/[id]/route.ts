@@ -7,25 +7,34 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const lead = await prisma.lead.findUnique({
+    const report = await prisma.report.findUnique({
       where: { id },
       include: {
+        company: true,
         stages: {
           orderBy: { createdAt: "asc" },
         },
       },
     });
 
-    if (!lead) {
+    if (!report) {
       return NextResponse.json(
-        { success: false, message: "Lead not found" },
+        { success: false, message: "Report not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, lead });
+    // Map to old lead format for frontend compatibility
+    const mappedLead = {
+      ...report,
+      companyName: report.company.name,
+      industry: report.company.industry,
+      companySize: report.company.size,
+    };
+
+    return NextResponse.json({ success: true, lead: mappedLead });
   } catch (error) {
-    console.error("[arth.ai] Error fetching lead:", error);
+    console.error("[arth.ai] Error fetching report:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -41,17 +50,17 @@ export async function DELETE(
     const { id } = await params;
     
     // Check if exists
-    const lead = await prisma.lead.findUnique({ where: { id } });
-    if (!lead) {
-      return NextResponse.json({ success: false, message: "Lead not found" }, { status: 404 });
+    const report = await prisma.report.findUnique({ where: { id } });
+    if (!report) {
+      return NextResponse.json({ success: false, message: "Report not found" }, { status: 404 });
     }
 
-    // Delete lead (cascades to stages)
-    await prisma.lead.delete({ where: { id } });
+    // Delete report (cascades to stages)
+    await prisma.report.delete({ where: { id } });
 
-    return NextResponse.json({ success: true, message: "Lead deleted successfully" });
+    return NextResponse.json({ success: true, message: "Report deleted successfully" });
   } catch (error) {
-    console.error("[arth.ai] Error deleting lead:", error);
+    console.error("[arth.ai] Error deleting report:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
