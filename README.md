@@ -1,87 +1,95 @@
-# Arth.ai - AI Intelligence Audits
+# ArthAI - Intelligence CRM
 
-Arth.ai is a SaaS platform designed for B2B intelligence gathering and personalized reporting. It allows users to submit leads and instantly generates tailored PDF intelligence reports by scraping public company data, enriching it with AI (Anthropic Claude), and rendering beautiful PDFs via Puppeteer.
+ArthAI is an advanced, AI-powered Intelligence CRM designed to generate automated, deep-dive intelligence reports for inbound leads. By analyzing a prospect's company website and stated challenges, ArthAI automatically synthesizes strategic insights, technology stacks, and industry benchmarks using Google's Gemini 2.5 Pro.
 
-## Key Features
+---
 
-- **Dynamic Landing Page**: Adaptive user experiences depending on the chosen persona (Founder, CTO, Marketer).
-- **Automated Lead Enrichment**: Collects basic information and processes it through a background pipeline.
-- **AI-Powered Analysis**: Uses Anthropic's Claude to generate insights based on company profiles.
-- **Background PDF Generation**: A BullMQ-powered background worker uses Puppeteer to render a real, downloadable PDF report.
-- **Real-Time Dashboard**: Automatically polling dashboard to track the status of lead reports, download generated PDFs, and manage data.
+## 🌊 Complete Website Workflow
 
-## Tech Stack
+1. **Inbound Lead Submission (Landing Page)**
+   - Prospects visit the landing page and submit their Company URL, Persona (e.g., Founder, CTO), and specific pain points.
+   - The Next.js API validates this data via **Zod** and enqueues a processing job in a background Redis queue.
+   - A shell record is created in the PostgreSQL database (via Prisma) with a "Processing" status.
 
-- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS.
-- **Backend**: Next.js Serverless Routes, Prisma ORM (SQLite).
-- **Background Worker**: Node.js, BullMQ, Redis (Upstash).
-- **AI Integration**: Anthropic SDK.
-- **PDF Generation**: Puppeteer.
+2. **Background Processing Pipeline (BullMQ + Puppeteer Worker)**
+   - A separate Node.js worker picks up the job, keeping the main Next.js thread unblocked.
+   - **Puppeteer & Cheerio** scrape the prospect's live website to extract real-time context, meta tags, text content, and underlying technology signatures.
+   - **Clearbit & Wikipedia APIs** fetch fallback context, logo imagery, and Wikipedia summaries for instant context building.
 
-## Architecture
+3. **AI Intelligence Engine (Gemini 2.5 Pro)**
+   - The scraped HTML and prospect pain points are fed into **Gemini 2.5 Pro** via the `@ai-sdk/google` integration.
+   - Gemini synthesizes the data into structured JSON, providing:
+     - Technical stack analysis.
+     - Pain point validation and tailored strategic advice.
+     - An "Intent Score" calculating how likely the lead is to convert.
+     - Custom industry benchmarks.
 
-1. **Web App (`/app`)**: Handles UI, form submissions, and database operations via Prisma.
-2. **API Routes (`/app/api`)**: Endpoint logic for adding leads, polling statuses, deleting leads, and downloading PDFs.
-3. **Background Worker (`/worker`)**: A standalone process that subscribes to the BullMQ queue, executes AI enrichment tasks, and generates the final PDF.
+4. **PDF Generation & Storage**
+   - The structured JSON is formatted into a beautiful HTML template.
+   - Puppeteer renders the HTML and generates a downloadable PDF file, saving it locally to `public/reports`.
+   - The database is updated to mark the pipeline status as "Done".
 
-## Prerequisites
+5. **Intelligence CRM Dashboard (Sales / Admin View)**
+   - Sales reps access the CRM at `/dashboard`, which features a premium, Notion-style split-pane interface.
+   - **Live Polling:** If reports are generating, the dashboard polls every 5 seconds to provide live pipeline status updates.
+   - **Analytics Tab:** Provides high-level metrics, industry breakdown bars, persona performance cards, a 24/7 submission heatmap, and an AI-generated daily Trend Feed.
+   - **Leads & Reports Tab:** Shows a robust list/grid of all inbound leads. Clicking a lead smoothly slides in a 30% detail panel revealing the pipeline status, AI insights, and a one-click PDF download button.
 
-- Node.js (v18+)
-- Redis database (e.g., Upstash) for BullMQ
-- Anthropic API Key
+---
 
-## Environment Variables
+## 🛠️ Technology Stack Used
 
-Create a `.env` file in the root directory:
+### Core Frameworks
+- **Next.js 16 (App Router + Turbopack)**: Core React framework for the frontend and API routes.
+- **React 19**: UI component library.
+- **Node.js**: powers the separate background worker process.
 
-```env
-# Database (SQLite for local development)
-DATABASE_URL="file:./dev.db"
+### Database & Caching
+- **PostgreSQL**: Primary relational database.
+- **Prisma ORM**: Type-safe database client and schema management.
+- **Redis (ioredis)**: In-memory datastore used exclusively for job queuing.
+- **BullMQ**: Robust Redis-based queue for managing long-running background jobs.
 
-# Redis for BullMQ (Important: use rediss:// for secure Upstash connection)
-UPSTASH_REDIS_URL="rediss://default:YOUR_PASSWORD@YOUR_ENDPOINT:PORT"
+### AI & Data Enrichment
+- **Google Generative AI (Gemini 2.5 Pro)**: The core intelligence engine powering the insights.
+- **Vercel AI SDK (`ai` & `@ai-sdk/google`)**: Standardized streaming and structured data extraction from Gemini.
+- **Puppeteer**: Headless Chrome for complex website scraping and PDF generation.
+- **Cheerio**: Lightweight HTML parser for static site scraping.
+- **Clearbit API**: Used to fetch high-quality company logos and instant metadata.
 
-# AI Integration
-ANTHROPIC_API_KEY="your-anthropic-api-key"
-```
+### Frontend UI & Styling
+- **Tailwind CSS v4**: Utility-first CSS framework for rapid styling.
+- **Framer Motion**: Complex layout animations, staggered waterfalls, and slide-in panels.
+- **TanStack Table (React Table v8)**: Headless logic for filtering, sorting, and bulk selections.
+- **Radix UI**: Headless, accessible primitives (specifically Tooltips).
+- **Date-Fns**: Lightweight date and time formatting.
+- **Custom Fonts**: Fraunces (Serif/Display) and DM Sans (Body).
 
-## Installation & Running Locally
+---
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   cd worker && npm install
-   cd ..
-   ```
+## ✨ Features Implemented
 
-2. **Database Setup**
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
+### 1. Fully Autonomous Intelligence Pipeline
+- Zero manual input required from sales reps; the system works 24/7.
+- Dedicated Worker architecture ensures the website remains incredibly fast even when processing dozens of concurrent reports.
 
-3. **Run the Application & Worker**
-   We use `concurrently` to run both the Next.js frontend and the background worker simultaneously.
-   ```bash
-   npm run dev
-   ```
+### 2. Beautiful Analytics Dashboard
+- Custom SVG sparklines and animated metric counters.
+- **AI Trend Feed**: Synthesizes the database of leads into readable, actionable insights (e.g., "SaaS companies are trending up this week").
+- **Submission Heatmap**: A custom 7x24 grid visualizing exactly when prospects submit leads.
+- **Industry & Persona Breakdowns**: Auto-aggregates data into visual progress bars and colored cards.
 
-   This command will start:
-   - Next.js development server at `http://localhost:3000`
-   - Background BullMQ worker for processing reports.
+### 3. "Notion-Style" CRM Interface
+- **70/30 Split Pane Layout**: Smoothly transitions to reveal a detail panel without jarring page reloads.
+- **Grid vs List Toggle**: Switch between a compact table view and a Kanban-style card grid.
+- **Toolbar & Filtering**: Filter prospects instantly by Name, Email, Status, or Industry.
 
-## Project Structure
+### 4. Snappy Micro-Interactions
+- **Optimistic Deletion**: Deleting a lead removes it instantly from the UI, making the app feel incredibly responsive.
+- **Framer Motion Waterfalls**: Rows cascade onto the screen smoothly.
+- **Floating Bulk Actions**: Selecting checkboxes summons a slick dark-mode action bar for mass-downloads or deletions.
+- **Live State Sync**: Processing leads pulse with an amber dot, and transition to a green dot the second the AI completes the task without requiring a manual refresh.
 
-- `app/`: Next.js application routes (Landing Page, Form, Dashboard).
-- `app/api/`: Server-side API logic.
-- `lib/`: Shared utilities, Prisma client, and validation logic.
-- `worker/`: BullMQ processor and job handlers (`enrichment.js`, `pdfGenerator.js`).
-- `prisma/`: Database schema and migrations.
-
-## Design System
-The project follows the "Ivory & Saffron" design language, providing a premium, quiet, and intelligence-focused aesthetic.
-
-## Future Enhancements
-- User Authentication (NextAuth / Clerk).
-- Report sharing via email using Resend.
-- Advanced analytics on dashboard.
+### 5. Advanced PDF Generation
+- Fully automated, styled HTML-to-PDF rendering via Puppeteer, completely invisible to the user.
+- Downloads are immediately accessible via `/api/leads/[id]/download`.

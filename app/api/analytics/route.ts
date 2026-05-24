@@ -34,16 +34,26 @@ export async function GET() {
       conversionRate: Math.round((Math.random() * 20 + 30)) + "%" 
     }));
 
-    // c. Signal Heatmap (Count leads per day)
+    // c. Signal Heatmap (Count leads per day/hour)
     const leads = await prisma.lead.findMany({
       select: { createdAt: true }
     });
     
-    // Group by Day of Week (0-6)
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    // Day format for Peak Day calculation
+    const fullDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const dayCounts = { "Sunday": 0, "Monday": 0, "Tuesday": 0, "Wednesday": 0, "Thursday": 0, "Friday": 0, "Saturday": 0 };
+    
+    const heatmapData: Record<string, number> = {};
+    
     leads.forEach(l => {
-      dayCounts[days[new Date(l.createdAt).getDay()]]++;
+      const date = new Date(l.createdAt);
+      const dayIndex = date.getDay();
+      dayCounts[fullDays[dayIndex]]++;
+      
+      const shortDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex];
+      const hour = date.getHours();
+      const key = `${shortDay}-${hour}`;
+      heatmapData[key] = (heatmapData[key] || 0) + 1;
     });
     
     let peakDay = "None";
@@ -97,7 +107,7 @@ export async function GET() {
         },
         industryBreakdown: industryCounts.map(i => ({ name: i.industry || "Unknown", count: i._count.industry })),
         personaPerformance,
-        signalHeatmap: Object.entries(dayCounts).map(([day, count]) => ({ day, count })), // Simplified to days for charting
+        signalHeatmap: heatmapData,
         trendIntelligence
       }
     });
