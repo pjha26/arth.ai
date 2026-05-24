@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -22,6 +22,10 @@ function SuccessContent() {
   const [industry, setIndustry] = useState<string | null>(null);
   const [companySize, setCompanySize] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+
+  // Agent Terminal state
+  const [agentThoughts, setAgentThoughts] = useState<string[]>([]);
+  const terminalRef = useRef<HTMLDivElement>(null);
 
   // Dynamic Stages
   const STAGES = [
@@ -96,6 +100,36 @@ function SuccessContent() {
     const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
   }, [jobId]);
+
+  // SSE connection for real-time agent thoughts
+  useEffect(() => {
+    if (!jobId) return;
+
+    const eventSource = new EventSource(`/api/leads/${jobId}/stream`);
+
+    eventSource.onmessage = (event) => {
+      const thought = event.data;
+      if (thought) {
+        setAgentThoughts((prev) => [...prev, thought]);
+      }
+    };
+
+    eventSource.onerror = () => {
+      // SSE will auto-reconnect, but close permanently if the job is done
+      if (leadStatus === "done" || leadStatus === "failed") {
+        eventSource.close();
+      }
+    };
+
+    return () => eventSource.close();
+  }, [jobId, leadStatus]);
+
+  // Auto-scroll the terminal to the bottom
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [agentThoughts]);
 
   const allDone = leadStatus === "done";
   const hasFailed = leadStatus === "failed";
@@ -359,6 +393,92 @@ function SuccessContent() {
             </div>
           )}
         </div>
+
+        {/* ── Agent Terminal ── */}
+        {!allDone && !hasFailed && agentThoughts.length > 0 && (
+          <div className="animate-fade-up delay-300" style={{
+            width: "100%", maxWidth: "800px",
+            background: "#0D0D0D", borderRadius: "16px",
+            border: "1px solid #2A2A2A",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
+            overflow: "hidden",
+          }}>
+            {/* Terminal Title Bar */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.5rem",
+              padding: "0.65rem 1rem",
+              background: "linear-gradient(180deg, #1A1A1A 0%, #141414 100%)",
+              borderBottom: "1px solid #2A2A2A",
+            }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#FF5F57" }} />
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#FEBC2E" }} />
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28C840" }} />
+              </div>
+              <span style={{
+                fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+                fontSize: "0.7rem", fontWeight: 600,
+                color: "#6B6B6B", marginLeft: "0.5rem",
+                letterSpacing: "0.03em",
+              }}>
+                agent-terminal — {company}
+              </span>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "#28C840",
+                  boxShadow: "0 0 6px #28C840",
+                  animation: "pulse-dot 2s infinite",
+                }} />
+                <span style={{ fontFamily: "monospace", fontSize: "0.65rem", color: "#4A4A4A" }}>LIVE</span>
+              </div>
+            </div>
+
+            {/* Terminal Body */}
+            <div
+              ref={terminalRef}
+              className="agent-terminal-scroll"
+              style={{
+                padding: "1rem 1.25rem",
+                maxHeight: "280px",
+                overflowY: "auto",
+                scrollBehavior: "smooth",
+              }}
+            >
+              {agentThoughts.map((thought, idx) => {
+                // Determine color based on agent prefix
+                let color = "#8B8B8B";
+                if (thought.includes("Orchestrator"))    color = "#A78BFA";
+                else if (thought.includes("Research"))   color = "#60A5FA";
+                else if (thought.includes("Analysis"))   color = "#34D399";
+                else if (thought.includes("Writer"))     color = "#FBBF24";
+                else if (thought.includes("Critic"))     color = "#F87171";
+                else if (thought.includes("System"))     color = "#6B7280";
+                else if (thought.includes("->"))         color = "#6EE7B7";
+
+                return (
+                  <div key={idx} style={{
+                    fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+                    fontSize: "0.78rem",
+                    lineHeight: 1.7,
+                    color: color,
+                    opacity: idx === agentThoughts.length - 1 ? 1 : 0.7,
+                    transition: "opacity 0.3s ease",
+                  }}>
+                    <span style={{ color: "#3A3A3A", marginRight: "0.5rem", userSelect: "none" }}>{'>'}</span>
+                    {thought}
+                  </div>
+                );
+              })}
+              {/* Blinking cursor */}
+              <div style={{
+                fontFamily: "monospace", fontSize: "0.78rem",
+                color: "#C58B45", marginTop: "0.25rem",
+                animation: "blink-cursor 1s step-end infinite",
+              }}>▋</div>
+            </div>
+          </div>
+        )}
 
         {/* Actions below everything */}
         {(allDone || hasFailed) && (

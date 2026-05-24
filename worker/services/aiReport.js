@@ -3,6 +3,7 @@ import { generateText, generateObject, tool } from "ai";
 import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
 import { searchPastReports, getCompanyHistory } from "./vectorStore.js";
+import { streamThought } from "./redisStream.js";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────
 
@@ -37,8 +38,8 @@ const geminiModel = google("gemini-1.5-flash");
 
 // ─── 1. Research Agent ───────────────────────────────────────────────────
 
-async function runResearchAgent(lead) {
-  console.log(`[Research Agent 🔍] Gathering raw data...`);
+async function runResearchAgent(lead, jobId) {
+  streamThought(jobId, `[Research Agent 🔍] Gathering raw data...`);
   const { text } = await generateText({
     model: geminiModel,
     system: "You are an Elite Data Scraper. Your job is to gather raw, factual information about the company. Use your tools to find out exactly what they do. Return a dense bulleted list of facts.",
@@ -49,7 +50,7 @@ async function runResearchAgent(lead) {
         description: "Scrape the company homepage.",
         parameters: z.object({ url: z.string() }),
         execute: async ({ url }) => {
-          console.log(`  -> 🔍 Scraping ${url}`);
+          streamThought(jobId, `  -> 🔍 Scraping ${url}`);
           const data = await scrapeWebsite(url);
           return data.markdown || data.description || "No content found.";
         }
@@ -58,7 +59,7 @@ async function runResearchAgent(lead) {
         description: "Find recent news or summaries about the company.",
         parameters: z.object({ companyName: z.string() }),
         execute: async ({ companyName }) => {
-          console.log(`  -> 🔍 Searching news for ${companyName}`);
+          streamThought(jobId, `  -> 🔍 Searching news for ${companyName}`);
           const data = await fetchDuckDuckGo(companyName);
           return data.abstract || "No recent news found.";
         }
@@ -70,8 +71,8 @@ async function runResearchAgent(lead) {
 
 // ─── 2. Analysis Agent ───────────────────────────────────────────────────
 
-async function runAnalysisAgent(lead, researchData, enrichedContext, companyHistory) {
-  console.log(`[Analysis Agent 📊] Finding patterns...`);
+async function runAnalysisAgent(lead, researchData, enrichedContext, companyHistory, jobId) {
+  streamThought(jobId, `[Analysis Agent 📊] Finding patterns...`);
   
   let prompt = `Analyze ${lead.companyName} in ${lead.industry}.
 Initial Context: ${enrichedContext}
@@ -94,7 +95,7 @@ You MUST compare their previous state to their current state. Note what gaps the
         description: "Search historical reports for similar companies.",
         parameters: z.object({ query: z.string() }),
         execute: async ({ query }) => {
-          console.log(`  -> 📊 Searching RAG for "${query}"`);
+          streamThought(jobId, `  -> 📊 Searching RAG for "${query}"`);
           return await searchPastReports(query);
         }
       }),
@@ -102,7 +103,7 @@ You MUST compare their previous state to their current state. Note what gaps the
         description: "Detect technologies used.",
         parameters: z.object({ url: z.string() }),
         execute: async ({ url }) => {
-          console.log(`  -> 📊 Analyzing tech stack for ${url}`);
+          streamThought(jobId, `  -> 📊 Analyzing tech stack for ${url}`);
           return `Detected likely technologies: React, Next.js, Node.js, Vercel, Tailwind CSS.`;
         }
       }),
@@ -110,7 +111,7 @@ You MUST compare their previous state to their current state. Note what gaps the
         description: "Check for hiring signals.",
         parameters: z.object({ companyName: z.string() }),
         execute: async ({ companyName }) => {
-          console.log(`  -> 📊 Finding hiring signals for ${companyName}`);
+          streamThought(jobId, `  -> 📊 Finding hiring signals for ${companyName}`);
           return `Recent hiring signals suggest expansion in engineering and sales.`;
         }
       })
@@ -121,8 +122,8 @@ You MUST compare their previous state to their current state. Note what gaps the
 
 // ─── 3. Writer Agent ─────────────────────────────────────────────────────
 
-async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory) {
-  console.log(`[Writer Agent ✍️] Drafting JSON report...`);
+async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory, jobId) {
+  streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report...`);
   
   let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
 Stated Challenge: ${lead.painPoints}
@@ -154,8 +155,8 @@ ${previousFeedback}`;
 
 // ─── 4. Critic Agent ─────────────────────────────────────────────────────
 
-async function runCriticAgent(lead, draftReport) {
-  console.log(`[Critic Agent 🎯] Reviewing draft...`);
+async function runCriticAgent(lead, draftReport, jobId) {
+  streamThought(jobId, `[Critic Agent 🎯] Reviewing draft...`);
   
   const prompt = `Review this draft AI report for ${lead.companyName} (${lead.industry}).
 Challenge: ${lead.painPoints}
@@ -183,17 +184,17 @@ If it's generic, reject it and provide harsh feedback on exactly what needs to b
  * Executes a multi-agent workflow to generate a highly intelligent, 
  * peer-reviewed report for a given lead.
  */
-export async function generateAiReport(lead, enriched) {
-  console.log(`\n[Orchestrator 🧠] Starting multi-agent pipeline for ${lead.companyName}...`);
+export async function generateAiReport(lead, enriched, jobId) {
+  streamThought(jobId, `\n[Orchestrator 🧠] Starting multi-agent pipeline for ${lead.companyName}...`);
   
   try {
     const companyHistory = await getCompanyHistory(lead.companyName);
     if (companyHistory) {
-      console.log(`[Orchestrator 🧠] Found exact historical match for ${lead.companyName}! Triggering longitudinal analysis.`);
+      streamThought(jobId, `[Orchestrator 🧠] Found exact historical match for ${lead.companyName}! Triggering longitudinal analysis.`);
     }
 
-    const researchData = await runResearchAgent(lead);
-    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory);
+    const researchData = await runResearchAgent(lead, jobId);
+    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory, jobId);
     
     let draftReport = null;
     let approved = false;
@@ -202,26 +203,27 @@ export async function generateAiReport(lead, enriched) {
 
     while (!approved && iterations < 3) {
       iterations++;
-      console.log(`\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
+      streamThought(jobId, `\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
       
-      draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory);
-      const critique = await runCriticAgent(lead, draftReport);
+      draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory, jobId);
+      const critique = await runCriticAgent(lead, draftReport, jobId);
       
       if (critique.approved) {
-        console.log(`[Orchestrator 🧠] 🎯 Critic Approved!`);
+        streamThought(jobId, `[Orchestrator 🧠] 🎯 Critic Approved!`);
         approved = true;
       } else {
-        console.log(`[Orchestrator 🧠] ❌ Critic Rejected: ${critique.feedback}`);
+        streamThought(jobId, `[Orchestrator 🧠] ❌ Critic Rejected: ${critique.feedback}`);
         criticFeedback = critique.feedback;
       }
     }
 
     if (!approved) {
-      console.log(`[Orchestrator 🧠] Max iterations reached. Proceeding with best draft.`);
+      streamThought(jobId, `[Orchestrator 🧠] Max iterations reached. Proceeding with best draft.`);
     }
 
     return draftReport || getFallbackReport(lead);
   } catch (err) {
+    streamThought(jobId, `[Orchestrator 🧠] Pipeline error: ${err.message}`);
     console.error("[Orchestrator 🧠] Pipeline error:", err.message);
     return getFallbackReport(lead);
   }

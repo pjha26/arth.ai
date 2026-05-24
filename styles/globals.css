@@ -537,6 +537,18 @@ textarea.input-field { resize: vertical; line-height: 1.65; min-height: 120px; }
 .delay-400 { animation-delay: 0.40s; }
 .delay-500 { animation-delay: 0.50s; }
 
+/* Agent Terminal animations */
+@keyframes blink-cursor { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #28C840; }
+  50%      { opacity: 0.4; box-shadow: 0 0 2px #28C840; }
+}
+
+/* Custom dark scrollbar for Agent Terminal */
+.agent-terminal-scroll::-webkit-scrollbar { width: 4px; }
+.agent-terminal-scroll::-webkit-scrollbar-track { background: transparent; }
+.agent-terminal-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
 /* ─── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }

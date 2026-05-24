@@ -70,7 +70,7 @@ const worker = new Worker(
       // ── Step 2: AI Report ──
       console.log(`[Job ${jobId}] Step 2/4: Generating AI report...`);
       await logStage(jobId, "ai_report", "running");
-      const report = await generateAiReport(lead, enriched);
+      const report = await generateAiReport(lead, enriched, jobId);
       await logStage(jobId, "ai_report", "done");
       console.log(`[Job ${jobId}] AI report generated.`);
 
