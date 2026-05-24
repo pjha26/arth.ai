@@ -20,6 +20,9 @@ model Lead {
   industry    String
   companySize String
   painPoints  String
+  logo        String?
+  description String?
+  aiSummary   String?
   status      String          @default("pending") // pending | processing | done | failed
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

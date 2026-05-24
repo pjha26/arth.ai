@@ -5,6 +5,29 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import path from "path";
 import fs from "fs";
+import axios from "axios";
+
+// Helper function to quickly fetch company logo and description (timeout optimized for fast API response)
+async function fetchCompanyPreview(companyName: string) {
+  let logo = null;
+  let description = null;
+  
+  try {
+    const { data } = await axios.get(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(companyName)}`, { timeout: 2000 });
+    if (data && data[0]) logo = data[0].logo;
+  } catch (err) {
+    console.warn("[arth.ai] Clearbit preview fetch failed");
+  }
+  
+  try {
+    const { data } = await axios.get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(companyName.replace(/\s+/g, "_"))}`, { timeout: 2000 });
+    if (data?.extract) description = data.extract.slice(0, 300);
+  } catch (err) {
+    console.warn("[arth.ai] Wiki preview fetch failed");
+  }
+  
+  return { logo, description };
+}
 
 export async function POST(request: Request) {
   try {
@@ -40,11 +63,16 @@ export async function POST(request: Request) {
 
     const jobId = randomUUID();
 
+    // Fetch instant mirror preview data
+    const preview = await fetchCompanyPreview(lead.companyName);
+
     // Save to Prisma SQLite DB
     await prisma.lead.create({
       data: {
         id: jobId,
         ...lead,
+        logo: preview.logo,
+        description: preview.description,
         status: "pending",
       },
     });

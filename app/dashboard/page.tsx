@@ -210,293 +210,304 @@ export default function DashboardPage() {
   }, [leads]);
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)", color: "var(--charcoal)" }}>
-      {/* Navbar */}
-      <nav className="navbar">
-        <Link href="/" className="navbar-logo">
-          <div className="logo-mark">a</div>arth.ai
-        </Link>
-        <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-          <Link href="/form" className="btn btn-saffron" style={{ textDecoration: "none" }}>Book a Demo</Link>
+    <div className="flex h-screen overflow-hidden antialiased font-body-md text-body-md bg-background text-on-background">
+      {/* SideNavBar */}
+      <nav className="hidden md:flex flex-col h-screen sticky top-0 w-64 left-0 bg-surface border-r border-outline-variant z-40 transition-all duration-200 ease-in-out shrink-0">
+        <div className="p-gutter flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">A</div>
+          <div>
+            <h1 className="font-headline-sm text-headline-sm text-primary m-0 p-0 leading-none">ArthAI</h1>
+            <p className="text-[10px] text-on-surface-variant uppercase tracking-wider mt-1">Quiet Intelligence</p>
+          </div>
+        </div>
+        <div className="flex-1 py-stack-md px-3 flex flex-col gap-1 overflow-y-auto">
+          <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-primary font-bold bg-surface-container-low transition-colors duration-200" href="#">
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
+            Dashboard
+          </a>
+          <Link href="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200 mt-auto">
+            <span className="material-symbols-outlined">logout</span>
+            Back to Home
+          </Link>
         </div>
       </nav>
 
-      <main style={{ padding: "100px 40px 80px", maxWidth: 1600, margin: "0 auto" }}>
-        
-        {/* Header & Stats */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
-            <div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "2.5rem", fontWeight: 800, color: "var(--charcoal)", margin: "0 0 8px 0", letterSpacing: "-0.02em" }}>
-                Intelligence CRM
-              </h1>
-              <p style={{ color: "var(--text-muted)", fontSize: 16, margin: 0 }}>
-                {stats.total} total leads · {stats.generated} successful · {stats.failed} failed · {stats.processing} processing
-              </p>
-            </div>
-            <button onClick={handleExportCSV} className="btn btn-outline" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
-              Export CSV
-            </button>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* TopNavBar (Mobile Only) */}
+        <header className="md:hidden flex justify-between items-center w-full px-margin-mobile h-16 sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant transition-opacity duration-150">
+          <h1 className="font-headline-sm text-headline-sm text-on-surface">ArthAI</h1>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-on-surface-variant hover:text-primary transition-colors">
+              <span className="material-symbols-outlined">home</span>
+            </Link>
           </div>
+        </header>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-            <div className="card-flat" style={{ padding: "20px" }}>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Total Leads</div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: "var(--charcoal)", fontFamily: "var(--font-heading)" }}>{stats.total}</div>
-            </div>
-            <div className="card-flat" style={{ padding: "20px" }}>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Reports Generated</div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: "var(--saffron-dark)", fontFamily: "var(--font-heading)" }}>{stats.generated}</div>
-            </div>
-            <div className="card-flat" style={{ padding: "20px" }}>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Failed Pipelines</div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: "#DC2626", fontFamily: "var(--font-heading)" }}>{stats.failed}</div>
-            </div>
-            <div className="card-flat" style={{ padding: "20px" }}>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Avg Generation Time</div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: "var(--sage)", fontFamily: "var(--font-heading)" }}>{stats.avgTime}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Toolbar */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24, padding: "16px", background: "white", borderRadius: 12, border: "1px solid var(--border-light)", boxShadow: "var(--shadow-sm)" }}>
-          <div style={{ flex: "1 1 250px", display: "flex", alignItems: "center", background: "var(--bg)", borderRadius: 8, padding: "0 12px", border: "1px solid var(--border-light)" }}>
-            <span className="material-symbols-outlined" style={{ color: "var(--text-muted)", fontSize: 20 }}>search</span>
-            <input 
-              type="text" 
-              placeholder="Search company or email..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ border: "none", background: "transparent", padding: "10px", width: "100%", outline: "none", fontSize: 14, fontFamily: "var(--font-body)" }}
-            />
-          </div>
-          
-          <select className="input-field" style={{ flex: "0 1 150px", padding: "10px", height: "auto" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-            <option value="All">All Statuses</option>
-            <option value="done">Successful</option>
-            <option value="processing">Processing</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-          </select>
-
-          <select className="input-field" style={{ flex: "0 1 180px", padding: "10px", height: "auto" }} value={industryFilter} onChange={e => setIndustryFilter(e.target.value)}>
-            {industries.map(ind => <option key={ind} value={ind}>{ind === "All" ? "All Industries" : ind}</option>)}
-          </select>
-
-          <select className="input-field" style={{ flex: "0 1 150px", padding: "10px", height: "auto" }} value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-            <option value="All Time">All Time</option>
-            <option value="Today">Today</option>
-            <option value="This Week">This Week</option>
-            <option value="This Month">This Month</option>
-          </select>
-
-          <select className="input-field" style={{ flex: "0 1 150px", padding: "10px", height: "auto" }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-            <option value="Newest">Sort: Newest</option>
-            <option value="Oldest">Sort: Oldest</option>
-            <option value="Company (A-Z)">Company (A-Z)</option>
-          </select>
-        </div>
-
-        <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-          {/* Main List */}
-          <div style={{ flex: "1 1 auto" }}>
-            {loading && leads.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading leads...</div>
-            ) : filteredLeads.length === 0 ? (
-              <div className="card-flat" style={{ textAlign: "center", padding: "80px 20px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--border-light)", marginBottom: 16 }}>search_off</span>
-                <h3 style={{ margin: "0 0 8px 0", color: "var(--charcoal)", fontFamily: "var(--font-heading)" }}>No leads found</h3>
-                <p style={{ color: "var(--text-muted)", margin: 0 }}>Try adjusting your filters or search query.</p>
+        {/* Main Scrollable Canvas */}
+        <main className="flex-1 overflow-y-auto bg-surface-bright">
+          <div className="max-w-[1280px] mx-auto px-5 md:px-16 py-8 md:py-16 flex flex-col gap-12 md:gap-20">
+            {/* Header Section */}
+            <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h1 className="font-headline-md text-headline-md text-on-surface mb-2">Intelligence CRM</h1>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  {stats.total} total leads · {stats.generated} successful · {stats.failed} failed · {stats.processing} processing
+                </p>
               </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
-                {filteredLeads.map((lead) => (
-                  <div 
-                    key={lead.id} 
-                    className="card-flat"
-                    style={{ 
-                      padding: 24,
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      border: selectedLead?.id === lead.id ? "1px solid var(--saffron-main)" : "1px solid var(--border-light)"
-                    }}
-                    onClick={() => setSelectedLead(lead)}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--saffron-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-                          {lead.industry}
-                        </div>
-                        <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.2rem", fontWeight: 700, color: "var(--charcoal)", margin: 0 }}>
-                          {lead.companyName}
-                        </h3>
-                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{lead.email}</div>
-                      </div>
-                      
-                      {lead.status === "done" ? (
-                        <div style={{ padding: "4px 8px", borderRadius: 4, backgroundColor: "rgba(111,140,115,0.1)", color: "var(--sage)", fontSize: 12, fontWeight: 600 }}>Done</div>
-                      ) : lead.status === "failed" ? (
-                        <div style={{ padding: "4px 8px", borderRadius: 4, backgroundColor: "#FEF2F2", color: "#DC2626", fontSize: 12, fontWeight: 600 }}>Failed</div>
-                      ) : (
-                        <div style={{ padding: "4px 8px", borderRadius: 4, backgroundColor: "rgba(217,119,87,0.1)", color: "var(--saffron-main)", fontSize: 12, fontWeight: 600, display: "flex", gap: 4, alignItems: "center" }}>
-                           <span className="material-symbols-outlined" style={{ fontSize: 12, animation: "spin-cw 1s linear infinite" }}>sync</span>
-                          Processing
-                        </div>
-                      )}
-                    </div>
+              <button onClick={handleExportCSV} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline text-on-surface hover:bg-surface-container-lowest transition-colors font-body-md cursor-pointer">
+                <span className="material-symbols-outlined text-[18px]">download</span>
+                Export CSV
+              </button>
+            </section>
 
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--border-light)", paddingTop: 16 }}>
-                      {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
-                    </div>
+            {/* KPI Grid */}
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-surface-container-low/40 border border-outline-variant/60 rounded-xl p-6 hover:bg-surface-container-low transition-all duration-300 relative overflow-hidden group">
+                <h3 className="font-headline-sm text-[18px] text-on-surface-variant mb-2 font-headline-md">TOTAL LEADS</h3>
+                <p className="font-display-lg-mobile text-headline-md text-on-surface">{stats.total}</p>
+              </div>
+              <div className="bg-surface-container-low/40 border border-outline-variant/60 rounded-xl p-6 hover:bg-surface-container-low transition-all duration-300 relative overflow-hidden group">
+                <h3 className="font-headline-sm text-[18px] text-on-surface-variant mb-2 font-headline-md">REPORTS GENERATED</h3>
+                <p className="font-display-lg-mobile text-headline-md text-primary">{stats.generated}</p>
+              </div>
+              <div className="bg-surface-container-low/40 border border-outline-variant/60 rounded-xl p-6 hover:bg-surface-container-low transition-all duration-300 relative overflow-hidden group">
+                <h3 className="font-headline-sm text-[18px] text-on-surface-variant mb-2 font-headline-md">FAILED PIPELINES</h3>
+                <p className="font-display-lg-mobile text-headline-md text-error">{stats.failed}</p>
+              </div>
+              <div className="bg-surface-container-low/40 border border-outline-variant/60 rounded-xl p-6 hover:bg-surface-container-low transition-all duration-300 relative overflow-hidden group">
+                <h3 className="font-headline-sm text-[18px] text-on-surface-variant mb-2 font-headline-md">AVG GENERATION TIME</h3>
+                <p className="font-display-lg-mobile text-headline-md text-secondary">{stats.avgTime}</p>
+              </div>
+            </section>
+
+            {/* Complex Layout: Main List + Sidebar Activity */}
+            <section className="flex flex-col lg:flex-row gap-6">
+              {/* Left Column: Leads List */}
+              <div className="flex-1 flex flex-col gap-4">
+                {/* Toolbar */}
+                <div className="bg-surface-container-low/30 border border-outline-variant rounded-xl p-3 flex flex-col md:flex-row gap-4 items-center">
+                  <div className="flex-1 relative w-full">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                    <input 
+                      className="w-full bg-surface border-none rounded-lg pl-10 pr-4 py-2 font-body-md text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary focus:outline-none transition-shadow" 
+                      placeholder="Search company or email..." 
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
+                    <select className="px-4 py-2 rounded-lg bg-surface border border-outline-variant text-on-surface font-body-md hover:bg-surface-container-low transition-colors outline-none cursor-pointer" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                      <option value="All">All Statuses</option>
+                      <option value="done">Successful</option>
+                      <option value="processing">Processing</option>
+                      <option value="pending">Pending</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                    
+                    <select className="px-4 py-2 rounded-lg bg-surface border border-outline-variant text-on-surface font-body-md hover:bg-surface-container-low transition-colors outline-none cursor-pointer" value={industryFilter} onChange={e => setIndustryFilter(e.target.value)}>
+                      {industries.map(ind => <option key={ind} value={ind}>{ind === "All" ? "All Industries" : ind}</option>)}
+                    </select>
 
-          {/* Activity Feed Sidebar */}
-          <div style={{ width: 320, flexShrink: 0, position: "sticky", top: 100 }} className="hidden-mobile">
-            <div className="card-flat" style={{ padding: 24, maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
-              <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", margin: "0 0 20px 0", color: "var(--charcoal)" }}>Recent Activity</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {activities.length === 0 ? (
-                   <div style={{ fontSize: 13, color: "var(--text-muted)" }}>No recent activity.</div>
-                ) : activities.map((act) => (
-                  <div key={act.id} style={{ display: "flex", gap: 12, position: "relative" }}>
-                    <div style={{ width: 2, background: "var(--border-light)", position: "absolute", left: 15, top: 24, bottom: -16, zIndex: 0 }} />
-                    <div style={{ 
-                      width: 32, height: 32, borderRadius: "50%", background: "white", border: "1px solid var(--border-light)", 
-                      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1, flexShrink: 0 
-                    }}>
-                      {act.status === "done" ? <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--sage)" }}>check</span> :
-                       act.status === "failed" ? <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#DC2626" }}>close</span> :
-                       <span className="material-symbols-outlined" style={{ fontSize: 14, color: "var(--saffron-main)" }}>hourglass_empty</span>}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 13, color: "var(--charcoal)", fontWeight: 500 }}>
-                        <span style={{ fontWeight: 700 }}>{act.companyName}</span>: {act.stage} {act.status}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                        {formatDistanceToNow(new Date(act.createdAt), { addSuffix: true })}
-                      </div>
-                    </div>
+                    <select className="px-4 py-2 rounded-lg bg-surface border border-outline-variant text-on-surface font-body-md hover:bg-surface-container-low transition-colors outline-none cursor-pointer" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+                      <option value="All Time">All Time</option>
+                      <option value="Today">Today</option>
+                      <option value="This Week">This Week</option>
+                      <option value="This Month">This Month</option>
+                    </select>
+
+                    <select className="px-4 py-2 rounded-lg bg-surface border border-outline-variant text-on-surface font-body-md hover:bg-surface-container-low transition-colors outline-none cursor-pointer md:ml-auto" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                      <option value="Newest">Sort: Newest</option>
+                      <option value="Oldest">Sort: Oldest</option>
+                      <option value="Company (A-Z)">Company (A-Z)</option>
+                    </select>
                   </div>
-                ))}
+                </div>
+
+                {/* Grid List */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {loading && leads.length === 0 ? (
+                    <div className="col-span-full text-center py-16 text-on-surface-variant font-body-md">Loading leads...</div>
+                  ) : filteredLeads.length === 0 ? (
+                    <div className="col-span-full bg-surface border border-outline-variant/60 rounded-xl p-16 flex flex-col items-center justify-center">
+                       <span className="material-symbols-outlined text-[48px] text-outline-variant mb-4">search_off</span>
+                       <h3 className="font-headline-sm text-headline-sm text-on-surface mb-2 font-headline-md">No leads found</h3>
+                       <p className="font-body-md text-on-surface-variant">Try adjusting your filters or search query.</p>
+                    </div>
+                  ) : (
+                    filteredLeads.map((lead) => (
+                      <div 
+                        key={lead.id} 
+                        className={`bg-surface border ${selectedLead?.id === lead.id ? 'border-primary ring-1 ring-primary' : 'border-outline-variant/60'} rounded-xl p-6 hover:shadow-sm hover:border-outline transition-all duration-300 group cursor-pointer flex flex-col h-full`}
+                        onClick={() => setSelectedLead(lead)}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2">
+                            {lead.industry}
+                            {lead.status === 'processing' && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>}
+                          </div>
+                          {lead.status === "done" ? (
+                            <span className="px-2.5 py-0.5 bg-secondary-container text-on-secondary-container text-[11px] rounded-full font-medium">Done</span>
+                          ) : lead.status === "failed" ? (
+                             <span className="px-2.5 py-0.5 bg-error-container text-on-error-container text-[11px] rounded-full font-medium">Failed</span>
+                          ) : (
+                             <span className="px-2.5 py-0.5 bg-primary-container text-on-primary-container text-[11px] rounded-full font-medium flex items-center gap-1">
+                               <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>
+                               Processing
+                             </span>
+                          )}
+                        </div>
+                        <h4 className="font-headline-md text-headline-sm text-on-surface mb-1 group-hover:text-primary transition-colors">{lead.companyName}</h4>
+                        <p className="font-body-md text-body-md text-on-surface-variant/80 mb-6">{lead.email}</p>
+                        <div className="mt-auto pt-4 border-t border-outline-variant/30 font-mono-ui text-mono-ui text-on-surface-variant/60">
+                            {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+
+              {/* Right Column: Activity Feed */}
+              <div className="w-full lg:w-80 shrink-0 lg:ml-6">
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl h-full p-6 flex flex-col max-h-[600px] sticky top-8">
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface mb-6 flex items-center gap-2 font-headline-md">
+                    <span className="material-symbols-outlined text-primary">history</span>
+                    Recent Activity
+                  </h3>
+                  <div className="flex-1 overflow-y-auto pr-2 timeline-scroll">
+                    {activities.length === 0 ? (
+                      <div className="text-on-surface-variant font-body-md text-sm">No recent activity.</div>
+                    ) : (
+                      <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-outline-variant before:via-outline-variant/50 before:to-transparent">
+                        {activities.map((act) => (
+                          <div key={act.id} className="relative flex items-start group">
+                            <div className={`absolute left-[-24px] top-1 flex h-6 w-6 items-center justify-center rounded-full bg-surface border-2 ${act.status === 'done' ? 'border-secondary' : act.status === 'failed' ? 'border-error' : 'border-primary'} ring-4 ring-surface-container-lowest z-10`}>
+                              {act.status === 'done' ? (
+                                <span className="material-symbols-outlined text-[14px] text-secondary">check</span>
+                              ) : act.status === 'failed' ? (
+                                <span className="material-symbols-outlined text-[14px] text-error">close</span>
+                              ) : (
+                                <span className="material-symbols-outlined text-[14px] text-primary animate-spin">sync</span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-body-md text-body-md text-on-surface"><span className="font-bold text-primary">{act.companyName}</span>: {act.stage} {act.status}</p>
+                              <time className="font-mono-ui text-mono-ui text-on-surface-variant/70">{formatDistanceToNow(new Date(act.createdAt), { addSuffix: true })}</time>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* Slide-over Modal for Selected Lead */}
       {selectedLead && (
         <>
           <div 
-            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", zIndex: 200 }}
+            className="fixed inset-0 bg-surface-container-highest/60 backdrop-blur-sm z-50 transition-opacity"
             onClick={() => setSelectedLead(null)}
           />
-          <div style={{ 
-            position: "fixed", top: 0, right: 0, bottom: 0, width: "100%", maxWidth: 600, 
-            background: "white", zIndex: 201, boxShadow: "-4px 0 24px rgba(0,0,0,0.1)",
-            overflowY: "auto", display: "flex", flexDirection: "column",
-            animation: "slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
-          }}>
-            <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border-light)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "white", zIndex: 10 }}>
+          <div className="fixed inset-y-0 right-0 w-full max-w-[600px] bg-surface shadow-2xl z-[51] flex flex-col transform transition-transform duration-300 ease-in-out">
+            <div className="px-8 py-6 border-b border-outline-variant flex justify-between items-center sticky top-0 bg-surface/95 backdrop-blur z-10">
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--saffron-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{selectedLead.industry}</div>
-                <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", margin: 0, color: "var(--charcoal)" }}>{selectedLead.companyName}</h2>
+                <div className="font-label-caps text-label-caps text-primary mb-1">{selectedLead.industry}</div>
+                <h2 className="font-headline-md text-headline-md text-on-surface m-0 leading-tight">{selectedLead.companyName}</h2>
               </div>
-              <button onClick={() => setSelectedLead(null)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+              <button onClick={() => setSelectedLead(null)} className="p-2 rounded-full hover:bg-surface-container-low text-on-surface-variant transition-colors cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             
-            <div style={{ padding: 32, display: "flex", flexDirection: "column", gap: 32 }}>
+            <div className="p-8 flex flex-col gap-8 overflow-y-auto">
               
               {/* Controls */}
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div className="flex gap-3 flex-wrap">
                 {selectedLead.status === "done" && selectedLead.hasPdf ? (
-                  <a href={`/api/leads/${selectedLead.id}/download`} download={`${selectedLead.companyName.replace(/\s+/g, '_')}_Report.pdf`} className="btn btn-saffron" style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none" }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span> Download Report
+                  <a href={`/api/leads/${selectedLead.id}/download`} download={`${selectedLead.companyName.replace(/\s+/g, '_')}_Report.pdf`} className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-full font-body-md font-semibold hover:bg-primary/90 transition-colors cursor-pointer" style={{ textDecoration: "none" }}>
+                    <span className="material-symbols-outlined text-[18px]">download</span> Download Report
                   </a>
                 ) : selectedLead.status === "failed" ? (
-                  <button onClick={() => handleRetry(selectedLead.id)} disabled={isRetrying} className="btn btn-dark" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>refresh</span> {isRetrying ? "Retrying..." : "Retry Pipeline"}
+                  <button onClick={() => handleRetry(selectedLead.id)} disabled={isRetrying} className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-full font-body-md font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-70">
+                    <span className="material-symbols-outlined text-[18px]">{isRetrying ? "sync" : "refresh"}</span> {isRetrying ? "Retrying..." : "Retry Pipeline"}
                   </button>
                 ) : (
-                  <button disabled className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18, animation: "spin-cw 1s linear infinite" }}>sync</span> Processing...
+                  <button disabled className="inline-flex items-center gap-2 px-5 py-2.5 border border-outline-variant text-on-surface-variant rounded-full font-body-md bg-surface-container-low opacity-80 cursor-not-allowed">
+                    <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> Processing...
                   </button>
                 )}
                 
-                <button onClick={(e) => deleteLead(selectedLead.id, e)} className="btn btn-outline" style={{ color: "#DC2626", borderColor: "#FECACA" }}>
+                <button onClick={(e) => deleteLead(selectedLead.id, e)} className="inline-flex items-center gap-2 px-5 py-2.5 border border-error text-error rounded-full font-body-md hover:bg-error-container/50 transition-colors ml-auto cursor-pointer">
                   Delete
                 </button>
               </div>
 
               {/* Details Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, background: "var(--bg)", padding: 24, borderRadius: 12, border: "1px solid var(--border-light)" }}>
+              <div className="grid grid-cols-2 gap-6 bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em", marginBottom: 4 }}>Contact Name</div>
-                  <div style={{ fontSize: 14, color: "var(--charcoal)", fontWeight: 500 }}>{selectedLead.fullName}</div>
+                  <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">Contact Name</div>
+                  <div className="font-body-md text-on-surface font-medium">{selectedLead.fullName}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em", marginBottom: 4 }}>Email</div>
-                  <div style={{ fontSize: 14, color: "var(--charcoal)", fontWeight: 500 }}>{selectedLead.email}</div>
+                  <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">Email</div>
+                  <div className="font-body-md text-on-surface font-medium">{selectedLead.email}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em", marginBottom: 4 }}>Website</div>
-                  <a href={selectedLead.website} target="_blank" style={{ fontSize: 14, color: "var(--saffron-dark)", fontWeight: 500, textDecoration: "none" }}>{selectedLead.website}</a>
+                  <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">Website</div>
+                  <a href={selectedLead.website} target="_blank" className="font-body-md text-primary font-medium hover:underline">{selectedLead.website}</a>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em", marginBottom: 4 }}>Company Size</div>
-                  <div style={{ fontSize: 14, color: "var(--charcoal)", fontWeight: 500 }}>{selectedLead.companySize}</div>
+                  <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">Company Size</div>
+                  <div className="font-body-md text-on-surface font-medium">{selectedLead.companySize}</div>
                 </div>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em", marginBottom: 4 }}>Submitted Challenge</div>
-                  <p style={{ fontSize: 14, color: "var(--charcoal)", margin: 0, lineHeight: 1.5 }}>{selectedLead.painPoints}</p>
+                <div className="col-span-2">
+                  <div className="font-label-caps text-label-caps text-on-surface-variant mb-2">Submitted Challenge</div>
+                  <p className="font-body-md text-on-surface leading-relaxed m-0 p-4 bg-surface rounded-lg border border-outline-variant/40">{selectedLead.painPoints}</p>
                 </div>
               </div>
 
               {/* Pipeline Logs */}
               <div>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", margin: "0 0 16px 0", color: "var(--charcoal)" }}>Pipeline Execution Log</h3>
+                <h3 className="font-headline-sm text-[20px] text-on-surface mb-4 font-headline-md flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[20px]">terminal</span>
+                  Pipeline Execution Log
+                </h3>
                 {selectedLead.stages.length === 0 ? (
-                  <div style={{ fontSize: 14, color: "var(--text-muted)" }}>No logs generated yet.</div>
+                  <div className="font-body-md text-on-surface-variant p-4 bg-surface-container-low rounded-lg border border-outline-variant/50">No logs generated yet.</div>
                 ) : (
-                  <div style={{ background: "#1E1E1E", borderRadius: 12, padding: "20px", color: "#A3A3A3", fontFamily: "monospace", fontSize: 13, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div className="bg-inverse-surface rounded-xl p-5 text-inverse-on-surface font-mono-ui text-[13px] flex flex-col gap-3 overflow-x-auto shadow-inner">
                     {selectedLead.stages.map(s => {
-                      let color = "#A3A3A3";
+                      let colorClass = "text-on-surface-variant";
                       let icon = "⏳";
-                      if (s.status === "done") { color = "#4ADE80"; icon = "✅"; }
-                      if (s.status === "failed") { color = "#F87171"; icon = "❌"; }
+                      if (s.status === "done") { colorClass = "text-secondary-fixed"; icon = "✅"; }
+                      if (s.status === "failed") { colorClass = "text-error-container"; icon = "❌"; }
                       
                       const time = new Date(s.createdAt).toLocaleTimeString();
                       
                       return (
-                        <div key={s.id} style={{ display: "flex", gap: 12 }}>
-                          <span style={{ color: "#737373" }}>[{time}]</span>
+                        <div key={s.id} className="flex gap-3 whitespace-nowrap">
+                          <span className="text-on-surface-variant/60">[{time}]</span>
                           <span>{icon}</span>
-                          <span style={{ color }}>{s.stage.toUpperCase()}</span>
-                          <span style={{ color: "white" }}>- {s.status}</span>
-                          {s.message && <span style={{ color: "#FBBF24" }}>// {s.message}</span>}
+                          <span className={colorClass}>{s.stage.toUpperCase()}</span>
+                          <span className="text-inverse-on-surface">- {s.status}</span>
+                          {s.message && <span className="text-primary-fixed-dim">// {s.message}</span>}
                         </div>
                       );
                     })}
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         </>
       )}
-      
-      <style>{`
-        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-      `}</style>
     </div>
   );
 }

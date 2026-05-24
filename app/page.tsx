@@ -224,28 +224,8 @@ export default function LandingPage() {
               <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>The Ripple Effect</h2>
               <p style={{ fontSize: 16, color: "#514538", maxWidth: 600, margin: "0 auto" }}>See how a single visitor action seamlessly updates your entire ecosystem in real-time.</p>
             </div>
-            <div style={{ maxWidth: 900, margin: "0 auto", background: "#fff", border: "1px solid rgba(213,195,179,0.3)", borderRadius: 16, padding: 48 }}>
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 0 }}>
-                {[
-                  { step: "1", label: "Visitor arrives", desc: "Anonymous signals detected", color: "#f6f3f2", border: "#d5c3b3" },
-                  { step: "→", label: "", desc: "", color: "transparent", border: "transparent" },
-                  { step: "2", label: "Intent recognized", desc: "Role + context inferred", color: "#fff9f0", border: "#fbba6f" },
-                  { step: "→", label: "", desc: "", color: "transparent", border: "transparent" },
-                  { step: "3", label: "Page adapts", desc: "Messaging shifts instantly", color: "#f6f3f2", border: "#d5c3b3" },
-                  { step: "→", label: "", desc: "", color: "transparent", border: "transparent" },
-                  { step: "4", label: "CRM notified", desc: "Lead enriched in real-time", color: "#f0ede8", border: "#c58b45" },
-                ].map(({ step, label, desc, color, border }) =>
-                  step === "→"
-                    ? <span key={Math.random()} style={{ fontSize: 24, color: "#d5c3b3", display: "flex", alignItems: "center", padding: "0 8px" }}>→</span>
-                    : (
-                      <div key={step} style={{ background: color, border: `1px solid ${border}`, borderRadius: 12, padding: "20px 24px", minWidth: 160, textAlign: "center" }}>
-                        <div style={{ fontFamily: "Newsreader, serif", fontSize: 28, fontWeight: 500, color: "#845411", marginBottom: 8 }}>{step}</div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: "#1b1b1b", marginBottom: 4 }}>{label}</div>
-                        <div style={{ fontSize: 12, color: "#514538" }}>{desc}</div>
-                      </div>
-                    )
-                )}
-              </div>
+            <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
+              <img src="/ripple-effect.png" alt="The Ripple Effect Pipeline" style={{ width: "100%", height: "auto", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(213,195,179,0.3)" }} />
             </div>
           </div>
         </section>
@@ -279,21 +259,8 @@ export default function LandingPage() {
               <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>Privacy by Design</h2>
               <p style={{ fontSize: 16, color: "#514538", maxWidth: 600, margin: "0 auto" }}>We believe in understanding intent without compromising identity. Here is exactly what we track and what we protect.</p>
             </div>
-            <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-              {[
-                { label: "What we observe", color: "#fff9f0", border: "#fbba6f", items: ["Page scroll depth", "Time spent per section", "Device & browser type", "Referral source", "Engagement patterns"] },
-                { label: "What we never touch", color: "#fcf9f8", border: "#d5c3b3", items: ["Your name or email", "Precise location", "Device identifiers", "Cookies without consent", "Personal identifiers"] },
-              ].map(({ label, color, border, items }) => (
-                <div key={label} style={{ background: color, border: `1px solid ${border}`, borderRadius: 16, padding: 32 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#845411", marginBottom: 20 }}>{label}</div>
-                  {items.map((item) => (
-                    <div key={item} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                      <span style={{ fontSize: 14, color: "#845411" }}>✓</span>
-                      <span style={{ fontSize: 15, color: "#1b1b1b" }}>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
+            <div style={{ maxWidth: 1000, margin: "0 auto", textAlign: "center" }}>
+              <img src="/privacy-trust-map.png" alt="Interactive Trust Map" style={{ width: "100%", height: "auto", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(213,195,179,0.3)" }} />
             </div>
           </div>
         </section>
