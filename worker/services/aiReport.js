@@ -10,6 +10,8 @@ import { streamThought } from "./redisStream.js";
 const reportSchema = z.object({
   executiveSummary: z.string().describe("3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do."),
   marketPosition: z.string().describe("2-3 sentences on their specific competitive landscape, market timing, and exact positioning."),
+  techStack: z.array(z.string()).describe("List of core technologies the company uses (e.g. ['React', 'Node.js', 'Salesforce'])."),
+  fundingStage: z.string().describe("Estimated funding stage (e.g. 'Seed', 'Series A', 'Enterprise', 'Bootstrapped')."),
   digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
   historicalComparison: z.string().optional().describe("If historical data exists, explicitly compare their current state to their past state. E.g. 'Last audit flagged X, but now Y.' Omit if no history."),
   painPoints: z.array(z.string()).min(1).describe("Specific pain points incorporating their exact stated challenge but applied to their specific business model."),
@@ -23,6 +25,11 @@ const reportSchema = z.object({
     changed: z.boolean().describe("True if significant shifts happened since the last audit."),
     summary: z.string().describe("1-2 sentences summarizing the shift.")
   }).optional().describe("Only include this if historical context was provided."),
+  signals: z.array(z.object({
+    type: z.string().describe("Type of signal (e.g., 'hiring_spike', 'funding_round', 'product_launch', 'leadership_change')"),
+    data: z.string().describe("The specific detail (e.g., 'Hiring 5 senior ML engineers')"),
+    severity: z.enum(["high", "medium", "low"])
+  })).default([]).describe("Any key market or company signals detected during research."),
   auditScores: z.object({
     digitalReadiness: z.number().int().min(1).max(10),
     digitalReadinessReason: z.string().describe("1 sentence justifying this score."),

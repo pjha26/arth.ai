@@ -7,6 +7,7 @@ import { sendEmail } from "./services/emailService.js";
 import { storeReportIntelligence } from "./services/vectorStore.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
+import { learnFromReport } from "./services/selfLearning.js";
 import dotenv from "dotenv";
 import pkg from "@prisma/client/index.js";
 const { PrismaClient } = pkg;
@@ -145,6 +146,13 @@ const worker = new Worker(
         await storeReportIntelligence(lead, report, companyId, reportId);
       } catch (e) {
         console.warn(`[Job ${jobId}] RAG vector storage failed:`, e.message);
+      }
+
+      // ── Step 8: Self-Learning Intelligence Layer ──
+      try {
+        await learnFromReport(report, companyId, lead);
+      } catch (e) {
+        console.warn(`[Job ${jobId}] Self-learning extraction failed:`, e.message);
       }
 
       await prisma.report.update({
