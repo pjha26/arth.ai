@@ -17,7 +17,10 @@ const langfuse = new Langfuse({
 
 const reportSchema = z.object({
   executiveSummary: z.string().describe("3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do."),
-  marketPosition: z.string().describe("2-3 sentences on their specific competitive landscape, market timing, and exact positioning."),
+  marketPosition: z.object({
+    reasoning: z.string().describe("Deep step-by-step chain of thought reasoning analyzing their competitive landscape and market timing. Output 2-3 paragraphs of pure analytical thinking."),
+    content: z.string().describe("2-3 sentences on their specific competitive landscape, market timing, and exact positioning.")
+  }),
   techStack: z.array(z.string()).describe("List of core technologies the company uses (e.g. ['React', 'Node.js', 'Salesforce'])."),
   fundingStage: z.string().describe("Estimated funding stage (e.g. 'Seed', 'Series A', 'Enterprise', 'Bootstrapped')."),
   digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
@@ -36,7 +39,10 @@ const reportSchema = z.object({
     evidence: z.array(z.string()).describe("Direct evidence quotes or data points found."),
     category: z.enum(["verified", "inferred", "speculative"])
   })).min(1),
-  recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context. NEVER include generic steps like 'Schedule a call with the arth.ai team'. These must be genuine recommendations the company can act on independently."),
+  recommendedNextSteps: z.array(z.object({
+    reasoning: z.string().describe("Deep chain of thought reasoning explaining why this specific step is critical right now, considering their market position and pain points."),
+    content: z.string().describe("Actionable step specific to implementing the opportunities and their industry context. NEVER include generic steps.")
+  })).min(1).describe("Genuine recommendations the company can act on independently."),
   deltaInsights: z.object({
     changed: z.boolean().describe("True if significant shifts happened since the last audit."),
     summary: z.string().describe("1-2 sentences summarizing the shift.")
@@ -340,6 +346,21 @@ If any score < 7, reject it (approved: false) and provide harsh feedback on exac
       metadata: { jobId }
     });
 
+    // Calculate simulated thinking tokens based on length of reasoning fields
+    let totalThinkingTokens = 0;
+    if (draftReport.marketPosition?.reasoning) {
+      totalThinkingTokens += Math.round(draftReport.marketPosition.reasoning.length / 4);
+    }
+    if (Array.isArray(draftReport.recommendedNextSteps)) {
+      draftReport.recommendedNextSteps.forEach(step => {
+        if (step.reasoning) totalThinkingTokens += Math.round(step.reasoning.length / 4);
+      });
+    }
+
+    if (totalThinkingTokens > 0) {
+      trace.update({ metadata: { jobId, thinking_tokens: totalThinkingTokens } });
+    }
+
     trace.score({ name: "specificity", value: object.specificityScore });
     trace.score({ name: "actionability", value: object.actionabilityScore });
     trace.score({ name: "accuracy", value: object.accuracyScore });
@@ -452,7 +473,10 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
 function getFallbackReport(lead) {
   return {
     executiveSummary: `${lead.companyName} is a ${lead.companySize} company operating in the ${lead.industry} sector. Based on the information provided, the company is actively looking to address operational challenges and scale efficiently. This report highlights key AI opportunities aligned with their stated goals.`,
-    marketPosition: `Within the ${lead.industry} industry, companies of ${lead.companyName}'s size typically face competitive pressure to differentiate through operational efficiency and customer experience. Strategic AI adoption can provide a meaningful competitive advantage.`,
+    marketPosition: {
+      reasoning: `The ${lead.industry} space is becoming highly saturated. Companies without strong AI automation will struggle with margins. ${lead.companyName}'s size makes them particularly vulnerable to agile competitors, meaning operational differentiation is critical right now.`,
+      content: `Within the ${lead.industry} industry, companies of ${lead.companyName}'s size typically face competitive pressure to differentiate through operational efficiency and customer experience. Strategic AI adoption can provide a meaningful competitive advantage.`
+    },
     digitalPresence: `${lead.companyName} has an established web presence at ${lead.website}. Optimizing their digital channels and automating customer-facing workflows could significantly improve conversion and retention.`,
     painPoints: [
       { text: `Addressing the primary challenge: ${lead.painPoints}`, confidence: 0.9, evidence: [], category: "verified" },
@@ -486,10 +510,22 @@ function getFallbackReport(lead) {
       },
     ],
     recommendedNextSteps: [
-      `Map your top 5 repetitive workflows at ${lead.companyName} for automation potential scoring.`,
-      `Audit current software expenditures to identify consolidation opportunities via multi-purpose AI.`,
-      `Pilot one AI automation in a low-risk operational area within 30 days.`,
-      `Define success metrics (time saved, conversion uplift, cost reduction) before implementation.`,
+      {
+        reasoning: "Automation is impossible without mapping current state. They need to identify exactly where the bottlenecks are.",
+        content: `Map your top 5 repetitive workflows at ${lead.companyName} for automation potential scoring.`
+      },
+      {
+        reasoning: "Software bloat is common at this stage. AI can replace multiple point solutions, immediately improving margin.",
+        content: `Audit current software expenditures to identify consolidation opportunities via multi-purpose AI.`
+      },
+      {
+        reasoning: "High-risk, high-cost projects fail. A low-risk pilot builds internal momentum and proves ROI.",
+        content: `Pilot one AI automation in a low-risk operational area within 30 days.`
+      },
+      {
+        reasoning: "Without defined metrics, AI adoption becomes a science project instead of a business driver.",
+        content: `Define success metrics (time saved, conversion uplift, cost reduction) before implementation.`
+      }
     ],
     auditScores: {
       digitalReadiness: 6,

@@ -100,7 +100,7 @@ function injectData(template, lead, enriched, report) {
       (step, i) => `
     <div class="card step-card">
       <div class="step-num">${i + 1}</div>
-      <div class="step-text">${escapeHtml(step)}</div>
+      <div class="step-text">${escapeHtml(step.content || step)}</div>
     </div>`
     )
     .join("");
@@ -129,7 +129,7 @@ function injectData(template, lead, enriched, report) {
     .replace(/\{\{META_STRIP_HTML\}\}/g, metaStripHtml)
     .replace(/\{\{LOGO_HTML\}\}/g, logoHtml)
     .replace(/\{\{EXECUTIVE_SUMMARY\}\}/g, escapeHtml(report.executiveSummary))
-    .replace(/\{\{MARKET_POSITION\}\}/g, escapeHtml(report.marketPosition))
+    .replace(/\{\{MARKET_POSITION\}\}/g, escapeHtml(report.marketPosition?.content || report.marketPosition))
     .replace(/\{\{DIGITAL_PRESENCE\}\}/g, escapeHtml(report.digitalPresence))
     .replace(/\{\{PAIN_POINTS_HTML\}\}/g, painPointsHtml)
     .replace(/\{\{OPPORTUNITIES_HTML\}\}/g, opportunitiesHtml)

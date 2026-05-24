@@ -448,6 +448,35 @@ function LeadsView({ leads, setLeads, loading }: any) {
                           </>
                         )}
                       </ul>
+                      
+                      {(selectedLead.insights?.marketPosition?.reasoning || (selectedLead.insights?.recommendedNextSteps && selectedLead.insights.recommendedNextSteps.some((s: any) => s.reasoning))) && (
+                        <div style={{ marginTop: '1.5rem' }}>
+                          <details className="arth-reasoning-collapsible" style={{ background: '#F8F9FA', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px' }}>
+                            <summary style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>psychology</span>
+                              View AI Reasoning
+                            </summary>
+                            <div style={{ marginTop: '12px', fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6 }}>
+                              {selectedLead.insights?.marketPosition?.reasoning && (
+                                <div style={{ marginBottom: '12px' }}>
+                                  <strong style={{ color: '#334155' }}>Market Position Logic:</strong>
+                                  <p style={{ marginTop: '4px' }}>{selectedLead.insights.marketPosition.reasoning}</p>
+                                </div>
+                              )}
+                              {selectedLead.insights?.recommendedNextSteps && selectedLead.insights.recommendedNextSteps.some((s: any) => s.reasoning) && (
+                                <div>
+                                  <strong style={{ color: '#334155' }}>Strategic Recommendations Logic:</strong>
+                                  <ul style={{ marginTop: '4px', paddingLeft: '16px' }}>
+                                    {selectedLead.insights.recommendedNextSteps.filter((s: any) => s.reasoning).map((step: any, idx: number) => (
+                                      <li key={idx} style={{ marginBottom: '6px' }}>{step.reasoning}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </details>
+                        </div>
+                      )}
                     </div>
 
                     <div className="arth-panel-actions">
