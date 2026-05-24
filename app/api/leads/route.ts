@@ -45,20 +45,26 @@ export async function POST(request: Request) {
 
     const lead = result.data;
 
-    // Deduplication check
+    // Deduplication check with 30-day cooldown
     const existingLead = await prisma.lead.findFirst({
       where: { email: lead.email },
+      orderBy: { createdAt: 'desc' }
     });
 
     if (existingLead) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: "A report for this email address has already been requested.",
-          existingLeadId: existingLead.id
-        },
-        { status: 409 }
-      );
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      if (existingLead.createdAt > thirtyDaysAgo) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: "A report for this email address has already been requested within the last 30 days.",
+            existingLeadId: existingLead.id
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const jobId = randomUUID();

@@ -2,7 +2,7 @@ import { google } from "@ai-sdk/google";
 import { generateText, generateObject, tool } from "ai";
 import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
-import { searchPastReports } from "./vectorStore.js";
+import { searchPastReports, getCompanyHistory } from "./vectorStore.js";
 
 // ─── Schemas ─────────────────────────────────────────────────────────────
 
@@ -10,6 +10,7 @@ const reportSchema = z.object({
   executiveSummary: z.string().describe("3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do."),
   marketPosition: z.string().describe("2-3 sentences on their specific competitive landscape, market timing, and exact positioning."),
   digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
+  historicalComparison: z.string().optional().describe("If historical data exists, explicitly compare their current state to their past state. E.g. 'Last audit flagged X, but now Y.' Omit if no history."),
   painPoints: z.array(z.string()).min(1).describe("Specific pain points incorporating their exact stated challenge but applied to their specific business model."),
   aiOpportunities: z.array(z.object({
     title: z.string().describe("Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')"),
@@ -69,14 +70,24 @@ async function runResearchAgent(lead) {
 
 // ─── 2. Analysis Agent ───────────────────────────────────────────────────
 
-async function runAnalysisAgent(lead, researchData, enrichedContext) {
+async function runAnalysisAgent(lead, researchData, enrichedContext, companyHistory) {
   console.log(`[Analysis Agent 📊] Finding patterns...`);
+  
+  let prompt = `Analyze ${lead.companyName} in ${lead.industry}.
+Initial Context: ${enrichedContext}
+Raw Research: ${researchData}`;
+
+  if (companyHistory) {
+    prompt += `\n\nLONGITUDINAL HISTORY (VERY IMPORTANT):
+This company submitted a lead in the past. Here is their previous report:
+${companyHistory}
+You MUST compare their previous state to their current state. Note what gaps they closed, what new risks emerged, and how their pain points evolved.`;
+  }
+
   const { text } = await generateText({
     model: geminiModel,
     system: "You are a Principal Strategy Analyst. Review the raw data, use tools to find tech stack, hiring signals, and historical RAG patterns. Output a synthesized strategic analysis document.",
-    prompt: `Analyze ${lead.companyName} in ${lead.industry}.
-Initial Context: ${enrichedContext}
-Raw Research: ${researchData}`,
+    prompt: prompt,
     maxSteps: 4,
     tools: {
       search_past_reports: tool({
@@ -110,7 +121,7 @@ Raw Research: ${researchData}`,
 
 // ─── 3. Writer Agent ─────────────────────────────────────────────────────
 
-async function runWriterAgent(lead, analysisData, previousFeedback) {
+async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory) {
   console.log(`[Writer Agent ✍️] Drafting JSON report...`);
   
   let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
@@ -119,6 +130,11 @@ Stated Challenge: ${lead.painPoints}
 Analysis Document:
 ${analysisData}
 `;
+
+  if (companyHistory) {
+    prompt += `\n\nLONGITUDINAL HISTORY:
+Because this company has history, you MUST populate the 'historicalComparison' field highlighting their evolution over time.`;
+  }
 
   if (previousFeedback) {
     prompt += `\n\nCRITIC FEEDBACK FROM PREVIOUS DRAFT (YOU MUST FIX THESE ISSUES):
@@ -171,8 +187,13 @@ export async function generateAiReport(lead, enriched) {
   console.log(`\n[Orchestrator 🧠] Starting multi-agent pipeline for ${lead.companyName}...`);
   
   try {
+    const companyHistory = await getCompanyHistory(lead.companyName);
+    if (companyHistory) {
+      console.log(`[Orchestrator 🧠] Found exact historical match for ${lead.companyName}! Triggering longitudinal analysis.`);
+    }
+
     const researchData = await runResearchAgent(lead);
-    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext);
+    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory);
     
     let draftReport = null;
     let approved = false;
@@ -183,7 +204,7 @@ export async function generateAiReport(lead, enriched) {
       iterations++;
       console.log(`\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
       
-      draftReport = await runWriterAgent(lead, analysisData, criticFeedback);
+      draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory);
       const critique = await runCriticAgent(lead, draftReport);
       
       if (critique.approved) {

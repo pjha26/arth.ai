@@ -81,3 +81,22 @@ export async function searchPastReports(query) {
     return "Vector search failed or is unavailable.";
   }
 }
+
+export async function getCompanyHistory(companyName) {
+  try {
+    console.log(`[VectorStore] Checking exact history for ${companyName}...`);
+    const results = await prisma.reportChunk.findMany({
+      where: { companyName },
+      orderBy: { createdAt: 'desc' },
+      take: 1
+    });
+
+    if (results.length > 0) {
+      return results[0].content;
+    }
+    return null;
+  } catch (error) {
+    console.error(`[VectorStore] Error fetching company history:`, error);
+    return null;
+  }
+}
