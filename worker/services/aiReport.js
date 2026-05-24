@@ -49,7 +49,7 @@ const criticSchema = z.object({
   feedback: z.string().describe("Brutally honest feedback on what needs to be improved in the rewrite. Empty if approved.")
 });
 
-const geminiModel = google("gemini-1.5-flash");
+const geminiModel = google("gemini-1.5-flash-latest");
 
 // ─── 1. Research Agent ───────────────────────────────────────────────────
 

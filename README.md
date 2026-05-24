@@ -51,7 +51,9 @@ ArthAI is an advanced, AI-powered Intelligence CRM designed to generate automate
 - **BullMQ**: Robust Redis-based queue for managing long-running background jobs.
 
 ### AI & Data Enrichment
-- **Google Generative AI (Gemini 2.5 Pro)**: The core intelligence engine powering the insights.
+- **Google Generative AI (Gemini 2.5 Pro / Flash)**: The core intelligence engine powering the insights.
+- **pgvector**: Postgres extension used for vector embeddings and Semantic Search.
+- **RAG (Retrieval-Augmented Generation)**: Vectorizes the generated reports to allow conversational querying (Report Chat) of the insights directly from the dashboard.
 - **Vercel AI SDK (`ai` & `@ai-sdk/google`)**: Standardized streaming and structured data extraction from Gemini.
 - **Puppeteer**: Headless Chrome for complex website scraping and PDF generation.
 - **Cheerio**: Lightweight HTML parser for static site scraping.

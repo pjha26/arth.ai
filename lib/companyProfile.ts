@@ -99,7 +99,7 @@ Be specific to ${name}'s actual business. No generic filler. Respond with raw JS
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       systemInstruction: "You are an expert SaaS copywriter. Output strictly valid JSON without any markdown tags.",
     });
 

@@ -98,7 +98,7 @@ Rules:
 
     // 5. Stream the response using gemini-1.5-flash (or pro)
     const result = await streamText({
-      model: google("gemini-1.5-flash"),
+      model: google("gemini-1.5-flash-latest"),
       system: systemPrompt,
       messages: messages.slice(-4), // keep last 3 + the new one for flow
       onFinish: async ({ text }) => {
