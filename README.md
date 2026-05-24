@@ -1,6 +1,20 @@
-# ArthAI - Intelligence CRM
+# ArthAI - AI Intelligence CRM & Autonomous Multi-Agent Pipeline
 
-ArthAI is an advanced, AI-powered Intelligence CRM designed to generate automated, deep-dive intelligence reports for inbound leads. By analyzing a prospect's company website and stated challenges, ArthAI automatically synthesizes strategic insights, technology stacks, and industry benchmarks using Google's Gemini 2.5 Pro.
+ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to generate automated, deep-dive intelligence reports for inbound leads. Built around an autonomous multi-agent pipeline, ArthAI dynamically scrapes websites, orchestrates specialized AI agents to research and analyze data, and synthesizes deep strategic insights using Google's Gemini 2.5 Pro.
+
+---
+
+## 🏗️ System Architecture
+
+ArthAI utilizes a robust, decoupled architecture to handle AI workloads efficiently without blocking the user interface:
+
+1. **Next.js Web Tier**: Handles incoming traffic, serves the premium dashboard, and manages real-time streaming API routes (including the Live Preview Demo and Report Chat).
+2. **Redis Task Queue (BullMQ)**: Incoming requests are placed on a persistent queue, decoupling slow web scraping and LLM generation times from the frontend UI.
+3. **Autonomous Node.js Worker**: A standalone process that consumes the queue and orchestrates a multi-agent workflow:
+   - **Research Agent**: Scrapes the web using Puppeteer/Cheerio and fetches external metadata via Clearbit and Wikipedia APIs.
+   - **Analysis Agent**: Evaluates the raw data against the prospect's stated pain points to synthesize structured JSON intelligence.
+   - **Vectorization Agent**: Chunks the generated report into semantic blocks and embeds them into `pgvector` for conversational RAG interactions.
+4. **PostgreSQL + pgvector Database**: Acts as the central nervous system, storing Leads, CRM metrics, pipeline states, and vector embeddings natively via Prisma.
 
 ---
 
@@ -8,13 +22,12 @@ ArthAI is an advanced, AI-powered Intelligence CRM designed to generate automate
 
 1. **Inbound Lead Submission (Landing Page)**
    - Prospects visit the landing page and submit their Company URL, Persona (e.g., Founder, CTO), and specific pain points.
-   - The Next.js API validates this data via **Zod** and enqueues a processing job in a background Redis queue.
-   - A shell record is created in the PostgreSQL database (via Prisma) with a "Processing" status.
+   - The Next.js API validates this data via **Zod** and enqueues a processing job in the Redis queue.
 
-2. **Background Processing Pipeline (BullMQ + Puppeteer Worker)**
-   - A separate Node.js worker picks up the job, keeping the main Next.js thread unblocked.
-   - **Puppeteer & Cheerio** scrape the prospect's live website to extract real-time context, meta tags, text content, and underlying technology signatures.
-   - **Clearbit & Wikipedia APIs** fetch fallback context, logo imagery, and Wikipedia summaries for instant context building.
+2. **Background Processing Pipeline**
+   - The dedicated Node.js worker picks up the job.
+   - Puppeteer & Cheerio scrape the live website for real-time context.
+   - Clearbit & Wikipedia APIs fetch fallback context and logos.
 
 3. **AI Intelligence Engine (Gemini 2.5 Pro)**
    - The scraped HTML and prospect pain points are fed into **Gemini 2.5 Pro** via the `@ai-sdk/google` integration.
@@ -24,16 +37,15 @@ ArthAI is an advanced, AI-powered Intelligence CRM designed to generate automate
      - An "Intent Score" calculating how likely the lead is to convert.
      - Custom industry benchmarks.
 
-4. **PDF Generation & Storage**
-   - The structured JSON is formatted into a beautiful HTML template.
-   - Puppeteer renders the HTML and generates a downloadable PDF file, saving it locally to `public/reports`.
+4. **RAG Vectorization & PDF Generation**
+   - The structured JSON is formatted into a beautiful HTML template and rendered to PDF via Puppeteer.
+   - The report is simultaneously chunked and embedded via Gemini `text-embedding-004` into `pgvector`.
    - The database is updated to mark the pipeline status as "Done".
 
 5. **Intelligence CRM Dashboard (Sales / Admin View)**
-   - Sales reps access the CRM at `/dashboard`, which features a premium, Notion-style split-pane interface.
-   - **Live Polling:** If reports are generating, the dashboard polls every 5 seconds to provide live pipeline status updates.
+   - Sales reps access the CRM at `/dashboard`, featuring a premium, Notion-style split-pane interface.
    - **Analytics Tab:** Provides high-level metrics, industry breakdown bars, persona performance cards, a 24/7 submission heatmap, and an AI-generated daily Trend Feed.
-   - **Leads & Reports Tab:** Shows a robust list/grid of all inbound leads. Clicking a lead smoothly slides in a 30% detail panel revealing the pipeline status, AI insights, and a one-click PDF download button.
+   - **Leads & Reports Tab:** Shows a robust list/grid of all inbound leads. Clicking a lead smoothly slides in a detail panel revealing AI insights, a one-click PDF download, and a native **Report Chat** UI.
 
 ---
 
@@ -71,27 +83,36 @@ ArthAI is an advanced, AI-powered Intelligence CRM designed to generate automate
 
 ## ✨ Features Implemented
 
-### 1. Fully Autonomous Intelligence Pipeline
-- Zero manual input required from sales reps; the system works 24/7.
-- Dedicated Worker architecture ensures the website remains incredibly fast even when processing dozens of concurrent reports.
+### 1. Autonomous Multi-Agent Pipeline
+- The core of ArthAI is a complex pipeline where a specialized Research Agent and Analysis Agent collaborate to generate insights without human intervention.
+- The pipeline isolates heavy, long-running AI inferences from the web interface using a dedicated BullMQ worker.
 
-### 2. Beautiful Analytics Dashboard
+### 2. RAG & Conversational Report Chat
+- Integrated **Retrieval-Augmented Generation (RAG)** pipeline using `pgvector` and Gemini's embeddings.
+- Every generated AI report is chunked, embedded, and stored natively, allowing users to "chat with the report" and ask deeply specific context-aware questions right from the dashboard.
+- Chat history is persisted in Postgres for natural, flowing conversations.
+
+### 3. Interactive Live Preview Engine
+- Integrated directly into the landing page to instantly demonstrate the platform's value.
+- Streams live, AI-generated intelligence about any inputted company using Vercel AI SDK and Gemini Flash without requiring a signup.
+
+### 4. Beautiful Analytics Dashboard
 - Custom SVG sparklines and animated metric counters.
 - **AI Trend Feed**: Synthesizes the database of leads into readable, actionable insights (e.g., "SaaS companies are trending up this week").
 - **Submission Heatmap**: A custom 7x24 grid visualizing exactly when prospects submit leads.
 - **Industry & Persona Breakdowns**: Auto-aggregates data into visual progress bars and colored cards.
 
-### 3. "Notion-Style" CRM Interface
+### 5. "Notion-Style" CRM Interface
 - **70/30 Split Pane Layout**: Smoothly transitions to reveal a detail panel without jarring page reloads.
 - **Grid vs List Toggle**: Switch between a compact table view and a Kanban-style card grid.
 - **Toolbar & Filtering**: Filter prospects instantly by Name, Email, Status, or Industry.
 
-### 4. Snappy Micro-Interactions
+### 6. Snappy Micro-Interactions
 - **Optimistic Deletion**: Deleting a lead removes it instantly from the UI, making the app feel incredibly responsive.
 - **Framer Motion Waterfalls**: Rows cascade onto the screen smoothly.
 - **Floating Bulk Actions**: Selecting checkboxes summons a slick dark-mode action bar for mass-downloads or deletions.
 - **Live State Sync**: Processing leads pulse with an amber dot, and transition to a green dot the second the AI completes the task without requiring a manual refresh.
 
-### 5. Advanced PDF Generation
+### 7. Advanced PDF Generation
 - Fully automated, styled HTML-to-PDF rendering via Puppeteer, completely invisible to the user.
 - Downloads are immediately accessible via `/api/leads/[id]/download`.
