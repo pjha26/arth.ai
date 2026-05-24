@@ -67,12 +67,23 @@ model Report {
   aiSummary     String?
   
   status        String   @default("pending") // pending | processing | done | failed
+  chatEnabled   Boolean  @default(false)
   generatedAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
   company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   stages        PipelineStage[]
+  chatMessages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  reportId  String
+  role      String   // "user" or "assistant"
+  content   String
+  createdAt DateTime @default(now())
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
 model PipelineStage {

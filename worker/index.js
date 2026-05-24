@@ -165,6 +165,7 @@ const worker = new Worker(
         where: { id: reportId },
         data: { 
           status: "done",
+          chatEnabled: true,
           aiSummary: report?.executiveSummary || null,
           insights: report || {},
           deltaInsights: report.programmaticDelta || report?.deltaInsights || null,

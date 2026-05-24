@@ -436,7 +436,7 @@ function LeadsView({ leads, setLeads, loading }: any) {
                     </div>
 
                     <div className="arth-panel-actions">
-                      <a href={`/api/leads/${selectedLead.id}/download`} download className="arth-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: 12, borderRadius: 8, textDecoration: 'none' }}>Download Full PDF</a>
+                      <Link href={`/dashboard/reports/${selectedLead.id}`} className="arth-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: 12, borderRadius: 8, textDecoration: 'none' }}>View Report & Chat</Link>
                       <button className="arth-btn-secondary" style={{ width: '100%', padding: 12, borderRadius: 8, marginTop: 8 }}>Re-Audit Company</button>
                     </div>
                   </>

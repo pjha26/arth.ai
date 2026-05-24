@@ -9,32 +9,73 @@ const embeddingModel = google.textEmbeddingModel('text-embedding-004');
 
 export async function storeReportIntelligence(lead, report, companyId, reportId) {
   try {
-    console.log(`[VectorStore] Embedding intelligence for ${lead.companyName}...`);
+    console.log(`[VectorStore] Chunking and embedding intelligence for ${lead.companyName}...`);
     
-    // Create a rich text chunk representing the core insights
-    const chunkContent = `
+    const chunks = [];
+    
+    // Chunk 1: Profile & Summary
+    chunks.push(`
 Company: ${lead.companyName}
 Industry: ${lead.industry}
-Pain Points: ${lead.painPoints}
-Executive Summary: ${report.executiveSummary}
-AI Opportunities Suggested: ${report.aiOpportunities.map(o => o.title).join(", ")}
-    `.trim();
+Persona: ${lead.personaType || 'General'}
+Stated Challenge: ${lead.painPoints}
+Executive Summary: ${report.executiveSummary || 'N/A'}
+    `.trim());
 
-    // Generate embedding
-    const { embedding } = await embed({
-      model: embeddingModel,
-      value: chunkContent,
-    });
+    // Chunk 2: Identified Pain Points
+    if (report.painPoints && Array.isArray(report.painPoints)) {
+      chunks.push(`
+Company: ${lead.companyName}
+Deep Insight Pain Points:
+${report.painPoints.map(p => "- " + p).join('\n')}
+      `.trim());
+    }
 
-    // We use Prisma raw query for pgvector insertions
-    const embeddingStr = `[${embedding.join(',')}]`;
+    // Chunk 3...N: AI Opportunities
+    if (report.aiOpportunities && Array.isArray(report.aiOpportunities)) {
+      report.aiOpportunities.forEach((opp, i) => {
+        chunks.push(`
+Company: ${lead.companyName}
+AI Opportunity ${i + 1}: ${opp.title}
+Description: ${opp.description}
+Impact: ${opp.impact || 'Unknown'} | Urgency: ${opp.urgency || 'Unknown'}
+        `.trim());
+      });
+    }
 
-    await prisma.$executeRaw`
-      INSERT INTO "Embedding" (id, "companyId", "reportId", chunk, embedding, "createdAt")
-      VALUES (gen_random_uuid(), ${companyId}, ${reportId}, ${chunkContent}, ${embeddingStr}::vector, NOW())
-    `;
+    // Chunk Next Steps
+    if (report.recommendedNextSteps && Array.isArray(report.recommendedNextSteps)) {
+      chunks.push(`
+Company: ${lead.companyName}
+Recommended Actionable Next Steps:
+${report.recommendedNextSteps.map(s => "- " + s).join('\n')}
+      `.trim());
+    }
 
-    console.log(`[VectorStore] Successfully stored vectorized intelligence for ${lead.companyName}.`);
+    let successCount = 0;
+    // Embed and store each chunk
+    for (const chunkContent of chunks) {
+      if (!chunkContent || chunkContent.length < 10) continue;
+      
+      try {
+        const { embedding } = await embed({
+          model: embeddingModel,
+          value: chunkContent,
+        });
+
+        const embeddingStr = `[${embedding.join(',')}]`;
+
+        await prisma.$executeRaw`
+          INSERT INTO "Embedding" (id, "companyId", "reportId", chunk, embedding, "createdAt")
+          VALUES (gen_random_uuid(), ${companyId}, ${reportId}, ${chunkContent}, ${embeddingStr}::vector, NOW())
+        `;
+        successCount++;
+      } catch (err) {
+        console.warn(`[VectorStore] Failed to embed chunk for ${lead.companyName}:`, err.message);
+      }
+    }
+
+    console.log(`[VectorStore] Successfully stored ${successCount} vectorized chunks for ${lead.companyName}.`);
   } catch (error) {
     console.error(`[VectorStore] Error storing intelligence:`, error);
   }
