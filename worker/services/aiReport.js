@@ -2,7 +2,7 @@ import { google } from "@ai-sdk/google";
 import { generateText, generateObject, tool } from "ai";
 import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
-import { searchPastReports, getCompanyHistory } from "./vectorStore.js";
+import { searchPastReports, getCompanyHistory, getSimilarCompanies } from "./vectorStore.js";
 import { getIndustryBenchmarks } from "./selfLearning.js";
 import { streamThought } from "./redisStream.js";
 
@@ -86,12 +86,18 @@ async function runResearchAgent(lead, jobId) {
 
 // ─── 2. Analysis Agent ───────────────────────────────────────────────────
 
-async function runAnalysisAgent(lead, researchData, enrichedContext, companyHistory, jobId) {
+async function runAnalysisAgent(lead, researchData, enrichedContext, companyHistory, similarContext, jobId) {
   streamThought(jobId, `[Analysis Agent 📊] Finding patterns...`);
   
   let prompt = `Analyze ${lead.companyName} in ${lead.industry}.
 Initial Context: ${enrichedContext}
 Raw Research: ${researchData}`;
+
+  if (similarContext) {
+    prompt += `\n\nSIMILAR COMPANIES (RAG CONTEXT):
+Look for patterns in these past similar companies (e.g. '3/5 were underinvesting in SEO') and explicitly highlight these patterns in your analysis.
+${similarContext}`;
+  }
 
   if (companyHistory) {
     prompt += `\n\nLONGITUDINAL HISTORY (VERY IMPORTANT):
@@ -235,8 +241,15 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       streamThought(jobId, `[Orchestrator 🧠] Loaded industry benchmarks for ${lead.industry}.`);
     }
 
+    const similarCompanies = await getSimilarCompanies(lead);
+    let similarContext = "";
+    if (similarCompanies && similarCompanies.length > 0) {
+      streamThought(jobId, `[Orchestrator 🧠] Found ${similarCompanies.length} similar past reports via pgvector.`);
+      similarContext = similarCompanies.map((r, i) => `Case Study ${i+1} (${r.companyName}): ${r.content}`).join("\n\n");
+    }
+
     const researchData = await runResearchAgent(lead, jobId);
-    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory, jobId);
+    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory, similarContext, jobId);
     
     let draftReport = null;
     let approved = false;

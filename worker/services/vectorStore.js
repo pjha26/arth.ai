@@ -83,6 +83,32 @@ export async function searchPastReports(query) {
   }
 }
 
+export async function getSimilarCompanies(lead) {
+  try {
+    const query = `${lead.industry} ${lead.painPoints}`;
+    const { embedding } = await embed({
+      model: embeddingModel,
+      value: query,
+    });
+    const embeddingStr = `[${embedding.join(',')}]`;
+
+    const results = await prisma.$queryRaw`
+      SELECT c.name as "companyName", c.industry, e.chunk as content, 
+             1 - (e.embedding <=> ${embeddingStr}::vector) as similarity
+      FROM "Embedding" e
+      JOIN "Company" c ON c.id = e."companyId"
+      WHERE 1 - (e.embedding <=> ${embeddingStr}::vector) > 0.5
+      ORDER BY similarity DESC
+      LIMIT 5
+    `;
+    
+    return results;
+  } catch (error) {
+    console.error(`[VectorStore] Error fetching similar companies:`, error);
+    return [];
+  }
+}
+
 export async function getCompanyHistory(companyId) {
   try {
     console.log(`[VectorStore] Checking exact history for companyId: ${companyId}...`);
