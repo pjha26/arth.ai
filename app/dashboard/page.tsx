@@ -337,7 +337,7 @@ function LeadsView({ leads, setLeads, loading }: any) {
                 className={`arth-lead-row ${selectedLeadId === lead.id ? 'active' : ''} ${viewMode === 'grid' ? 'is-card' : ''}`}
                 onClick={() => setSelectedLeadId(lead.id)}
               >
-                <input type="checkbox" className="arth-checkbox" checked={selectedRows.has(lead.id)} onClick={(e) => toggleRow(lead.id, e)} />
+                <input type="checkbox" className="arth-checkbox" checked={selectedRows.has(lead.id)} onChange={(e: any) => toggleRow(lead.id, e)} />
                 
                 <div className="arth-lead-avatar">
                   <img src={`https://www.google.com/s2/favicons?domain=${lead.website}&sz=64`} alt="" />

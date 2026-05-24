@@ -15,13 +15,13 @@ const reportSchema = z.object({
   fundingStage: z.string().describe("Estimated funding stage (e.g. 'Seed', 'Series A', 'Enterprise', 'Bootstrapped')."),
   digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
   historicalComparison: z.string().optional().describe("If historical data exists, explicitly compare their current state to their past state. E.g. 'Last audit flagged X, but now Y.' Omit if no history."),
-  painPoints: z.array(z.string()).min(1).describe("Specific pain points incorporating their exact stated challenge but applied to their specific business model."),
+  painPoints: z.array(z.string()).min(1).describe("Specific pain points. MUST ALWAYS BE FULL SENTENCES. Never show raw tag labels like 'Scaling my team' — instead expand each tag into a full insight sentence applied to their specific business model."),
   aiOpportunities: z.array(z.object({
     title: z.string().describe("Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')"),
     description: z.string().describe("2-3 sentences explaining exactly how this AI solves their specific pain point in their specific industry."),
     impact: z.enum(["High", "Medium", "Low"])
   })).min(1),
-  recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context."),
+  recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context. NEVER include generic steps like 'Schedule a call with the arth.ai team'. These must be genuine recommendations the company can act on independently."),
   deltaInsights: z.object({
     changed: z.boolean().describe("True if significant shifts happened since the last audit."),
     summary: z.string().describe("1-2 sentences summarizing the shift.")
@@ -146,8 +146,13 @@ You MUST compare their previous state to their current state. Note what gaps the
 async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory, jobId, industryBenchmarks) {
   streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report...`);
   
-  let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
+Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
 Stated Challenge: ${lead.painPoints}
+
+CRITICAL RULES:
+1. Pain points MUST be full insight sentences applying the user's raw tags to their specific business. NEVER return raw labels like "Scaling my team".
+2. Recommended next steps MUST be genuine recommendations the company can act on independently. NEVER include "Schedule a call with the arth.ai team" as a step.
+3. Every insight must reference the actual company name at least once. No generic "the company" references.
 
 Analysis Document:
 ${analysisData}
@@ -292,14 +297,14 @@ function getFallbackReport(lead) {
     marketPosition: `Within the ${lead.industry} industry, companies of ${lead.companyName}'s size typically face competitive pressure to differentiate through operational efficiency and customer experience. Strategic AI adoption can provide a meaningful competitive advantage.`,
     digitalPresence: `${lead.companyName} has an established web presence at ${lead.website}. Optimizing their digital channels and automating customer-facing workflows could significantly improve conversion and retention.`,
     painPoints: [
-      lead.painPoints,
-      `Scaling operations without proportionally increasing headcount`,
-      `Maintaining consistent quality and response times as the team grows`,
+      `Addressing the primary challenge: ${lead.painPoints}`,
+      `Scaling operations without proportionally increasing headcount requires significant automation.`,
+      `Maintaining consistent quality and response times as the team grows is a critical pressure point at this stage.`,
     ],
     aiOpportunities: [
       {
         title: "Automated Inbound Lead Intelligence",
-        description: `Implement AI-powered enrichment for every inbound inquiry, similar to arth.ai's own workflow. This delivers personalized context to your team before any human interaction, dramatically improving conversion rates.`,
+        description: `Implement AI-powered enrichment for every inbound inquiry to ${lead.companyName}. This delivers personalized context to your team before any human interaction, dramatically improving conversion rates.`,
         impact: "High",
       },
       {
@@ -309,20 +314,20 @@ function getFallbackReport(lead) {
       },
       {
         title: "AI-Powered Customer Communication",
-        description: `Deploy AI to handle first-response communications, FAQs, and follow-up sequences. This ensures 24/7 responsiveness without additional headcount.`,
+        description: `Deploy AI to handle first-response communications, FAQs, and follow-up sequences for ${lead.companyName}. This ensures 24/7 responsiveness without additional headcount.`,
         impact: "Medium",
       },
       {
         title: "Data Intelligence Dashboard",
-        description: `Centralize operational data into an AI-driven dashboard that surfaces actionable insights, anomalies, and growth opportunities automatically.`,
+        description: `Centralize operational data into an AI-driven dashboard that surfaces actionable insights, anomalies, and growth opportunities automatically for ${lead.companyName}.`,
         impact: "Medium",
       },
     ],
     recommendedNextSteps: [
-      "Schedule a 30-minute AI readiness assessment with the arth.ai team",
-      "Map your top 5 repetitive workflows for automation potential scoring",
-      "Pilot one AI automation in a low-risk operational area within 30 days",
-      "Define success metrics (time saved, conversion uplift, cost reduction) before implementation",
+      `Map your top 5 repetitive workflows at ${lead.companyName} for automation potential scoring.`,
+      `Audit current software expenditures to identify consolidation opportunities via multi-purpose AI.`,
+      `Pilot one AI automation in a low-risk operational area within 30 days.`,
+      `Define success metrics (time saved, conversion uplift, cost reduction) before implementation.`,
     ],
     auditScores: {
       digitalReadiness: 6,

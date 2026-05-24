@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
+import InteractiveDemo from "@/components/InteractiveDemo";
 
 const PERSONAS = {
   Founder: {
@@ -109,16 +110,8 @@ export default function LandingPage() {
             <Link href="/form" style={{ background: "transparent", color: "#1b1b1b", border: "1px solid #d5c3b3", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
           </div>
 
-          {/* Company Search Card */}
-          <div style={{ marginTop: 64, width: "100%", maxWidth: 700, background: "#ffffff", border: "1px solid #e5e2e1", borderRadius: 16, padding: "2rem", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
-            <h3 style={{ fontFamily: "Newsreader, serif", fontSize: 20, fontWeight: 500, color: "#1b1b1b", marginBottom: 8 }}>Try the personalization engine live</h3>
-            <p style={{ fontSize: 14, color: "#514538", marginBottom: 20 }}>Type any company name (e.g. Netflix, Stripe) to see ArthAI personalize the page instantly.</p>
-            <form onSubmit={(e) => { e.preventDefault(); if (company) window.location.href = "/" + encodeURIComponent(company.toLowerCase().replace(/\s+/g, "")); }}
-              style={{ display: "flex", gap: 12 }}>
-              <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Enter a company name..." required
-                style={{ flex: 1, padding: "12px 16px", border: "1.5px solid #d5c3b3", borderRadius: 8, fontSize: 16, outline: "none", fontFamily: "Geist, sans-serif", background: "#fcf9f8" }} />
-              <button type="submit" style={{ background: "#845411", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 16, fontWeight: 600, border: "none", cursor: "pointer" }}>Generate →</button>
-            </form>
+          <div style={{ marginTop: 64, width: "100%", display: "flex", justifyContent: "center" }}>
+            <InteractiveDemo />
           </div>
 
           {/* Trust signals */}
