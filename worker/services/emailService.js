@@ -10,8 +10,9 @@ export async function sendEmail(lead, pdfBuffer, report) {
     (scores.digitalReadiness + scores.automationPotential + scores.growthIndex) / 3
   );
   const topOpportunity = report.aiOpportunities?.[0];
+  const delta = report.programmaticDelta;
 
-  const html = buildEmailHtml(lead, report, scores, overall, topOpportunity);
+  const html = buildEmailHtml(lead, report, scores, overall, topOpportunity, delta);
 
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
@@ -34,7 +35,7 @@ export async function sendEmail(lead, pdfBuffer, report) {
   return data;
 }
 
-function buildEmailHtml(lead, report, scores, overall, topOpportunity) {
+function buildEmailHtml(lead, report, scores, overall, topOpportunity, delta) {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -91,6 +92,17 @@ function buildEmailHtml(lead, report, scores, overall, topOpportunity) {
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366f1;margin-bottom:6px;">Top AI Opportunity Identified</div>
         <div style="font-size:14px;font-weight:700;color:#f1f0ff;margin-bottom:6px;">${topOpportunity.title}</div>
         <p style="font-size:13px;color:#9b99c0;line-height:1.65;margin:0;">${topOpportunity.description}</p>
+      </div>` : ""}
+
+      <!-- Change Detection / Delta Insights -->
+      ${delta ? `
+      <div style="border:1px solid #10b981;padding:16px 20px;background:rgba(16,185,129,0.05);border-radius:10px;margin-bottom:28px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10b981;margin-bottom:12px;">Since Your Last Audit</div>
+        <ul style="font-size:13px;color:#f1f0ff;line-height:1.7;margin:0;padding-left:16px;">
+          ${delta.newlyAdoptedTech.length > 0 ? `<li style="margin-bottom:4px;">✅ Adopted new tech: <strong>${delta.newlyAdoptedTech.join(', ')}</strong></li>` : ''}
+          ${delta.newSignalsDetected.length > 0 ? `<li style="margin-bottom:4px;">✅ New market signals detected: <strong>${delta.newSignalsDetected.join(', ')}</strong></li>` : ''}
+          ${delta.droppedTech.length > 0 ? `<li style="margin-bottom:4px;">⚠️ Dropped tech: <strong>${delta.droppedTech.join(', ')}</strong></li>` : ''}
+        </ul>
       </div>` : ""}
 
       <!-- Summary excerpt -->

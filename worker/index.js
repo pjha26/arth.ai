@@ -7,7 +7,7 @@ import { sendEmail } from "./services/emailService.js";
 import { storeReportIntelligence } from "./services/vectorStore.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
-import { learnFromReport } from "./services/selfLearning.js";
+import { learnFromReport, generateDeltaInsights } from "./services/selfLearning.js";
 import dotenv from "dotenv";
 import pkg from "@prisma/client/index.js";
 const { PrismaClient } = pkg;
@@ -72,6 +72,12 @@ const worker = new Worker(
       console.log(`[Job ${jobId}] Step 2/4: Generating AI report...`);
       await logStage(jobId, "ai_report", "running");
       const report = await generateAiReport(lead, enriched, jobId, companyId);
+      
+      const programmaticDelta = await generateDeltaInsights(companyId, report, reportId);
+      if (programmaticDelta) {
+         report.programmaticDelta = programmaticDelta;
+      }
+      
       await logStage(jobId, "ai_report", "done");
       console.log(`[Job ${jobId}] AI report generated.`);
 
@@ -161,7 +167,7 @@ const worker = new Worker(
           status: "done",
           aiSummary: report?.executiveSummary || null,
           insights: report || {},
-          deltaInsights: report?.deltaInsights || null,
+          deltaInsights: report.programmaticDelta || report?.deltaInsights || null,
           generatedAt: new Date()
         },
       });

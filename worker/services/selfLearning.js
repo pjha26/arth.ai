@@ -95,3 +95,43 @@ export async function getIndustryBenchmarks(industry) {
     return null;
   }
 }
+
+export async function generateDeltaInsights(companyId, newInsights, currentReportId) {
+  try {
+    const lastReport = await prisma.report.findFirst({
+      where: { 
+        companyId,
+        id: { not: currentReportId },
+        status: "done"
+      },
+      orderBy: { generatedAt: 'desc' }
+    });
+    
+    if (!lastReport || !lastReport.insights) return null;
+    
+    const oldInsights = lastReport.insights;
+    
+    const newTech = newInsights.techStack || [];
+    const oldTech = oldInsights.techStack || [];
+    const newlyAdoptedTech = newTech.filter(t => !oldTech.includes(t));
+    const droppedTech = oldTech.filter(t => !newTech.includes(t));
+    
+    const newSignalsList = (newInsights.signals || []).map(s => s.type);
+    const oldSignalsList = (oldInsights.signals || []).map(s => s.type);
+    const newSignalsDetected = newSignalsList.filter(s => !oldSignalsList.includes(s));
+    
+    // Determine overall shift
+    const changed = newlyAdoptedTech.length > 0 || droppedTech.length > 0 || newSignalsDetected.length > 0;
+    if (!changed) return null;
+
+    return {
+      lastAuditDate: lastReport.generatedAt,
+      newlyAdoptedTech,
+      droppedTech,
+      newSignalsDetected
+    };
+  } catch (err) {
+    console.error(`[Self-Learning 🧠] Failed to generate delta insights:`, err.message);
+    return null;
+  }
+}
