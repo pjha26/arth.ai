@@ -101,7 +101,7 @@ async function fetchWikipedia(companyName) {
 }
 
 // ── DuckDuckGo Instant Answer ──
-async function fetchDuckDuckGo(companyName) {
+export async function fetchDuckDuckGo(companyName) {
   const { data } = await axios.get(
     `https://api.duckduckgo.com/?q=${encodeURIComponent(companyName + " company")}&format=json&no_html=1&skip_disambig=1`,
     { timeout: 6000 }
@@ -113,7 +113,7 @@ async function fetchDuckDuckGo(companyName) {
 }
 
 // ── Website Scraper (Firecrawl -> Cheerio fallback) ──
-async function scrapeWebsite(url) {
+export async function scrapeWebsite(url) {
   // Try Firecrawl if API key is present
   if (process.env.FIRECRAWL_API_KEY) {
     try {

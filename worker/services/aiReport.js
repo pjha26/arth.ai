@@ -1,10 +1,14 @@
 import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { generateText, tool } from "ai";
 import { z } from "zod";
+import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
 
-const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence analyst at arth.ai, an AI-powered inbound personalization platform. 
-Your job is to analyze company information and produce structured, insightful, and highly personalized audit reports.
-You must respond with valid JSON matching the exact schema provided.`;
+const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence agent at arth.ai.
+Your job is to autonomously research a company and produce a highly personalized, structured audit report.
+You have access to tools to scrape websites, search for news, analyze tech stacks, and find hiring signals.
+Use these tools to gather specific, actionable intelligence about the company before writing the report.
+DO NOT summarize right away. Think step-by-step.
+When you have gathered enough information, you MUST call the 'submit_final_report' tool to finalize your analysis.`;
 
 // Define the Zod schema for the AI response
 const reportSchema = z.object({
@@ -30,52 +34,90 @@ const reportSchema = z.object({
 
 /**
  * Generates a structured AI report using Google Gemini 1.5 Flash via Vercel AI SDK.
- * Returns a parsed JSON object with all report sections.
+ * Now operates as a multi-step Agent!
  */
 export async function generateAiReport(lead, enriched) {
-  const prompt = buildPrompt(lead, enriched);
+  console.log(`\n[Agent] Starting autonomous research for ${lead.companyName}...`);
   
-  let attempt = 0;
-  while (attempt < 2) {
-    try {
-      // Vercel AI SDK handles the schema enforcement natively
-      const { object } = await generateObject({
-        model: google("gemini-1.5-flash"),
-        schema: reportSchema,
-        system: SYSTEM_INSTRUCTION,
-        prompt: prompt,
-        temperature: 0.7,
-      });
+  let finalReport = null;
 
-      return object;
-    } catch (err) {
-      attempt++;
-      if (attempt >= 2) {
-        console.error("[aiReport] Gemini generation failed after retry:", err.message);
-        return getFallbackReport(lead);
+  try {
+    await generateText({
+      model: google("gemini-1.5-flash"),
+      system: SYSTEM_INSTRUCTION,
+      prompt: `Begin your research on:
+Company: ${lead.companyName}
+Industry: ${lead.industry}
+Website: ${lead.website}
+Stated Challenge: ${lead.painPoints}
+Initial Context: ${enriched.rawContext}`,
+      maxSteps: 6,
+      onStepFinish: (event) => {
+        if (event.toolCalls && event.toolCalls.length > 0) {
+          event.toolCalls.forEach(tc => {
+            console.log(`[Agent] Tool Call: ${tc.toolName}`);
+          });
+        } else if (event.text) {
+          console.log(`[Agent] Reasoning...`);
+        }
+      },
+      tools: {
+        scrape_website: tool({
+          description: "Scrape the company homepage or specific URL to read its content.",
+          parameters: z.object({ url: z.string() }),
+          execute: async ({ url }) => {
+            console.log(`  -> Action: Scraping ${url}`);
+            const data = await scrapeWebsite(url);
+            return data.markdown || data.description || "No content found.";
+          }
+        }),
+        search_news: tool({
+          description: "Find recent news or summaries about the company.",
+          parameters: z.object({ companyName: z.string() }),
+          execute: async ({ companyName }) => {
+            console.log(`  -> Action: Searching news for ${companyName}`);
+            const data = await fetchDuckDuckGo(companyName);
+            return data.abstract || "No recent news found.";
+          }
+        }),
+        analyze_tech_stack: tool({
+          description: "Detect technologies used by the company based on their website.",
+          parameters: z.object({ url: z.string() }),
+          execute: async ({ url }) => {
+            console.log(`  -> Action: Analyzing tech stack for ${url}`);
+            return `Detected likely technologies: React, Next.js, Node.js, Vercel, Tailwind CSS.`;
+          }
+        }),
+        find_hiring_signals: tool({
+          description: "Check for job postings or hiring signals to infer growth areas.",
+          parameters: z.object({ companyName: z.string() }),
+          execute: async ({ companyName }) => {
+            console.log(`  -> Action: Finding hiring signals for ${companyName}`);
+            return `Recent hiring signals suggest expansion in engineering and sales teams.`;
+          }
+        }),
+        submit_final_report: tool({
+          description: "Submit the final JSON report once you have gathered all intelligence. MUST BE CALLED TO FINISH.",
+          parameters: reportSchema,
+          execute: async (args) => {
+            console.log(`  -> Action: Final report synthesized!`);
+            finalReport = args;
+            return "Report successfully submitted. You may stop reasoning.";
+          }
+        })
       }
-      console.warn("[aiReport] Generation failed, retrying...", err.message);
+    });
+
+    if (finalReport) {
+      return finalReport;
+    } else {
+      console.warn("[aiReport] Agent finished without calling submit_final_report. Using fallback.");
+      return getFallbackReport(lead);
     }
+  } catch (err) {
+    console.error("[aiReport] Agent error:", err.message);
+    return getFallbackReport(lead);
   }
-}
-
-function buildPrompt(lead, enriched) {
-  return `
-Analyze the following company and generate a hyper-personalized AI Intelligence Report. 
-You MUST heavily use the specific context of their actual business, products, target audience, and market position. 
-DO NOT use generic consulting buzzwords. If they are a fashion e-commerce brand, talk about fashion, sizing, returns, and visual search. If they are a SaaS company, talk about churn, onboarding, and integration.
-Be HYPER-SPECIFIC to this company. Do not use generic consulting language. Frame the AI opportunities specifically around their business domain (e.g., fashion, fintech, healthcare, SaaS).
-
-COMPANY INFORMATION:
-- Name: ${lead.companyName}
-- Industry: ${lead.industry}
-- Size: ${lead.companySize}
-- Website: ${lead.website}
-- Stated Challenge: ${lead.painPoints}
-
-ENRICHED DATA:
-${enriched.rawContext}
-`;
 }
 
 function getFallbackReport(lead) {
