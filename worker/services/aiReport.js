@@ -67,7 +67,49 @@ const criticSchema = z.object({
 
 const geminiModel = google("gemini-2.5-flash");
 
-// ─── 1. Research Agent ───────────────────────────────────────────────────
+// ─── 1. Helpers ────────────────────────────────────────────────────────────
+
+async function inferSpecificIndustry(companyName, description, websiteContent) {
+  const { text } = await generateText({
+    model: geminiModel,
+    messages: [{
+      role: "user",
+      content: `Given this company: ${companyName}
+                Description: ${description}
+                Website content: ${websiteContent}
+                
+                Return ONLY a specific industry label.
+                Examples of good labels:
+                "Quick Commerce" not "Technology"
+                "B2B SaaS — HR Tech" not "Software"
+                "D2C Fashion" not "Retail"
+                "Fintech — Payments" not "Financial Services"
+                
+                Return only the label, nothing else.`
+    }]
+  });
+  return text.trim();
+}
+
+const painPointExpansions = {
+  "Scaling my team": (company, industry) => \`\${company} faces pressure to scale headcount in line with growth without proportionally increasing operational costs — a critical challenge for \${industry} companies at this stage.\`,
+  "Competitive positioning": (company, industry) => \`Differentiation is increasingly difficult in the \${industry} space as competitors consolidate — \${company} needs a defensible positioning strategy beyond price and speed.\`,
+  "Lead generation": (company) => \`\${company} needs to build scalable inbound pipelines that reduce dependence on paid acquisition and referrals.\`,
+  "Automating workflows": (company) => \`Manual operational processes at \${company} are creating bottlenecks that limit growth without headcount additions.\`,
+  "Product-market fit": (company, industry) => \`\${company} is in an active phase of validating its core proposition in the \${industry} market — the next 6 months are critical for retention and NPS signals.\`,
+  "Fundraising": (company) => \`\${company} is likely preparing for or actively pursuing its next funding round — investor narrative and metrics story are under active development.\`
+};
+
+function expandPainPoints(tags, company, industry) {
+  if (!tags) return [];
+  const tagList = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim());
+  return tagList.map(tag => {
+    const expander = painPointExpansions[tag];
+    return expander ? expander(company, industry) : \`\${company} is experiencing challenges with \${tag.toLowerCase()} within the \${industry} sector.\`;
+  });
+}
+
+// ─── 1.5. Research Agent ─────────────────────────────────────────────────
 
 async function runResearchAgent(lead, jobId) {
   streamThought(jobId, `[Research Agent 🔍] Gathering raw data...`);
@@ -163,13 +205,17 @@ async function runWriterAgent(lead, analysisData, previousFeedback, companyHisto
   streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report...`);
   
   let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
-Stated Challenge: ${lead.painPoints}
 
-CRITICAL RULES:
-1. Pain points MUST be full insight sentences applying the user's raw tags to their specific business. NEVER return raw labels like "Scaling my team".
-2. Recommended next steps MUST be genuine recommendations the company can act on independently. NEVER include "Schedule a call with the arth.ai team" as a step.
-3. Every insight must reference the actual company name at least once. No generic "the company" references.
-4. CONFIDENCE SCORING: For pain points and AI opportunities, strictly score your confidence (0.0 to 1.0) based on what data you ACTUALLY found in the context vs what you assume. Categorize as "verified" (found in context), "inferred" (likely based on context), or "speculative" (assumed industry standard). Provide supporting "evidence" strings.
+STRICT RULES — violating any of these invalidates the report:
+1. NEVER write "Unknown" anywhere. If a field is missing, infer it from available context or omit it entirely.
+2. NEVER write generic statements that could apply to any company. Every sentence must reference ${lead.companyName} specifically.
+3. NEVER use the company's industry category as a substitute for company-specific knowledge. "Technology company" tells the reader nothing. Be specific.
+4. NEVER paste raw form tags. Expanded pain points are provided in the context — use those verbatim.
+5. ALL scores must be justified with one specific evidence statement (e.g. "Digital Readiness 6/10 — Zepto's homepage loads in 2.1s but lacks personalization").
+6. The word "typically" is banned. Every claim must be specific to ${lead.companyName}.
+7. CONFIDENCE MARKER PLACEMENT: Confidence markers (~, ESTIMATED) must NEVER appear in Section headings, Opportunity card titles, Company name, or Score numbers. Confidence markers must ONLY appear inline within body text sentences or as a subtle tag after a specific claim.
+8. Recommended next steps MUST be genuine recommendations the company can act on independently. NEVER include "Schedule a call with the arth.ai team" as a step.
+9. CONFIDENCE SCORING: For pain points and AI opportunities, strictly score your confidence (0.0 to 1.0) based on what data you ACTUALLY found in the context vs what you assume. Categorize as "verified" (found in context), "inferred" (likely based on context), or "speculative" (assumed industry standard). Provide supporting "evidence" strings.
 
 Analysis Document:
 ${analysisData}
@@ -316,17 +362,41 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
   streamThought(jobId, `\n[Orchestrator 🧠] Starting multi-agent pipeline for ${lead.companyName}...`);
   
   try {
+    let finalIndustry = enriched.industry;
+    if (enriched.validation && enriched.validation.issues.includes("industry_too_generic")) {
+      streamThought(jobId, `[Orchestrator 🧠] Inferring specific industry fallback...`);
+      finalIndustry = await inferSpecificIndustry(lead.companyName, enriched.description, enriched.websiteSummary);
+      streamThought(jobId, `[Orchestrator 🧠] Inferred Industry: ${finalIndustry}`);
+    }
+
+    const expandedPainPoints = expandPainPoints(lead.painPoints, lead.companyName, finalIndustry);
+
+    const enrichedContextObject = {
+      companyName: enriched.companyName || lead.companyName,
+      rootDomain: enriched.rootDomain,
+      foundedYear: enriched.foundedYear,
+      industry: finalIndustry,
+      subIndustry: enriched.subIndustry,
+      employeeRange: enriched.employeeRange,
+      description: enriched.description,
+      recentNews: enriched.recentNews,
+      techStack: enriched.techStack,
+      websiteSummary: enriched.websiteSummary,
+      expandedPainPoints,
+    };
+    const enrichedContextStr = JSON.stringify(enrichedContextObject, null, 2);
+
     const companyHistory = await getCompanyHistory(companyId);
     if (companyHistory) {
       streamThought(jobId, `[Orchestrator 🧠] Found exact historical match for ${lead.companyName}! Triggering longitudinal analysis.`);
     }
 
-    const industryBenchmarks = await getIndustryBenchmarks(lead.industry);
+    const industryBenchmarks = await getIndustryBenchmarks(finalIndustry || lead.industry);
     if (industryBenchmarks) {
-      streamThought(jobId, `[Orchestrator 🧠] Loaded industry benchmarks for ${lead.industry}.`);
+      streamThought(jobId, `[Orchestrator 🧠] Loaded industry benchmarks for ${finalIndustry || lead.industry}.`);
     }
 
-    const similarCompanies = await getSimilarCompanies(lead);
+    const similarCompanies = await getSimilarCompanies({ ...lead, industry: finalIndustry });
     let similarContext = "";
     if (similarCompanies && similarCompanies.length > 0) {
       streamThought(jobId, `[Orchestrator 🧠] Found ${similarCompanies.length} similar past reports via pgvector.`);
@@ -334,7 +404,7 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
     }
 
     const researchData = await runResearchAgent(lead, jobId);
-    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext, companyHistory, similarContext, jobId);
+    const analysisData = await runAnalysisAgent(lead, researchData, enrichedContextStr, companyHistory, similarContext, jobId);
     
     let draftReport = null;
     let approved = false;
