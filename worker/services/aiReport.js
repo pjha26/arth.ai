@@ -1,23 +1,16 @@
 import { google } from "@ai-sdk/google";
-import { generateText, tool } from "ai";
+import { generateText, generateObject, tool } from "ai";
 import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
 import { searchPastReports } from "./vectorStore.js";
 
-const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence agent at arth.ai.
-Your job is to autonomously research a company and produce a highly personalized, structured audit report.
-You have access to tools to scrape websites, search for news, analyze tech stacks, find hiring signals, and search past historical reports.
-Crucially, use the 'search_past_reports' tool to look up patterns from similar companies we have analyzed in the past. If you find relevant historical intelligence, seamlessly weave those patterns and insights into the new report to show deep industry expertise.
-Use these tools to gather specific, actionable intelligence about the company before writing the report.
-DO NOT summarize right away. Think step-by-step.
-When you have gathered enough information, you MUST call the 'submit_final_report' tool to finalize your analysis.`;
+// ─── Schemas ─────────────────────────────────────────────────────────────
 
-// Define the Zod schema for the AI response
 const reportSchema = z.object({
   executiveSummary: z.string().describe("3-4 sentence company overview that is HYPER-SPECIFIC to this company's actual business model, known products, and market reality. Mention specific things they actually do."),
   marketPosition: z.string().describe("2-3 sentences on their specific competitive landscape, market timing, and exact positioning."),
   digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
-  painPoints: z.array(z.string()).min(1).describe("Specific pain points incorporating their exact stated challenge but applied to their specific business model (e.g. for e-commerce: high return rates due to sizing; for B2B: long sales cycles)."),
+  painPoints: z.array(z.string()).min(1).describe("Specific pain points incorporating their exact stated challenge but applied to their specific business model."),
   aiOpportunities: z.array(z.object({
     title: z.string().describe("Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')"),
     description: z.string().describe("2-3 sentences explaining exactly how this AI solves their specific pain point in their specific industry."),
@@ -25,110 +18,195 @@ const reportSchema = z.object({
   })).min(1),
   recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context."),
   auditScores: z.object({
-    digitalReadiness: z.number().int().min(1).max(10).describe("Integer 1-10 based on digital presence and tech adoption signals"),
-    digitalReadinessReason: z.string().describe("1 sentence justifying this score based on specific evidence found."),
-    automationPotential: z.number().int().min(1).max(10).describe("Integer 1-10 based on stated challenges and industry"),
-    automationPotentialReason: z.string().describe("1 sentence justifying this score based on specific evidence found."),
-    growthIndex: z.number().int().min(1).max(10).describe("Integer 1-10 based on company size, industry growth, and market position"),
-    growthIndexReason: z.string().describe("1 sentence justifying this score based on specific evidence found.")
+    digitalReadiness: z.number().int().min(1).max(10),
+    digitalReadinessReason: z.string().describe("1 sentence justifying this score."),
+    automationPotential: z.number().int().min(1).max(10),
+    automationPotentialReason: z.string().describe("1 sentence justifying this score."),
+    growthIndex: z.number().int().min(1).max(10),
+    growthIndexReason: z.string().describe("1 sentence justifying this score.")
   })
 });
 
+const criticSchema = z.object({
+  approved: z.boolean().describe("True if the report is highly specific and excellent, false if it uses generic buzzwords or lacks depth."),
+  feedback: z.string().describe("Brutally honest feedback on what needs to be improved in the rewrite. Empty if approved.")
+});
+
+const geminiModel = google("gemini-1.5-flash");
+
+// ─── 1. Research Agent ───────────────────────────────────────────────────
+
+async function runResearchAgent(lead) {
+  console.log(`[Research Agent 🔍] Gathering raw data...`);
+  const { text } = await generateText({
+    model: geminiModel,
+    system: "You are an Elite Data Scraper. Your job is to gather raw, factual information about the company. Use your tools to find out exactly what they do. Return a dense bulleted list of facts.",
+    prompt: `Research: ${lead.companyName} (${lead.website})`,
+    maxSteps: 4,
+    tools: {
+      scrape_website: tool({
+        description: "Scrape the company homepage.",
+        parameters: z.object({ url: z.string() }),
+        execute: async ({ url }) => {
+          console.log(`  -> 🔍 Scraping ${url}`);
+          const data = await scrapeWebsite(url);
+          return data.markdown || data.description || "No content found.";
+        }
+      }),
+      search_news: tool({
+        description: "Find recent news or summaries about the company.",
+        parameters: z.object({ companyName: z.string() }),
+        execute: async ({ companyName }) => {
+          console.log(`  -> 🔍 Searching news for ${companyName}`);
+          const data = await fetchDuckDuckGo(companyName);
+          return data.abstract || "No recent news found.";
+        }
+      })
+    }
+  });
+  return text;
+}
+
+// ─── 2. Analysis Agent ───────────────────────────────────────────────────
+
+async function runAnalysisAgent(lead, researchData, enrichedContext) {
+  console.log(`[Analysis Agent 📊] Finding patterns...`);
+  const { text } = await generateText({
+    model: geminiModel,
+    system: "You are a Principal Strategy Analyst. Review the raw data, use tools to find tech stack, hiring signals, and historical RAG patterns. Output a synthesized strategic analysis document.",
+    prompt: `Analyze ${lead.companyName} in ${lead.industry}.
+Initial Context: ${enrichedContext}
+Raw Research: ${researchData}`,
+    maxSteps: 4,
+    tools: {
+      search_past_reports: tool({
+        description: "Search historical reports for similar companies.",
+        parameters: z.object({ query: z.string() }),
+        execute: async ({ query }) => {
+          console.log(`  -> 📊 Searching RAG for "${query}"`);
+          return await searchPastReports(query);
+        }
+      }),
+      analyze_tech_stack: tool({
+        description: "Detect technologies used.",
+        parameters: z.object({ url: z.string() }),
+        execute: async ({ url }) => {
+          console.log(`  -> 📊 Analyzing tech stack for ${url}`);
+          return `Detected likely technologies: React, Next.js, Node.js, Vercel, Tailwind CSS.`;
+        }
+      }),
+      find_hiring_signals: tool({
+        description: "Check for hiring signals.",
+        parameters: z.object({ companyName: z.string() }),
+        execute: async ({ companyName }) => {
+          console.log(`  -> 📊 Finding hiring signals for ${companyName}`);
+          return `Recent hiring signals suggest expansion in engineering and sales.`;
+        }
+      })
+    }
+  });
+  return text;
+}
+
+// ─── 3. Writer Agent ─────────────────────────────────────────────────────
+
+async function runWriterAgent(lead, analysisData, previousFeedback) {
+  console.log(`[Writer Agent ✍️] Drafting JSON report...`);
+  
+  let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
+Stated Challenge: ${lead.painPoints}
+
+Analysis Document:
+${analysisData}
+`;
+
+  if (previousFeedback) {
+    prompt += `\n\nCRITIC FEEDBACK FROM PREVIOUS DRAFT (YOU MUST FIX THESE ISSUES):
+${previousFeedback}`;
+  }
+
+  const { object } = await generateObject({
+    model: geminiModel,
+    schema: reportSchema,
+    system: "You are a Senior Executive Copywriter. Write the final report. Be HYPER-SPECIFIC to this company. DO NOT use generic consulting buzzwords. Frame AI opportunities specifically around their business domain.",
+    prompt: prompt,
+    temperature: 0.7,
+  });
+
+  return object;
+}
+
+// ─── 4. Critic Agent ─────────────────────────────────────────────────────
+
+async function runCriticAgent(lead, draftReport) {
+  console.log(`[Critic Agent 🎯] Reviewing draft...`);
+  
+  const prompt = `Review this draft AI report for ${lead.companyName} (${lead.industry}).
+Challenge: ${lead.painPoints}
+
+Draft:
+${JSON.stringify(draftReport, null, 2)}
+
+Are the insights highly specific to their actual business model? Are there generic consulting buzzwords? Are the AI opportunities impactful and tailored?
+If it's generic, reject it and provide harsh feedback on exactly what needs to be rewritten.`;
+
+  const { object } = await generateObject({
+    model: geminiModel,
+    schema: criticSchema,
+    system: "You are a Brutally Honest QA Director. You reject weak, generic, or fluffy AI reports.",
+    prompt: prompt,
+    temperature: 0.2, // Low temp for consistent criticism
+  });
+
+  return object;
+}
+
+// ─── Orchestrator ────────────────────────────────────────────────────────
+
 /**
- * Generates a structured AI report using Google Gemini 1.5 Flash via Vercel AI SDK.
- * Now operates as a multi-step Agent!
+ * Executes a multi-agent workflow to generate a highly intelligent, 
+ * peer-reviewed report for a given lead.
  */
 export async function generateAiReport(lead, enriched) {
-  console.log(`\n[Agent] Starting autonomous research for ${lead.companyName}...`);
+  console.log(`\n[Orchestrator 🧠] Starting multi-agent pipeline for ${lead.companyName}...`);
   
-  let finalReport = null;
-
   try {
-    await generateText({
-      model: google("gemini-1.5-flash"),
-      system: SYSTEM_INSTRUCTION,
-      prompt: `Begin your research on:
-Company: ${lead.companyName}
-Industry: ${lead.industry}
-Website: ${lead.website}
-Stated Challenge: ${lead.painPoints}
-Initial Context: ${enriched.rawContext}`,
-      maxSteps: 6,
-      onStepFinish: (event) => {
-        if (event.toolCalls && event.toolCalls.length > 0) {
-          event.toolCalls.forEach(tc => {
-            console.log(`[Agent] Tool Call: ${tc.toolName}`);
-          });
-        } else if (event.text) {
-          console.log(`[Agent] Reasoning...`);
-        }
-      },
-      tools: {
-        search_past_reports: tool({
-          description: "Search our vector database of past reports for patterns in similar companies or industries.",
-          parameters: z.object({ query: z.string().describe("Search query, e.g. 'SaaS companies struggling with churn' or 'Fintech onboarding AI'") }),
-          execute: async ({ query }) => {
-            console.log(`  -> Action: Searching past historical intelligence for "${query}"`);
-            return await searchPastReports(query);
-          }
-        }),
-        scrape_website: tool({
-          description: "Scrape the company homepage or specific URL to read its content.",
-          parameters: z.object({ url: z.string() }),
-          execute: async ({ url }) => {
-            console.log(`  -> Action: Scraping ${url}`);
-            const data = await scrapeWebsite(url);
-            return data.markdown || data.description || "No content found.";
-          }
-        }),
-        search_news: tool({
-          description: "Find recent news or summaries about the company.",
-          parameters: z.object({ companyName: z.string() }),
-          execute: async ({ companyName }) => {
-            console.log(`  -> Action: Searching news for ${companyName}`);
-            const data = await fetchDuckDuckGo(companyName);
-            return data.abstract || "No recent news found.";
-          }
-        }),
-        analyze_tech_stack: tool({
-          description: "Detect technologies used by the company based on their website.",
-          parameters: z.object({ url: z.string() }),
-          execute: async ({ url }) => {
-            console.log(`  -> Action: Analyzing tech stack for ${url}`);
-            return `Detected likely technologies: React, Next.js, Node.js, Vercel, Tailwind CSS.`;
-          }
-        }),
-        find_hiring_signals: tool({
-          description: "Check for job postings or hiring signals to infer growth areas.",
-          parameters: z.object({ companyName: z.string() }),
-          execute: async ({ companyName }) => {
-            console.log(`  -> Action: Finding hiring signals for ${companyName}`);
-            return `Recent hiring signals suggest expansion in engineering and sales teams.`;
-          }
-        }),
-        submit_final_report: tool({
-          description: "Submit the final JSON report once you have gathered all intelligence. MUST BE CALLED TO FINISH.",
-          parameters: reportSchema,
-          execute: async (args) => {
-            console.log(`  -> Action: Final report synthesized!`);
-            finalReport = args;
-            return "Report successfully submitted. You may stop reasoning.";
-          }
-        })
-      }
-    });
+    const researchData = await runResearchAgent(lead);
+    const analysisData = await runAnalysisAgent(lead, researchData, enriched.rawContext);
+    
+    let draftReport = null;
+    let approved = false;
+    let iterations = 0;
+    let criticFeedback = "";
 
-    if (finalReport) {
-      return finalReport;
-    } else {
-      console.warn("[aiReport] Agent finished without calling submit_final_report. Using fallback.");
-      return getFallbackReport(lead);
+    while (!approved && iterations < 3) {
+      iterations++;
+      console.log(`\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
+      
+      draftReport = await runWriterAgent(lead, analysisData, criticFeedback);
+      const critique = await runCriticAgent(lead, draftReport);
+      
+      if (critique.approved) {
+        console.log(`[Orchestrator 🧠] 🎯 Critic Approved!`);
+        approved = true;
+      } else {
+        console.log(`[Orchestrator 🧠] ❌ Critic Rejected: ${critique.feedback}`);
+        criticFeedback = critique.feedback;
+      }
     }
+
+    if (!approved) {
+      console.log(`[Orchestrator 🧠] Max iterations reached. Proceeding with best draft.`);
+    }
+
+    return draftReport || getFallbackReport(lead);
   } catch (err) {
-    console.error("[aiReport] Agent error:", err.message);
+    console.error("[Orchestrator 🧠] Pipeline error:", err.message);
     return getFallbackReport(lead);
   }
 }
+
+// ─── Fallback ────────────────────────────────────────────────────────────
 
 function getFallbackReport(lead) {
   return {
