@@ -2,10 +2,12 @@ import { google } from "@ai-sdk/google";
 import { generateText, tool } from "ai";
 import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
+import { searchPastReports } from "./vectorStore.js";
 
 const SYSTEM_INSTRUCTION = `You are an elite AI business intelligence agent at arth.ai.
 Your job is to autonomously research a company and produce a highly personalized, structured audit report.
-You have access to tools to scrape websites, search for news, analyze tech stacks, and find hiring signals.
+You have access to tools to scrape websites, search for news, analyze tech stacks, find hiring signals, and search past historical reports.
+Crucially, use the 'search_past_reports' tool to look up patterns from similar companies we have analyzed in the past. If you find relevant historical intelligence, seamlessly weave those patterns and insights into the new report to show deep industry expertise.
 Use these tools to gather specific, actionable intelligence about the company before writing the report.
 DO NOT summarize right away. Think step-by-step.
 When you have gathered enough information, you MUST call the 'submit_final_report' tool to finalize your analysis.`;
@@ -62,6 +64,14 @@ Initial Context: ${enriched.rawContext}`,
         }
       },
       tools: {
+        search_past_reports: tool({
+          description: "Search our vector database of past reports for patterns in similar companies or industries.",
+          parameters: z.object({ query: z.string().describe("Search query, e.g. 'SaaS companies struggling with churn' or 'Fintech onboarding AI'") }),
+          execute: async ({ query }) => {
+            console.log(`  -> Action: Searching past historical intelligence for "${query}"`);
+            return await searchPastReports(query);
+          }
+        }),
         scrape_website: tool({
           description: "Scrape the company homepage or specific URL to read its content.",
           parameters: z.object({ url: z.string() }),

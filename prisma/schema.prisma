@@ -4,11 +4,13 @@
 generator client {
   provider = "prisma-client-js"
   engineType = "library"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model Lead {
@@ -27,6 +29,7 @@ model Lead {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   stages      PipelineStage[]
+  reportChunks ReportChunk[]
 }
 
 model PipelineStage {
@@ -38,4 +41,16 @@ model PipelineStage {
   message   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ReportChunk {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content     String
+  // Gemini text-embedding-004 uses 768 dimensions
+  embedding   Unsupported("vector(768)")?
+  companyName String
+  industry    String
+  createdAt   DateTime @default(now())
 }

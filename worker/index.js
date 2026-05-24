@@ -4,6 +4,7 @@ import { enrich } from "./services/enrichment.js";
 import { generateAiReport } from "./services/aiReport.js";
 import { generatePDF } from "./services/pdfGenerator.js";
 import { sendEmail } from "./services/emailService.js";
+import { storeReportIntelligence } from "./services/vectorStore.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
 import dotenv from "dotenv";
@@ -137,6 +138,13 @@ const worker = new Worker(
         }
       } catch (e) {
         console.warn(`[Job ${jobId}] Sheets log failed (non-critical):`, e.message);
+      }
+
+      // ── Step 7: Store Intelligence (RAG) ──
+      try {
+        await storeReportIntelligence(lead, report);
+      } catch (e) {
+        console.warn(`[Job ${jobId}] RAG vector storage failed:`, e.message);
       }
 
       await prisma.lead.update({
