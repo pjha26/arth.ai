@@ -9,14 +9,15 @@ export async function POST(
   try {
     const { id } = await params;
     
-    // Check if lead exists
-    const lead = await prisma.lead.findUnique({
+    // Check if report exists
+    const report = await prisma.report.findUnique({
       where: { id },
+      include: { company: true, stages: true }
     });
 
-    if (!lead) {
+    if (!report) {
       return NextResponse.json(
-        { success: false, message: "Lead not found" },
+        { success: false, message: "Report not found" },
         { status: 404 }
       );
     }
@@ -24,40 +25,46 @@ export async function POST(
     // Reset status to pending and delete old stages
     await prisma.$transaction([
       prisma.pipelineStage.deleteMany({
-        where: { leadId: id },
+        where: { reportId: id },
       }),
-      prisma.lead.update({
+      prisma.report.update({
         where: { id },
         data: { status: "pending" },
       }),
     ]);
 
-    // Re-enqueue the job
-    await leadsQueue.add(
-      "process-lead",
-      {
-        lead,
-        jobId: id,
-        submittedAt: new Date().toISOString(),
-      },
-      { jobId: id } // Using the same job ID is fine, BullMQ allows it if the previous one is completed/failed, or we can just let it run. Wait, BullMQ might deduplicate based on jobId if it's still in the queue. Since it's failed, it might be in the failed set.
-    );
-    
-    // Note: To be safe with BullMQ, maybe we need to remove the job first, or just generate a new job ID but keep the same lead ID?
-    // Actually, BullMQ replace/add with same job ID works if we remove it, or if it's failed it might just update it. Let's just use `removeOnComplete` and `removeOnFail` in the worker to ensure it's not lingering, or we don't care about the BullMQ jobId being strictly unique, we can pass `jobId: id + '-' + Date.now()` to BullMQ but keep the Lead ID the same in our DB.
-    // Yes, making the BullMQ jobId unique is safer:
+    const lead = await prisma.lead.findFirst({
+      where: { companyId: report.companyId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!lead) {
+      return NextResponse.json({ success: false, message: "Associated lead not found" }, { status: 404 });
+    }
+
     const bullJobId = `${id}-${Date.now()}`;
     await leadsQueue.add(
-      "process-lead",
+      "process-report",
       {
-        lead,
-        jobId: id, // We pass the original lead ID as jobId to the worker payload
+        leadId: lead.id,
+        companyId: report.companyId,
+        reportId: report.id,
+        leadInput: {
+          fullName: lead.fullName,
+          email: lead.email,
+          website: report.company.domain,
+          companyName: report.company.name,
+          industry: report.company.industry || "Technology",
+          companySize: report.company.size || "Unknown",
+          painPoints: lead.painPoints
+        },
+        jobId: id, 
         submittedAt: new Date().toISOString(),
       },
       { jobId: bullJobId }
     );
 
-    console.log(`[arth.ai] Lead re-enqueued: ${lead.companyName} (${id})`);
+    console.log(`[arth.ai] Report re-enqueued: ${report.company.name} (${id})`);
 
     return NextResponse.json({
       success: true,

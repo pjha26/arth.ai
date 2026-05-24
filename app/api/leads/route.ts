@@ -55,18 +55,20 @@ export async function POST(request: Request) {
     }
 
     // 2. Upsert Company
+    const derivedCompanyName = leadInput.companyName || (domain.charAt(0).toUpperCase() + domain.slice(1).split('.')[0]);
+
     const company = await prisma.company.upsert({
       where: { domain },
       update: {
-        name: leadInput.companyName,
-        industry: leadInput.industry,
-        size: leadInput.companySize,
+        name: derivedCompanyName,
+        industry: leadInput.industry || "Technology",
+        size: leadInput.companySize || "Unknown",
       },
       create: {
         domain,
-        name: leadInput.companyName,
-        industry: leadInput.industry,
-        size: leadInput.companySize,
+        name: derivedCompanyName,
+        industry: leadInput.industry || "Technology",
+        size: leadInput.companySize || "Unknown",
       }
     });
 
@@ -80,14 +82,14 @@ export async function POST(request: Request) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      if (existingReport.createdAt > thirtyDaysAgo && existingReport.personaType === "general") {
+      if (existingReport.createdAt > thirtyDaysAgo && existingReport.personaType === leadInput.personaType) {
         // Save the new lead contact info so sales knows they requested it
         await prisma.lead.create({
           data: {
             companyId: company.id,
             fullName: leadInput.fullName,
             email: leadInput.email,
-            painPoints: leadInput.painPoints,
+            painPoints: `Challenges: ${leadInput.challengeTags.join(", ")}` + (leadInput.painPoints ? `\n\nContext: ${leadInput.painPoints}` : ""),
           }
         });
 
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch instant mirror preview data
-    const preview = await fetchCompanyPreview(leadInput.companyName);
+    const preview = await fetchCompanyPreview(derivedCompanyName);
 
     // 4. Create Lead
     const lead = await prisma.lead.create({
@@ -116,7 +118,7 @@ export async function POST(request: Request) {
         companyId: company.id,
         fullName: leadInput.fullName,
         email: leadInput.email,
-        painPoints: leadInput.painPoints,
+        painPoints: `Challenges: ${leadInput.challengeTags.join(", ")}` + (leadInput.painPoints ? `\n\nContext: ${leadInput.painPoints}` : ""),
       }
     });
 
@@ -124,6 +126,7 @@ export async function POST(request: Request) {
     const report = await prisma.report.create({
       data: {
         companyId: company.id,
+        personaType: leadInput.personaType,
         status: "pending",
         logo: preview.logo,
         description: preview.description,
@@ -139,7 +142,15 @@ export async function POST(request: Request) {
         leadId: lead.id,
         companyId: company.id,
         reportId: report.id,
-        leadInput,
+        leadInput: {
+          fullName: leadInput.fullName,
+          email: leadInput.email,
+          website: leadInput.website,
+          companyName: derivedCompanyName,
+          industry: leadInput.industry || "Technology",
+          companySize: leadInput.companySize || "Unknown",
+          painPoints: `Challenges: ${leadInput.challengeTags.join(", ")}` + (leadInput.painPoints ? `\n\nContext: ${leadInput.painPoints}` : ""),
+        },
         jobId,
         submittedAt: new Date().toISOString(),
       },

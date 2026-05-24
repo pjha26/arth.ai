@@ -10,9 +10,12 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // Verify the lead exists
-    const lead = await prisma.lead.findUnique({ where: { id } });
-    if (!lead) {
+    // Verify the report exists
+    const report = await prisma.report.findUnique({ 
+      where: { id },
+      include: { company: true }
+    });
+    if (!report) {
       return NextResponse.json(
         { success: false, message: "Lead not found" },
         { status: 404 }
@@ -34,7 +37,7 @@ export async function GET(
     }
 
     const pdfBuffer = fs.readFileSync(pdfPath);
-    const fileName = `arth_ai_report_${lead.companyName.replace(/\s+/g, "_").toLowerCase()}.pdf`;
+    const fileName = `arth_ai_report_${report.company.name.replace(/\s+/g, "_").toLowerCase()}.pdf`;
 
     return new Response(pdfBuffer, {
       status: 200,

@@ -41,26 +41,29 @@ export async function GET() {
     
     // Day format for Peak Day calculation
     const fullDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const dayCounts = { "Sunday": 0, "Monday": 0, "Tuesday": 0, "Wednesday": 0, "Thursday": 0, "Friday": 0, "Saturday": 0 };
+    const dayCounts: Record<string, number> = { "Sunday": 0, "Monday": 0, "Tuesday": 0, "Wednesday": 0, "Thursday": 0, "Friday": 0, "Saturday": 0 };
     
     const heatmapData: Record<string, number> = {};
     
-    leads.forEach(l => {
-      const date = new Date(l.createdAt);
-      const dayIndex = date.getDay();
-      dayCounts[fullDays[dayIndex]]++;
+    leads.forEach((l) => {
+      // 1. Process Date
+      const dateStr = l.createdAt.toISOString().split("T")[0]; // YYYY-MM-DD
+      heatmapData[dateStr] = (heatmapData[dateStr] || 0) + 1;
       
-      const shortDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex];
-      const hour = date.getHours();
-      const key = `${shortDay}-${hour}`;
-      heatmapData[key] = (heatmapData[key] || 0) + 1;
+      // 2. Process Day of week
+      const dayName = fullDays[l.createdAt.getDay()];
+      dayCounts[dayName]++;
     });
     
-    let peakDay = "None";
-    let max = -1;
-    for (const [day, count] of Object.entries(dayCounts)) {
-      if (count > max) { max = count; peakDay = day; }
-    }
+    // Find Peak Day
+    let peakDay = "N/A";
+    let max = 0;
+    Object.entries(dayCounts).forEach(([day, count]) => {
+      if ((count as number) > max) {
+        max = count as number;
+        peakDay = day;
+      }
+    });
 
     const avgScoreResult = await prisma.report.aggregate({
       _avg: { score: true }

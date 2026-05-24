@@ -26,26 +26,41 @@ export const companySizeOptions = [
   "1,000+ employees",
 ] as const;
 
+export const personaOptions = ["Founder", "CTO", "Marketer"] as const;
+
+// Helper to block common free email domains
+const freeEmailDomains = [
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com"
+];
+
 export const LeadSchema = z.object({
   fullName: z
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name too long"),
-  email: z.string().email("Please enter a valid business email"),
-  companyName: z
+  email: z
     .string()
-    .min(1, "Company name is required")
-    .max(200, "Company name too long"),
+    .email("Please enter a valid email"),
+  
+  // These fields are now optional from the frontend, but we keep them in schema
+  // in case they are provided or filled in by the backend fallback.
+  companyName: z.string().max(200, "Company name too long").optional(),
+  industry: z.enum(industryOptions).optional(),
+  companySize: z.enum(companySizeOptions).optional(),
+  
   website: z
     .string()
-    .url("Please enter a valid URL (include https://)")
+    .url("Enter a valid website URL including https://")
     .max(500),
-  industry: z.enum(industryOptions, "Please select an industry"),
-  companySize: z.enum(companySizeOptions, "Please select company size"),
+    
+  personaType: z.enum(personaOptions),
+  
+  challengeTags: z.array(z.string()).min(1, "Please select at least one challenge"),
+  
   painPoints: z
     .string()
-    .min(10, "Please describe your challenge in at least 10 characters")
-    .max(1000, "Please keep it under 1000 characters"),
+    .max(1000, "Please keep it under 1000 characters")
+    .optional(),
 });
 
 export type Lead = z.infer<typeof LeadSchema>;
@@ -54,15 +69,14 @@ export type Lead = z.infer<typeof LeadSchema>;
 export const Step1Schema = LeadSchema.pick({
   fullName: true,
   email: true,
-  companyName: true,
 });
 
 export const Step2Schema = LeadSchema.pick({
   website: true,
-  industry: true,
-  companySize: true,
+  personaType: true,
 });
 
 export const Step3Schema = LeadSchema.pick({
+  challengeTags: true,
   painPoints: true,
 });
