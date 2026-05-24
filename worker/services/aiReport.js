@@ -92,12 +92,12 @@ async function inferSpecificIndustry(companyName, description, websiteContent) {
 }
 
 const painPointExpansions = {
-  "Scaling my team": (company, industry) => \`\${company} faces pressure to scale headcount in line with growth without proportionally increasing operational costs — a critical challenge for \${industry} companies at this stage.\`,
-  "Competitive positioning": (company, industry) => \`Differentiation is increasingly difficult in the \${industry} space as competitors consolidate — \${company} needs a defensible positioning strategy beyond price and speed.\`,
-  "Lead generation": (company) => \`\${company} needs to build scalable inbound pipelines that reduce dependence on paid acquisition and referrals.\`,
-  "Automating workflows": (company) => \`Manual operational processes at \${company} are creating bottlenecks that limit growth without headcount additions.\`,
-  "Product-market fit": (company, industry) => \`\${company} is in an active phase of validating its core proposition in the \${industry} market — the next 6 months are critical for retention and NPS signals.\`,
-  "Fundraising": (company) => \`\${company} is likely preparing for or actively pursuing its next funding round — investor narrative and metrics story are under active development.\`
+  "Scaling my team": (company, industry) => `${company} faces pressure to scale headcount in line with growth without proportionally increasing operational costs — a critical challenge for ${industry} companies at this stage.`,
+  "Competitive positioning": (company, industry) => `Differentiation is increasingly difficult in the ${industry} space as competitors consolidate — ${company} needs a defensible positioning strategy beyond price and speed.`,
+  "Lead generation": (company) => `${company} needs to build scalable inbound pipelines that reduce dependence on paid acquisition and referrals.`,
+  "Automating workflows": (company) => `Manual operational processes at ${company} are creating bottlenecks that limit growth without headcount additions.`,
+  "Product-market fit": (company, industry) => `${company} is in an active phase of validating its core proposition in the ${industry} market — the next 6 months are critical for retention and NPS signals.`,
+  "Fundraising": (company) => `${company} is likely preparing for or actively pursuing its next funding round — investor narrative and metrics story are under active development.`
 };
 
 function expandPainPoints(tags, company, industry) {
@@ -105,7 +105,7 @@ function expandPainPoints(tags, company, industry) {
   const tagList = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim());
   return tagList.map(tag => {
     const expander = painPointExpansions[tag];
-    return expander ? expander(company, industry) : \`\${company} is experiencing challenges with \${tag.toLowerCase()} within the \${industry} sector.\`;
+    return expander ? expander(company, industry) : `${company} is experiencing challenges with ${tag.toLowerCase()} within the ${industry} sector.`;
   });
 }
 
