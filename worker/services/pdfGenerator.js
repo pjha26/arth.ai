@@ -60,13 +60,20 @@ function injectData(template, lead, enriched, report) {
   const scores = report.auditScores;
   const companyName = toTitleCase(lead.companyName);
 
+  const getConfidenceBadge = (confidence) => {
+    if (confidence == null) return '';
+    if (confidence < 0.5) return `<span class="conf-badge estimated">ESTIMATED</span> `;
+    if (confidence <= 0.8) return `<span class="conf-badge inferred">~</span> `;
+    return ''; // verified
+  };
+
   const painPointsHtml = (report.painPoints || [])
     .slice(0, 3)
     .map(
       (p) => `
     <div class="card pain-card">
       <div class="pain-icon">⚡</div>
-      <div class="pain-text">${escapeHtml(p)}</div>
+      <div class="pain-text">${getConfidenceBadge(p.confidence)}${escapeHtml(p.text || p)}</div>
     </div>`
     )
     .join("");
@@ -74,15 +81,15 @@ function injectData(template, lead, enriched, report) {
   const opportunitiesHtml = (report.aiOpportunities || [])
     .map(
       (opp, i) => {
-        const borderClass = opp.impact.toLowerCase() === 'high' ? 'high' : 'medium';
+        const borderClass = opp.impact?.toLowerCase() === 'high' ? 'high' : 'medium';
         return `
     <div class="card opp-card ${borderClass}">
       <div class="opp-num">${String(i + 1).padStart(2, "0")}</div>
       <div class="opp-content">
-        <div class="opp-title">${escapeHtml(opp.title)}</div>
+        <div class="opp-title">${getConfidenceBadge(opp.confidence)}${escapeHtml(opp.title)}</div>
         <div class="opp-desc">${escapeHtml(opp.description)}</div>
       </div>
-      <div class="impact-badge ${borderClass}">${opp.impact.toUpperCase()} IMPACT</div>
+      <div class="impact-badge ${borderClass}">${(opp.impact || 'MEDIUM').toUpperCase()} IMPACT</div>
     </div>`;
       }
     )

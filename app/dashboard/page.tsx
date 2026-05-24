@@ -429,9 +429,24 @@ function LeadsView({ leads, setLeads, loading }: any) {
                     <div className="arth-panel-block">
                       <div className="arth-label">AI Insights</div>
                       <ul className="arth-insight-list">
-                        <li>Company operates in the <strong>{selectedLead.industry}</strong> sector.</li>
-                        <li>Calculated intent score: <strong>{selectedLead.score}</strong>.</li>
-                        <li>High likelihood of conversion based on pain points.</li>
+                        {selectedLead.insights?.aiOpportunities?.length ? (
+                          selectedLead.insights.aiOpportunities.map((opp: any, idx: number) => (
+                            <li key={idx} style={{ marginBottom: 12 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, color: "var(--c-heading)" }}>
+                                {opp.confidence != null && opp.confidence < 0.5 && <span className="arth-tag-persona" style={{ background: '#FCEFD4', color: '#B8860B', border: '1px solid #F1D592' }}>ESTIMATED</span>}
+                                {opp.confidence != null && opp.confidence >= 0.5 && opp.confidence <= 0.8 && <span className="arth-tag-persona" style={{ background: '#E8E0D0', color: '#9C845F', border: '1px solid #D8CDB6' }}>~</span>}
+                                {opp.title}
+                              </div>
+                              <div style={{ marginTop: 4 }}>{opp.description}</div>
+                            </li>
+                          ))
+                        ) : (
+                          <>
+                            <li>Company operates in the <strong>{selectedLead.industry}</strong> sector.</li>
+                            <li>Calculated intent score: <strong>{selectedLead.score}</strong>.</li>
+                            <li>High likelihood of conversion based on pain points.</li>
+                          </>
+                        )}
                       </ul>
                     </div>
 

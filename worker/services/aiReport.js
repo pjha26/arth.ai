@@ -22,11 +22,19 @@ const reportSchema = z.object({
   fundingStage: z.string().describe("Estimated funding stage (e.g. 'Seed', 'Series A', 'Enterprise', 'Bootstrapped')."),
   digitalPresence: z.string().describe("2-3 sentences reviewing their actual website features, digital maturity, and content strategy."),
   historicalComparison: z.string().optional().describe("If historical data exists, explicitly compare their current state to their past state. E.g. 'Last audit flagged X, but now Y.' Omit if no history."),
-  painPoints: z.array(z.string()).min(1).describe("Specific pain points. MUST ALWAYS BE FULL SENTENCES. Never show raw tag labels like 'Scaling my team' — instead expand each tag into a full insight sentence applied to their specific business model."),
+  painPoints: z.array(z.object({
+    text: z.string().describe("Full insight sentence applied to their specific business model."),
+    confidence: z.number().min(0).max(1).describe("Confidence score based strictly on actual data vs assumed. (1.0 = Verified, 0.0 = Guess)"),
+    evidence: z.array(z.string()).describe("Direct evidence quotes or data points found."),
+    category: z.enum(["verified", "inferred", "speculative"])
+  })).min(1).describe("Specific pain points. Never show raw tag labels."),
   aiOpportunities: z.array(z.object({
     title: z.string().describe("Specific AI opportunity title (e.g., 'AI Size & Fit Prediction', not 'Process Automation')"),
     description: z.string().describe("2-3 sentences explaining exactly how this AI solves their specific pain point in their specific industry."),
-    impact: z.enum(["High", "Medium", "Low"])
+    impact: z.enum(["High", "Medium", "Low"]),
+    confidence: z.number().min(0).max(1).describe("Confidence score based strictly on actual data vs assumed. (1.0 = Verified, 0.0 = Guess)"),
+    evidence: z.array(z.string()).describe("Direct evidence quotes or data points found."),
+    category: z.enum(["verified", "inferred", "speculative"])
   })).min(1),
   recommendedNextSteps: z.array(z.string()).min(1).describe("Actionable steps specific to implementing the opportunities and their industry context. NEVER include generic steps like 'Schedule a call with the arth.ai team'. These must be genuine recommendations the company can act on independently."),
   deltaInsights: z.object({
@@ -161,6 +169,7 @@ CRITICAL RULES:
 1. Pain points MUST be full insight sentences applying the user's raw tags to their specific business. NEVER return raw labels like "Scaling my team".
 2. Recommended next steps MUST be genuine recommendations the company can act on independently. NEVER include "Schedule a call with the arth.ai team" as a step.
 3. Every insight must reference the actual company name at least once. No generic "the company" references.
+4. CONFIDENCE SCORING: For pain points and AI opportunities, strictly score your confidence (0.0 to 1.0) based on what data you ACTUALLY found in the context vs what you assume. Categorize as "verified" (found in context), "inferred" (likely based on context), or "speculative" (assumed industry standard). Provide supporting "evidence" strings.
 
 Analysis Document:
 ${analysisData}
@@ -221,7 +230,8 @@ ${JSON.stringify(draftReport, null, 2)}
 
 You must rewrite ONLY the following sections to fix the issues: ${failedSections.join(", ")}.
 Do NOT return the entire report. Only return the corrected sections.
-Be HYPER-SPECIFIC. No generic buzzwords.`;
+Be HYPER-SPECIFIC. No generic buzzwords.
+CONFIDENCE SCORING: You must strictly score your confidence (0.0 to 1.0) based on what data you ACTUALLY found vs what you assume, using categories: "verified", "inferred", or "speculative". Provide "evidence" strings.`;
 
   try {
     const { object } = await generateObject({
@@ -375,30 +385,34 @@ function getFallbackReport(lead) {
     marketPosition: `Within the ${lead.industry} industry, companies of ${lead.companyName}'s size typically face competitive pressure to differentiate through operational efficiency and customer experience. Strategic AI adoption can provide a meaningful competitive advantage.`,
     digitalPresence: `${lead.companyName} has an established web presence at ${lead.website}. Optimizing their digital channels and automating customer-facing workflows could significantly improve conversion and retention.`,
     painPoints: [
-      `Addressing the primary challenge: ${lead.painPoints}`,
-      `Scaling operations without proportionally increasing headcount requires significant automation.`,
-      `Maintaining consistent quality and response times as the team grows is a critical pressure point at this stage.`,
+      { text: `Addressing the primary challenge: ${lead.painPoints}`, confidence: 0.9, evidence: [], category: "verified" },
+      { text: `Scaling operations without proportionally increasing headcount requires significant automation.`, confidence: 0.7, evidence: [], category: "inferred" },
+      { text: `Maintaining consistent quality and response times as the team grows is a critical pressure point at this stage.`, confidence: 0.4, evidence: [], category: "speculative" },
     ],
     aiOpportunities: [
       {
         title: "Automated Inbound Lead Intelligence",
         description: `Implement AI-powered enrichment for every inbound inquiry to ${lead.companyName}. This delivers personalized context to your team before any human interaction, dramatically improving conversion rates.`,
         impact: "High",
+        confidence: 0.9, category: "verified", evidence: []
       },
       {
         title: "Intelligent Process Automation",
         description: `Identify the top 3 repetitive workflows in ${lead.companyName}'s operations and automate them using AI agents. For a ${lead.companySize} company in ${lead.industry}, this typically saves 15-30 hours per team member monthly.`,
         impact: "High",
+        confidence: 0.7, category: "inferred", evidence: []
       },
       {
         title: "AI-Powered Customer Communication",
         description: `Deploy AI to handle first-response communications, FAQs, and follow-up sequences for ${lead.companyName}. This ensures 24/7 responsiveness without additional headcount.`,
         impact: "Medium",
+        confidence: 0.4, category: "speculative", evidence: []
       },
       {
         title: "Data Intelligence Dashboard",
         description: `Centralize operational data into an AI-driven dashboard that surfaces actionable insights, anomalies, and growth opportunities automatically for ${lead.companyName}.`,
         impact: "Medium",
+        confidence: 0.8, category: "inferred", evidence: []
       },
     ],
     recommendedNextSteps: [
