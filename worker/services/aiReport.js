@@ -5,6 +5,13 @@ import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
 import { searchPastReports, getCompanyHistory, getSimilarCompanies } from "./vectorStore.js";
 import { getIndustryBenchmarks } from "./selfLearning.js";
 import { streamThought } from "./redisStream.js";
+import { Langfuse } from "langfuse";
+
+const langfuse = new Langfuse({
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY || "dummy",
+  secretKey: process.env.LANGFUSE_SECRET_KEY || "dummy",
+  baseUrl: process.env.LANGFUSE_BASEURL || "https://cloud.langfuse.com"
+});
 
 // ─── Schemas ─────────────────────────────────────────────────────────────
 
@@ -46,10 +53,11 @@ const criticSchema = z.object({
   actionabilityScore: z.number().min(1).max(10).describe("Can a sales rep act on this immediately?"),
   accuracyScore: z.number().min(1).max(10).describe("Are claims verifiable?"),
   approved: z.boolean().describe("True if the report is highly specific and excellent, false if it uses generic buzzwords or lacks depth."),
-  feedback: z.string().describe("Brutally honest feedback on what needs to be improved in the rewrite. Empty if approved.")
+  feedback: z.string().describe("Brutally honest feedback on what needs to be improved in the rewrite. Empty if approved."),
+  failedSections: z.array(z.string()).describe("List exact keys from the report schema that failed to meet the bar (e.g. ['painPoints', 'executiveSummary']). Empty if approved.")
 });
 
-const geminiModel = google("gemini-1.5-flash-latest");
+const geminiModel = google("gemini-2.5-flash");
 
 // ─── 1. Research Agent ───────────────────────────────────────────────────
 
@@ -146,7 +154,7 @@ You MUST compare their previous state to their current state. Note what gaps the
 async function runWriterAgent(lead, analysisData, previousFeedback, companyHistory, jobId, industryBenchmarks) {
   streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report...`);
   
-Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
+  let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
 Stated Challenge: ${lead.painPoints}
 
 CRITICAL RULES:
@@ -189,6 +197,48 @@ ${previousFeedback}`;
   return object;
 }
 
+// ─── 3.5 Section Rewriter Agent ──────────────────────────────────────────
+
+async function runSectionRewriter(lead, draftReport, failedSections, feedback, jobId) {
+  streamThought(jobId, `[Rewriter Agent ✏️] Rewriting sections: ${failedSections.join(", ")}...`);
+  
+  const dynamicSchema = z.object(
+    failedSections.reduce((acc, key) => {
+      if (reportSchema.shape[key]) {
+        acc[key] = reportSchema.shape[key];
+      }
+      return acc;
+    }, {})
+  );
+
+  const prompt = `You are a Senior Editor. A previous draft of an AI report for ${lead.companyName} (${lead.industry}) failed quality checks.
+
+Critic Feedback:
+${feedback}
+
+Original Draft (Full):
+${JSON.stringify(draftReport, null, 2)}
+
+You must rewrite ONLY the following sections to fix the issues: ${failedSections.join(", ")}.
+Do NOT return the entire report. Only return the corrected sections.
+Be HYPER-SPECIFIC. No generic buzzwords.`;
+
+  try {
+    const { object } = await generateObject({
+      model: geminiModel,
+      schema: dynamicSchema,
+      system: "You are an Elite Business Copywriter specializing in fixing specific sections of a report.",
+      prompt: prompt,
+      temperature: 0.7,
+    });
+
+    return { ...draftReport, ...object };
+  } catch (error) {
+    console.warn(`[Rewriter Agent] Error generating partial rewrite, falling back to original draft.`, error.message);
+    return draftReport;
+  }
+}
+
 // ─── 4. Critic Agent ─────────────────────────────────────────────────────
 
 async function runCriticAgent(lead, draftReport, jobId) {
@@ -218,9 +268,29 @@ If any score < 7, reject it (approved: false) and provide harsh feedback on exac
   if (object.specificityScore < 7 || object.actionabilityScore < 7 || object.accuracyScore < 7) {
     object.approved = false;
     object.feedback = `[Eval Scores: Spec=${object.specificityScore}, Act=${object.actionabilityScore}, Acc=${object.accuracyScore}] ${object.feedback || 'Please improve the low scoring areas.'}`;
+    if (!object.failedSections || object.failedSections.length === 0) {
+      object.failedSections = ["executiveSummary", "painPoints", "aiOpportunities", "recommendedNextSteps"];
+    }
     streamThought(jobId, `  -> 🎯 Evals failed: Spec=${object.specificityScore}, Act=${object.actionabilityScore}, Acc=${object.accuracyScore}`);
   } else {
     streamThought(jobId, `  -> 🎯 Evals passed: Spec=${object.specificityScore}, Act=${object.actionabilityScore}, Acc=${object.accuracyScore}`);
+  }
+
+  // Langfuse tracing
+  try {
+    const trace = langfuse.trace({
+      name: "report_generation",
+      sessionId: lead.companyName,
+      metadata: { jobId }
+    });
+
+    trace.score({ name: "specificity", value: object.specificityScore });
+    trace.score({ name: "actionability", value: object.actionabilityScore });
+    trace.score({ name: "accuracy", value: object.accuracyScore });
+    
+    await langfuse.flushAsync();
+  } catch(e) {
+    console.warn("Langfuse logging failed:", e.message);
   }
 
   return object;
@@ -260,12 +330,19 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
     let approved = false;
     let iterations = 0;
     let criticFeedback = "";
+    let failedSections = [];
 
     while (!approved && iterations < 3) {
       iterations++;
-      streamThought(jobId, `\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
       
-      draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory, jobId, industryBenchmarks);
+      if (!draftReport) {
+        streamThought(jobId, `\n[Orchestrator 🧠] Writer Loop (Attempt ${iterations}/3)`);
+        draftReport = await runWriterAgent(lead, analysisData, criticFeedback, companyHistory, jobId, industryBenchmarks);
+      } else {
+        streamThought(jobId, `\n[Orchestrator 🧠] Rewriter Loop (Attempt ${iterations}/3)`);
+        draftReport = await runSectionRewriter(lead, draftReport, failedSections, criticFeedback, jobId);
+      }
+      
       const critique = await runCriticAgent(lead, draftReport, jobId);
       
       if (critique.approved) {
@@ -274,6 +351,7 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       } else {
         streamThought(jobId, `[Orchestrator 🧠] ❌ Critic Rejected: ${critique.feedback}`);
         criticFeedback = critique.feedback;
+        failedSections = critique.failedSections || [];
       }
     }
 
