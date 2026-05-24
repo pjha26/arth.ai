@@ -80,14 +80,29 @@ export async function POST(request: Request) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      if (existingReport.createdAt > thirtyDaysAgo) {
+      if (existingReport.createdAt > thirtyDaysAgo && existingReport.personaType === "general") {
+        // Save the new lead contact info so sales knows they requested it
+        await prisma.lead.create({
+          data: {
+            companyId: company.id,
+            fullName: leadInput.fullName,
+            email: leadInput.email,
+            painPoints: leadInput.painPoints,
+          }
+        });
+
+        console.log(`[arth.ai] Returning CACHED or IN-PROGRESS report: ${company.name} (${existingReport.id})`);
+
         return NextResponse.json(
           { 
-            success: false, 
-            message: "A report for this company has already been requested within the last 30 days.",
-            existingReportId: existingReport.id
+            success: true, 
+            message: existingReport.status === 'done' 
+              ? `Found a fresh AI report for ${company.name}. Loading instantly...`
+              : `A report for ${company.name} is already generating. Joining stream...`,
+            jobId: existingReport.id,
+            fromCache: existingReport.status === 'done'
           },
-          { status: 409 }
+          { status: 200 }
         );
       }
     }
