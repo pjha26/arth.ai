@@ -104,12 +104,12 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
           />
           <button 
             type="submit" 
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !(input?.trim())}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center transition-all"
             style={{ 
-              background: (isLoading || !input.trim()) ? "#F4F4F5" : "#18181B", 
-              color: (isLoading || !input.trim()) ? "#A1A1AA" : "#ffffff",
-              boxShadow: (isLoading || !input.trim()) ? "none" : "0 2px 8px rgba(24,24,27,0.2)"
+              background: (isLoading || !(input?.trim())) ? "#F4F4F5" : "#18181B", 
+              color: (isLoading || !(input?.trim())) ? "#A1A1AA" : "#ffffff",
+              boxShadow: (isLoading || !(input?.trim())) ? "none" : "0 2px 8px rgba(24,24,27,0.2)"
             }}
           >
             <span className="material-symbols-outlined text-[18px]">arrow_upward</span>

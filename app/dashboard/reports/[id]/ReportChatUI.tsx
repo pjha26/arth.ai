@@ -163,12 +163,12 @@ export default function ReportChatUI({ reportId, companyName, personaType }: { r
           />
           <button 
             type="submit" 
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !(input?.trim())}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center transition-opacity"
             style={{ 
               background: "var(--c-accent, #C4922A)", 
               color: "#fff",
-              opacity: (isLoading || !input.trim()) ? 0.5 : 1
+              opacity: (isLoading || !(input?.trim())) ? 0.5 : 1
             }}
           >
             <span className="material-symbols-outlined text-sm">arrow_upward</span>
