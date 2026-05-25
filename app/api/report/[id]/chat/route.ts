@@ -5,10 +5,11 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
     const messages = await prisma.chatMessage.findMany({
-      where: { reportId: params.id },
+      where: { reportId: resolvedParams.id },
       orderBy: { createdAt: "asc" }
     });
     return Response.json(messages.map(m => ({
@@ -21,9 +22,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { messages } = await req.json();
-  const reportId = params.id;
+  const resolvedParams = await params;
+  const reportId = resolvedParams.id;
 
   // 1. Fetch Report & Intelligence
   const report = await prisma.report.findUnique({
@@ -83,5 +85,5 @@ Rules:
     }
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }

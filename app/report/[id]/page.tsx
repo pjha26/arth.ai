@@ -4,8 +4,9 @@ import LeadChatUI from "./LeadChatUI";
 
 const prisma = new PrismaClient();
 
-export default async function PublicReportPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function PublicReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
 
   const report = await prisma.report.findUnique({
     where: { id },
