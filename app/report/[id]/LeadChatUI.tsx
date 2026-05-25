@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef } from "react";
 
 export default function LeadChatUI({ reportId, companyName }: { reportId: string, companyName: string }) {
-  const { messages, input, handleInputChange, handleSubmit, setInput, isLoading, setMessages } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, append, isLoading, setMessages } = useChat({
     api: `/api/report/${reportId}/chat`,
   });
   
@@ -53,7 +53,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
               {suggestedPrompts.map((prompt, i) => (
                 <button
                   key={i}
-                  onClick={() => setInput(prompt)}
+                  onClick={() => append({ role: "user", content: prompt })}
                   className="text-sm px-4 py-3 rounded-xl border border-[#E8E6E1] text-left hover:border-[#18181B] hover:shadow-sm transition-all duration-200 text-[#3F3F46] hover:text-[#18181B] bg-white flex items-center justify-between group"
                 >
                   <span>{prompt}</span>

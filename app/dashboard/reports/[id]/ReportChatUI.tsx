@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ReportChatUI({ reportId, companyName, personaType }: { reportId: string, companyName: string, personaType: string }) {
-  const { messages, input, handleInputChange, handleSubmit, setInput, isLoading, setMessages } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, append, isLoading, setMessages } = useChat({
     api: `/api/reports/${reportId}/chat`,
   });
   
@@ -49,7 +49,7 @@ export default function ReportChatUI({ reportId, companyName, personaType }: { r
   };
 
   const handleChipClick = (prompt: string) => {
-    setInput(prompt);
+    append({ role: "user", content: prompt });
   };
 
   return (
