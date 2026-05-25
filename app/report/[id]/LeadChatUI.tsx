@@ -1,12 +1,28 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef } from "react";
+import { DefaultChatTransport } from "ai";
+import { useEffect, useRef, useState } from "react";
 
 export default function LeadChatUI({ reportId, companyName }: { reportId: string, companyName: string }) {
-  const { messages, input, handleInputChange, handleSubmit, append, isLoading, setMessages } = useChat({
-    api: `/api/report/${reportId}/chat`,
+  const [input, setInput] = useState("");
+
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport: new DefaultChatTransport({ api: `/api/report/${reportId}/chat` }),
   });
+
+  const isLoading = status === 'submitted' || status === 'streaming';
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage({ text: input });
+    setInput("");
+  };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +69,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
               {suggestedPrompts.map((prompt, i) => (
                 <button
                   key={i}
-                  onClick={() => append({ role: "user", content: prompt })}
+                  onClick={() => sendMessage({ text: prompt })}
                   className="text-sm px-4 py-3 rounded-xl border border-[#E8E6E1] text-left hover:border-[#18181B] hover:shadow-sm transition-all duration-200 text-[#3F3F46] hover:text-[#18181B] bg-white flex items-center justify-between group"
                 >
                   <span>{prompt}</span>
@@ -72,7 +88,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
                     : 'rounded-bl-sm bg-[#FAFAF8] border border-[#E8E6E1] text-[#18181B]'
                 }`}
               >
-                {m.content.split('\n').map((line, i) => (
+                {(m.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '').split('\n').map((line: string, i: number) => (
                   <p key={i} className="mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
                 ))}
               </div>

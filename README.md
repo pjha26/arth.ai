@@ -49,6 +49,7 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
    - Sales reps access the CRM at `/dashboard`, featuring a premium, Notion-style split-pane interface.
    - **Analytics Tab:** Provides high-level metrics, industry breakdown bars, persona performance cards, a 24/7 submission heatmap, and an AI-generated daily Trend Feed.
    - **Leads & Reports Tab:** Shows a robust list/grid of all inbound leads. Clicking a lead smoothly slides in a detail panel revealing AI insights (including Visual Intelligence and AI Reasoning), a one-click PDF download, and an internal Report Chat UI.
+   - **Integrated Report Viewer (65/35 Split):** Navigating to a specific report opens a powerful dual-pane interface: a live PDF viewer embedded on the left, paired with a persistent, dynamic AI Chat Interface on the right for on-the-fly intelligence drilling.
 
 ---
 
@@ -69,7 +70,7 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 - **Google Generative AI (Gemini 2.5 Pro / Flash)**: The core intelligence engine powering the multi-agent pipeline and vision models.
 - **pgvector**: Postgres extension used for vector embeddings and Semantic Search.
 - **RAG (Retrieval-Augmented Generation)**: Vectorizes the generated reports to allow conversational querying of the insights directly from the dashboard or public lead view.
-- **Vercel AI SDK (`ai` & `@ai-sdk/react`)**: Standardized streaming, UI hooks, and structured data extraction from Gemini.
+- **Vercel AI SDK v6 (`ai` & `@ai-sdk/react`)**: Standardized streaming, UI hooks using `DefaultChatTransport`, and structured data extraction from Gemini.
 - **Puppeteer**: Headless Chrome for complex website scraping, website screenshotting, and PDF generation.
 - **Cheerio**: Lightweight HTML parser for static site scraping.
 - **Langfuse**: Observability platform utilized to trace generative spans, score confidence, and track hallucination rates.
@@ -107,5 +108,6 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 
 ### 6. Premium "Notion-Style" CRM Interface & Analytics
 - **70/30 Split Pane Layout**: Smoothly transitions to reveal a detail panel without jarring page reloads.
+- **Integrated Report Viewer (65/35 Split)**: An immersive dashboard feature allowing parallel interaction with a native PDF viewer (left) and an AI Chat UI (right).
 - **Analytics Tab**: Features custom SVG sparklines, a 24/7 Submission Heatmap, and an AI-generated daily Trend Feed.
 - **Snappy Micro-Interactions**: Optimistic deletion, Framer Motion waterfalls, floating bulk action bars, and live state syncing via database polling.
