@@ -240,7 +240,7 @@ async function runVisualAgent(lead, screenshotBase64, textContext, jobId) {
           role: "user",
           content: [
             { type: "text", text: `Here is the website visually AND as text.\nText Context: ${textContext}\nWhat does the visual design tell you that the text doesn't?` },
-            { type: "image", image: new URL(\`data:image/jpeg;base64,\${screenshotBase64}\`) }
+            { type: "image", image: new URL(`data:image/jpeg;base64,${screenshotBase64}`) }
           ]
         }
       ]
