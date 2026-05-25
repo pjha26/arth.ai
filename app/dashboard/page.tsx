@@ -218,13 +218,23 @@ function LeadsView({ leads, setLeads, loading }: any) {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
-  // Filter leads
+  // Filter and sort leads (highest intent score first)
   const filtered = useMemo(() => {
-    return leads.filter((l: any) => {
+    let result = leads.filter((l: any) => {
       const matchSearch = l.companyName.toLowerCase().includes(search.toLowerCase()) || l.email.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === "All" || l.status === statusFilter;
       return matchSearch && matchStatus;
     });
+
+    // Sort by score (DESC) and then by createdAt (DESC)
+    result.sort((a: any, b: any) => {
+      const scoreA = a.score || 0;
+      const scoreB = b.score || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return result;
   }, [leads, search, statusFilter]);
 
   const selectedLead = useMemo(() => leads.find((l: any) => l.id === selectedLeadId), [leads, selectedLeadId]);
@@ -334,7 +344,7 @@ function LeadsView({ leads, setLeads, loading }: any) {
               <motion.div 
                 key={lead.id} 
                 variants={itemAnim}
-                className={`arth-lead-row ${selectedLeadId === lead.id ? 'active' : ''} ${viewMode === 'grid' ? 'is-card' : ''}`}
+                className={`arth-lead-row ${selectedLeadId === lead.id ? 'active' : ''} ${viewMode === 'grid' ? 'is-card' : ''} ${lead.score >= 30 ? 'hot-signal' : ''}`}
                 onClick={() => setSelectedLeadId(lead.id)}
               >
                 <input type="checkbox" className="arth-checkbox" checked={selectedRows.has(lead.id)} onChange={(e: any) => toggleRow(lead.id, e)} />
@@ -351,6 +361,9 @@ function LeadsView({ leads, setLeads, loading }: any) {
                 <div className="arth-lead-tags">
                   <div className="arth-tag-persona">{lead.personaType || 'General'}</div>
                   <StatusPill status={lead.status} />
+                  {lead.score >= 30 && (
+                    <div className="arth-tag-persona" style={{ background: '#FFF1EC', color: '#E85D04', border: '1px solid #FFD3C4' }}>🔥 HOT</div>
+                  )}
                 </div>
 
                 <div className="arth-lead-score" title="Intent Score">
@@ -426,6 +439,23 @@ function LeadsView({ leads, setLeads, loading }: any) {
 
                 {selectedLead.status === 'done' && (
                   <>
+                    <div className="arth-panel-block">
+                      <div className="arth-label">Engagement & Intent</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                        <div style={{ fontSize: 32, fontWeight: 600, color: selectedLead.score >= 30 ? '#E85D04' : 'var(--c-accent)', lineHeight: 1 }}>
+                           {selectedLead.score || 0}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-heading)' }}>
+                            {selectedLead.score >= 30 ? 'High Intent Signal 🔥' : 'Standard Engagement'}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>
+                            Score increases automatically as lead interrogates the AI report.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="arth-panel-block">
                       <div className="arth-label">AI Insights</div>
                       <ul className="arth-insight-list">
@@ -737,6 +767,10 @@ export default function Dashboard() {
         .arth-lead-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); cursor: pointer; transition: background 0.15s; background: var(--c-surface); position: relative; }
         .arth-lead-row:hover { background: var(--c-sidebar); }
         .arth-lead-row.active { background: var(--c-accent-light); }
+        .hot-signal { border-left: 3px solid #E85D04; background: linear-gradient(to right, rgba(232, 93, 4, 0.05) 0%, var(--c-surface) 100%); }
+        .hot-signal:hover { background: linear-gradient(to right, rgba(232, 93, 4, 0.08) 0%, var(--c-sidebar) 100%); }
+        .hot-signal .circle { stroke: #E85D04; }
+        .hot-signal .score-text { color: #E85D04; }
         .arth-checkbox { width: 16px; height: 16px; border-radius: 4px; accent-color: var(--c-accent); cursor: pointer; }
         .arth-lead-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--c-border); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
         .arth-lead-avatar img { width: 100%; height: 100%; object-fit: cover; }

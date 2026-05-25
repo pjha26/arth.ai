@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { embed, streamText } from "ai";
 import { prisma } from "@/lib/prisma";
@@ -8,8 +7,6 @@ const google = createGoogleGenerativeAI({
 });
 
 export async function GET(request: Request, context: any) {
-  // Access params after awaiting if Next.js 15, but for Next 14 standard destructure is fine.
-  // Using context.params is safe.
   const { id } = await context.params;
 
   try {
@@ -19,42 +16,80 @@ export async function GET(request: Request, context: any) {
       select: { id: true, role: true, content: true },
     });
 
-    return NextResponse.json(messages);
+    return Response.json(messages);
   } catch (error) {
     console.error("[Chat GET] Error fetching chat history:", error);
-    return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 });
+    return Response.json({ error: "Failed to fetch history" }, { status: 500 });
   }
+}
+
+// Helper: extract plain text from a UIMessage (which uses parts[]) or a CoreMessage (which uses content)
+function extractText(msg: any): string {
+  if (typeof msg.content === "string" && msg.content.length > 0) return msg.content;
+  if (typeof msg.text === "string" && msg.text.length > 0) return msg.text;
+  if (Array.isArray(msg.parts)) {
+    return msg.parts
+      .filter((p: any) => p.type === "text")
+      .map((p: any) => p.text)
+      .join("");
+  }
+  return "";
 }
 
 export async function POST(request: Request, context: any) {
   const { id: reportId } = await context.params;
-  
+
+  let body: any;
   try {
-    const { messages } = await request.json();
-    const lastMessage = messages[messages.length - 1];
-    
-    if (!lastMessage || lastMessage.role !== "user") {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-    }
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-    // Save the user's message asynchronously to not block response
-    prisma.chatMessage.create({
-      data: {
-        reportId,
-        role: "user",
-        content: lastMessage.content
-      }
-    }).catch(e => console.error("Failed to save user msg:", e));
+  // ── 1. Extract the user's latest text ──────────────────────────
+  let userText = "";
+  if (body.messages && body.messages.length > 0) {
+    const lastMsg = body.messages[body.messages.length - 1];
+    userText = extractText(lastMsg);
+  }
+  if (!userText && typeof body.text === "string") {
+    userText = body.text;
+  }
 
-    // 1. Embed the user query
+  if (!userText) {
+    console.error("[Chat POST] Could not extract user text from body:", JSON.stringify(body).slice(0, 500));
+    return Response.json({ error: "No message text found" }, { status: 400 });
+  }
+
+  console.log(`[Chat POST] reportId=${reportId} userText="${userText.slice(0, 80)}"`);
+
+  // ── 2. Fire-and-forget: save user message + update intent score ─
+  prisma.chatMessage
+    .create({ data: { reportId, role: "user", content: userText } })
+    .catch((e) => console.error("Failed to save user msg:", e));
+
+  // Intent scoring
+  (() => {
+    let scoreBump = 2;
+    const lower = userText.toLowerCase();
+    if (userText.length > 50) scoreBump += 3;
+    const hotWords = ["pricing", "cost", "integrate", "competitor", "buy", "sales", "purchase", "vs"];
+    if (hotWords.some((w) => lower.includes(w))) scoreBump += 10;
+    prisma.report
+      .update({ where: { id: reportId }, data: { score: { increment: scoreBump } } })
+      .catch((e) => console.error("Failed to update intent score:", e));
+  })();
+
+  // ── 3. RAG context (best-effort – failures are not fatal) ──────
+  let contextStr = "No specific report context found.";
+  try {
     const { embedding } = await embed({
-      model: google.textEmbeddingModel('text-embedding-004'),
-      value: lastMessage.content,
+      model: google.textEmbeddingModel("text-embedding-004"),
+      value: userText,
     });
-    const embeddingStr = `[${embedding.join(',')}]`;
+    const embeddingStr = `[${embedding.join(",")}]`;
 
-    // 2. Perform semantic search for this specific report using pgvector
-    const relevantChunks = await prisma.$queryRaw`
+    const relevantChunks: any[] = await prisma.$queryRaw`
       SELECT chunk as content, 1 - (embedding <=> ${embeddingStr}::vector) as similarity
       FROM "Embedding"
       WHERE "reportId" = ${reportId}
@@ -62,24 +97,26 @@ export async function POST(request: Request, context: any) {
       LIMIT 3
     `;
 
-    // 3. Format the context
-    let contextStr = "No specific report context found.";
-    // @ts-ignore
-    if (relevantChunks && relevantChunks.length > 0) {
-      // @ts-ignore
-      contextStr = relevantChunks.map(c => c.content).join("\n\n---\n\n");
+    if (relevantChunks?.length > 0) {
+      contextStr = relevantChunks.map((c) => c.content).join("\n\n---\n\n");
     }
+  } catch (ragError) {
+    console.warn("[Chat POST] RAG/embed failed (continuing without context):", ragError);
+  }
 
-    // 4. Determine Persona from Report for tailored responses
+  // ── 4. Company info (best-effort) ──────────────────────────────
+  let companyName = "the company";
+  try {
     const report = await prisma.report.findUnique({
       where: { id: reportId },
-      select: { personaType: true, company: { select: { name: true } } }
+      select: { personaType: true, company: { select: { name: true } } },
     });
+    companyName = report?.company?.name || companyName;
+  } catch (e) {
+    console.warn("[Chat POST] Failed to fetch report info:", e);
+  }
 
-    const persona = report?.personaType || "general";
-    const companyName = report?.company?.name || "the company";
-
-    const systemPrompt = `
+  const systemPrompt = `
 You are an intelligence analyst for ArthAI.
 You have analyzed ${companyName}'s report.
 Answer based ONLY on the report data provided.
@@ -89,32 +126,41 @@ Never hallucinate facts not in the report.
 <report_context>
 ${contextStr}
 </report_context>
-    `.trim();
+  `.trim();
 
-    // 5. Stream the response using gemini-1.5-flash (or pro)
+  // ── 5. Convert UIMessages → CoreMessages for streamText ────────
+  const coreMessages = (body.messages || [])
+    .map((msg: any) => {
+      const role = msg.role === "user" || msg.role === "assistant" || msg.role === "system" ? msg.role : "user";
+      const content = extractText(msg);
+      return content ? { role, content } : null;
+    })
+    .filter(Boolean);
+
+  if (coreMessages.length === 0) {
+    coreMessages.push({ role: "user", content: userText });
+  }
+
+  // ── 6. Stream the AI response ──────────────────────────────────
+  try {
     const result = await streamText({
       model: google("gemini-2.5-flash"),
       system: systemPrompt,
-      messages: messages.slice(-4), // keep last 3 + the new one for flow
+      messages: coreMessages.slice(-4),
       onFinish: async ({ text }) => {
-        // Save the assistant's response to the database once the stream completes
         try {
           await prisma.chatMessage.create({
-            data: {
-              reportId,
-              role: "assistant",
-              content: text
-            }
+            data: { reportId, role: "assistant", content: text },
           });
         } catch (e) {
           console.error("Failed to save assistant msg:", e);
         }
-      }
+      },
     });
 
-    return result.toTextStreamResponse();
-  } catch (error) {
-    console.error("[Chat POST] Error:", error);
-    return NextResponse.json({ error: "Failed to generate response" }, { status: 500 });
+    return result.toUIMessageStreamResponse();
+  } catch (streamError) {
+    console.error("[Chat POST] streamText failed:", streamError);
+    return Response.json({ error: "AI generation failed" }, { status: 500 });
   }
 }

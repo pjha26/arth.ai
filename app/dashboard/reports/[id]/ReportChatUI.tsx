@@ -46,34 +46,34 @@ function MessageBubble({ msg }: { msg: any }) {
   );
 }
 
+// Create transport OUTSIDE the component to avoid re-creation on every render
+function createTransport(reportId: string) {
+  return new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` });
+}
+
 export default function ReportChatUI({ report, onClose }: { report: any, onClose?: () => void }) {
-  const [restored, setRestored] = useState(false);
-  
   const { id: reportId } = report;
   const companyName = report.company?.name || "the company";
-  
-  const [initialMessages, setInitialMessages] = useState<any[]>([]);
-  
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`chat_${reportId}`);
-      if (saved) {
-        setInitialMessages(JSON.parse(saved));
-        setRestored(true);
-      }
-    } catch (e) {
-      console.warn("Failed to parse local storage chat history", e);
-    }
-  }, [reportId]);
+
+  // Stable transport ref — created once per reportId
+  const transportRef = useRef<DefaultChatTransport<UIMessage>>(null);
+  if (!transportRef.current) {
+    transportRef.current = createTransport(reportId);
+  }
 
   const [input, setInput] = useState("");
+  const [chatError, setChatError] = useState<string | null>(null);
 
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` }),
-    messages: initialMessages,
+  const { messages, sendMessage, status, error, setMessages } = useChat({
+    id: `report-chat-${reportId}`,
+    transport: transportRef.current,
+    onError: (err) => {
+      console.error("[ReportChatUI] useChat error:", err);
+      setChatError(err.message || "Something went wrong");
+    },
     onFinish: () => {
-      // Intentionally left blank, we sync on messages change
-    }
+      setChatError(null);
+    },
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -95,7 +95,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
 
   const score = report.score || null;
   const industry = report.company?.industry || "Software";
-  const topSignal = "Automation Potential 8/10"; // Default based on UI requirement
+  const topSignal = "Automation Potential 8/10";
 
   const PILLS = [
     { icon: "📊", label: `Overall Score: ${score ? `${score}/10` : "N/A"}` },
@@ -115,6 +115,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
   function handleSend(text?: string) {
     const msg = text || input.trim();
     if (!msg || isLoading) return;
+    setChatError(null);
 
     sendMessage({ text: msg });
     setInput("");
@@ -128,12 +129,14 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
     }
   }
 
+  // Persist messages to localStorage
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem(`chat_${reportId}`, JSON.stringify(messages));
     }
   }, [messages, reportId]);
 
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
@@ -197,17 +200,25 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
           </div>
         ) : (
           <>
-            {restored && (
-              <div style={{ textAlign: "center", marginBottom: "16px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 500, padding: "4px 12px", borderRadius: "100px", background: "var(--bg)", color: "var(--muted)" }}>
-                  Conversation restored
-                </span>
-              </div>
-            )}
             {messages.map((msg, i) => (
               <MessageBubble key={msg.id || i} msg={msg} />
             ))}
             {isLoading && <TypingIndicator />}
+            {(chatError || error) && (
+              <div style={{
+                padding: '8px 14px', margin: '8px 0', borderRadius: '8px',
+                background: '#FFF1F0', color: '#CF1322', fontSize: '12px',
+                border: '1px solid #FFA39E'
+              }}>
+                ⚠ {chatError || error?.message || "An error occurred"}
+                <button 
+                  onClick={() => setChatError(null)} 
+                  style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             {showFollowup && (
               <button
                 className="cr-followup"
