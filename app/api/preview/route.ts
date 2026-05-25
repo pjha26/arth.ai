@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     const domain = resolveDomain(query);
 
     const { object } = await generateObject({
-      model: google("gemini-2.0-flash"),
+      model: google("gemini-flash-latest"),
       schema: previewSchema,
       system: "You are an AI business intelligence analyst. Generate 3 highly specific, factual insights about the provided company. Reference real known facts, their competitive position, or industry dynamics. Return only valid JSON. No generic advice.",
       prompt: `Company Name / URL: ${query}\nGuessed Domain: ${domain}`,
