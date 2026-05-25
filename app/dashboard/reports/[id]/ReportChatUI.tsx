@@ -46,6 +46,12 @@ function MessageBubble({ msg }: { msg: any }) {
   );
 }
 
+const MODELS = [
+  { id: "gemini-1.5-flash", label: "1.5 Flash", badge: "Stable" },
+  { id: "gemini-2.0-flash", label: "2.0 Flash", badge: "Fast" },
+  { id: "gemini-2.5-flash", label: "2.5 Flash", badge: "Latest" },
+];
+
 // Create transport OUTSIDE the component to avoid re-creation on every render
 function createTransport(reportId: string) {
   return new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` });
@@ -63,6 +69,8 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
 
   const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash");
+  const [showModelPicker, setShowModelPicker] = useState(false);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: `report-chat-${reportId}`,
@@ -117,7 +125,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
     if (!msg || isLoading) return;
     setChatError(null);
 
-    sendMessage({ text: msg });
+    sendMessage({ text: msg }, { body: { model: selectedModel } });
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   }
@@ -152,8 +160,56 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
           </div>
           <button className="cr-close-btn" title="Close chat" onClick={onClose}>×</button>
         </div>
-        <div className="cr-chat-subtitle">
-          Ask anything about {companyName}'s intelligence
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+          <div className="cr-chat-subtitle" style={{ margin: 0 }}>
+            Ask anything about {companyName}'s intelligence
+          </div>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowModelPicker(!showModelPicker)}
+              style={{
+                background: 'var(--cr-accent-dim, rgba(196,146,42,0.12))',
+                border: '1px solid var(--cr-border, #EAE2D2)',
+                borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+                fontSize: 11, fontWeight: 500, fontFamily: 'var(--cr-ff-body, sans-serif)',
+                color: 'var(--cr-accent, #C4922A)', display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              ⚙ {MODELS.find(m => m.id === selectedModel)?.label || '2.0 Flash'}
+            </button>
+            {showModelPicker && (
+              <div style={{
+                position: 'absolute', right: 0, top: '110%', zIndex: 50,
+                background: 'var(--cr-surface, #FDFAF4)', border: '1px solid var(--cr-border, #EAE2D2)',
+                borderRadius: 10, boxShadow: '0 8px 24px rgba(60,30,10,0.12)',
+                padding: 6, minWidth: 170,
+              }}>
+                {MODELS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '8px 12px', border: 'none', borderRadius: 7,
+                      cursor: 'pointer', fontSize: 12, fontFamily: 'var(--cr-ff-body, sans-serif)',
+                      background: selectedModel === m.id ? 'var(--cr-accent-dim, rgba(196,146,42,0.12))' : 'transparent',
+                      color: selectedModel === m.id ? 'var(--cr-accent, #C4922A)' : 'var(--cr-text, #3D2B1A)',
+                      fontWeight: selectedModel === m.id ? 600 : 400,
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <span>{m.label}</span>
+                    <span style={{
+                      fontSize: 9, padding: '2px 6px', borderRadius: 4,
+                      background: selectedModel === m.id ? 'var(--cr-accent, #C4922A)' : 'var(--cr-border, #EAE2D2)',
+                      color: selectedModel === m.id ? '#fff' : 'var(--cr-muted, #9C845F)',
+                      fontWeight: 600,
+                    }}>{m.badge}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

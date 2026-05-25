@@ -69,15 +69,22 @@ export async function POST(request: Request, context: any) {
     .catch((e) => console.error("Failed to save user msg:", e));
 
   // Intent scoring
-  (() => {
+  (async () => {
     let scoreBump = 2;
     const lower = userText.toLowerCase();
     if (userText.length > 50) scoreBump += 3;
     const hotWords = ["pricing", "cost", "integrate", "competitor", "buy", "sales", "purchase", "vs"];
     if (hotWords.some((w) => lower.includes(w))) scoreBump += 10;
-    prisma.report
-      .update({ where: { id: reportId }, data: { score: { increment: scoreBump } } })
-      .catch((e) => console.error("Failed to update intent score:", e));
+    
+    try {
+      const report = await prisma.report.findUnique({ where: { id: reportId }, select: { score: true } });
+      if (report) {
+        const newScore = (report.score || 0) + scoreBump;
+        await prisma.report.update({ where: { id: reportId }, data: { score: newScore } });
+      }
+    } catch (e) {
+      console.error("Failed to update intent score:", e);
+    }
   })();
 
   // ── 3. RAG context (best-effort – failures are not fatal) ──────
@@ -104,14 +111,26 @@ export async function POST(request: Request, context: any) {
     console.warn("[Chat POST] RAG/embed failed (continuing without context):", ragError);
   }
 
-  // ── 4. Company info (best-effort) ──────────────────────────────
+  // ── 4. Company info & Base Context ──────────────────────────────
   let companyName = "the company";
+  let baseInsights = "";
   try {
     const report = await prisma.report.findUnique({
       where: { id: reportId },
-      select: { personaType: true, company: { select: { name: true } } },
+      select: { 
+        personaType: true, 
+        insights: true,
+        deltaInsights: true,
+        company: { select: { name: true } } 
+      },
     });
     companyName = report?.company?.name || companyName;
+    if (report) {
+      baseInsights = `\n<base_insights>\n${JSON.stringify(report.insights || {}, null, 2)}\n</base_insights>`;
+      if (report.deltaInsights) {
+        baseInsights += `\n<delta_signals>\n${JSON.stringify(report.deltaInsights, null, 2)}\n</delta_signals>`;
+      }
+    }
   } catch (e) {
     console.warn("[Chat POST] Failed to fetch report info:", e);
   }
@@ -123,9 +142,11 @@ Answer based ONLY on the report data provided.
 Be specific, actionable, and concise.
 Never hallucinate facts not in the report.
 
-<report_context>
+${baseInsights}
+
+<rag_context>
 ${contextStr}
-</report_context>
+</rag_context>
   `.trim();
 
   // ── 5. Convert UIMessages → CoreMessages for streamText ────────
@@ -142,9 +163,22 @@ ${contextStr}
   }
 
   // ── 6. Stream the AI response ──────────────────────────────────
+  const ALLOWED_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"];
+  const requestedModel = body.model || "gemini-2.0-flash";
+  const selectedModel = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "gemini-2.0-flash";
+
+  // Map to the actual model names available in the Google v1beta API
+  const modelMap: Record<string, string> = {
+    "gemini-1.5-flash": "gemini-flash-latest",
+    "gemini-2.0-flash": "gemini-2.0-flash",
+    "gemini-2.5-flash": "gemini-2.5-flash",
+  };
+  const modelId = modelMap[selectedModel] || "gemini-2.0-flash";
+  console.log(`[Chat POST] Using model: ${modelId} (requested: ${selectedModel})`);
+
   try {
     const result = await streamText({
-      model: google("gemini-2.5-flash"),
+      model: google(modelId),
       system: systemPrompt,
       messages: coreMessages.slice(-4),
       onFinish: async ({ text }) => {

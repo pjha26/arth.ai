@@ -70,7 +70,7 @@ Rules:
 
   // 4. Generate & Stream Response
   const result = await streamText({
-    model: google("gemini-2.5-flash"),
+    model: google("gemini-2.0-flash"),
     system: systemPrompt,
     messages: messages,
     onFinish: async ({ text }) => {
