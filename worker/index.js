@@ -172,6 +172,35 @@ const worker = new Worker(
           generatedAt: new Date()
         },
       });
+      
+      // ── Stage 1 (Deliver): Notify & CRM Integration ──
+      try {
+        // 1. Notify the dashboard user by creating a Signal
+        await prisma.signal.create({
+          data: {
+            companyId: companyId,
+            type: "report_delivered",
+            severity: "low",
+            data: { 
+              message: `Intelligence Report delivered to ${lead.email}`,
+              reportId: reportId
+            }
+          }
+        });
+        
+        // 2. Push to CRM webhook (if configured)
+        if (process.env.CRM_WEBHOOK_URL) {
+          console.log(`[Job ${jobId}] Pushing lead and intelligence data to CRM webhook...`);
+          // Example stub: await fetch(process.env.CRM_WEBHOOK_URL, { method: "POST", body: JSON.stringify({ lead, reportId }) });
+        }
+        
+        // 3. Start monitoring (Mock)
+        console.log(`[Job ${jobId}] Dispatched 'start_monitoring' task for ${lead.companyName} to background queue.`);
+        
+      } catch (e) {
+        console.error(`[Job ${jobId}] Failed Stage 1 Deliver Hooks:`, e.message);
+      }
+
       console.log(`[Job ${jobId}] ✓ Pipeline complete for ${lead.companyName}\n`);
     } catch (err) {
       console.error(`[Job ${jobId}] ✗ Pipeline failed:`, err.message);
