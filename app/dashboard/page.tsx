@@ -364,6 +364,9 @@ function LeadsView({ leads, setLeads, loading }: any) {
                   {lead.score >= 30 && (
                     <div className="arth-tag-persona" style={{ background: '#FFF1EC', color: '#E85D04', border: '1px solid #FFD3C4' }}>🔥 HOT</div>
                   )}
+                  {lead.company?.signals?.[0]?.severity === "high" && (
+                    <div className="arth-tag-persona" style={{ background: '#FCE7F3', color: '#BE185D', border: '1px solid #FBCFE8' }}>🔥 NEW SIGNAL</div>
+                  )}
                 </div>
 
                 <div className="arth-lead-score" title="Intent Score">
@@ -439,6 +442,18 @@ function LeadsView({ leads, setLeads, loading }: any) {
 
                 {selectedLead.status === 'done' && (
                   <>
+                    {selectedLead.company?.signals?.[0]?.severity === "high" && (
+                      <div className="arth-panel-block" style={{ border: '1px solid #FBCFE8', background: '#FDF2F8' }}>
+                        <div className="arth-label" style={{ color: '#BE185D' }}>🔥 Signal Detected: {selectedLead.company.signals[0].type}</div>
+                        <div style={{ marginTop: 8, fontSize: 13, color: '#831843' }}>
+                          {selectedLead.company.signals[0].data?.message}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#9D174D', marginTop: 8, opacity: 0.8 }}>
+                          {new Date(selectedLead.company.signals[0].detectedAt).toLocaleDateString()} — Report auto-regeneration triggered.
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="arth-panel-block">
                       <div className="arth-label">Engagement & Intent</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>

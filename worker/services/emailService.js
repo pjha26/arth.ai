@@ -154,3 +154,34 @@ function buildEmailHtml(lead, report, scores, overall, topOpportunity, delta) {
 </body>
 </html>`;
 }
+
+export async function sendSignalEmail(lead, signal) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const FROM_EMAIL = process.env.EMAIL_FROM || "arth.ai Signals <onboarding@resend.dev>";
+  const REPLY_TO = process.env.EMAIL_REPLY_TO || "hello@arth.ai";
+  
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2>🔥 New Signal Detected for ${lead.companyName}</h2>
+      <p>We've detected a significant update to ${lead.companyName}'s intelligence profile.</p>
+      <div style="border-left: 4px solid #E85D04; padding-left: 16px; margin: 20px 0;">
+        <p><strong>Type:</strong> ${signal.type}</p>
+        <p><strong>Details:</strong> ${signal.data.message}</p>
+      </div>
+      <p>Their intelligence report is currently being re-audited and updated.</p>
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard" style="display:inline-block; padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 6px;">View on Dashboard</a>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: lead.email,
+      replyTo: REPLY_TO,
+      subject: `🔥 Signal Update: ${lead.companyName} | arth.ai`,
+      html,
+    });
+  } catch (err) {
+    console.error("Failed to send signal email:", err.message);
+  }
+}

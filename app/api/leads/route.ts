@@ -193,7 +193,11 @@ export async function GET() {
     const reports = await prisma.report.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        company: true,
+        company: {
+          include: {
+            signals: { orderBy: { detectedAt: "desc" }, take: 1 }
+          }
+        },
         stages: {
           orderBy: { createdAt: "asc" }
         }

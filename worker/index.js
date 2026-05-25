@@ -1,9 +1,10 @@
-import { Worker } from "bullmq";
+import { Worker, Queue } from "bullmq";
 import IORedis from "ioredis";
 import { enrich } from "./services/enrichment.js";
 import { generateAiReport } from "./services/aiReport.js";
 import { generatePDF } from "./services/pdfGenerator.js";
-import { sendEmail } from "./services/emailService.js";
+import { sendEmail, sendSignalEmail } from "./services/emailService.js";
+import { checkCompanySignals } from "./services/signals.js";
 import { storeReportIntelligence } from "./services/vectorStore.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
@@ -242,5 +243,76 @@ worker.on("error", (err) => {
 process.on("SIGTERM", async () => {
   console.log("[Worker] Shutting down gracefully...");
   await worker.close();
+  await monitorWorker.close();
   process.exit(0);
 });
+
+// ── Background Monitoring Worker ──
+const leadsQueue = new Queue("leads", { connection });
+
+const monitorWorker = new Worker(
+  "monitoring",
+  async (job) => {
+    const { companyId } = job.data;
+    console.log(`[Monitor Worker] Checking signals for company: ${companyId}`);
+    
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      include: { reports: { orderBy: { createdAt: "desc" }, take: 1 } }
+    });
+    
+    if (!company) return;
+    
+    const lastReport = company.reports[0];
+    const signalResult = await checkCompanySignals(company, lastReport);
+    
+    if (signalResult.detectedSignal && signalResult.severity === "high") {
+      console.log(`[Monitor Worker] HIGH SIGNAL DETECTED for ${company.name}: ${signalResult.message}`);
+      
+      // 1. Save Signal
+      const signal = await prisma.signal.create({
+        data: {
+          companyId,
+          type: signalResult.type || "other",
+          severity: "high",
+          data: { message: signalResult.message }
+        }
+      });
+      
+      // 2. Update Intent Score on latest report
+      if (lastReport) {
+        await prisma.report.update({
+          where: { id: lastReport.id },
+          data: { score: (lastReport.score || 0) + 20 }
+        });
+      }
+      
+      // 3. Auto-Trigger Regeneration (Re-audit)
+      // Grab a lead associated with the company to use for the new report
+      const latestLead = await prisma.lead.findFirst({ where: { companyId }, orderBy: { createdAt: "desc" }});
+      
+      if (latestLead) {
+        const newReport = await prisma.report.create({
+          data: { companyId, status: "pending" }
+        });
+        
+        await leadsQueue.add("process-report", {
+          leadInput: latestLead,
+          companyId,
+          reportId: newReport.id,
+          jobId: newReport.id,
+          submittedAt: new Date()
+        });
+        
+        // 4. Send Email Alert
+        await sendSignalEmail(latestLead, signal);
+      }
+    } else {
+      console.log(`[Monitor Worker] No significant signals for ${company.name}`);
+    }
+  },
+  { connection, concurrency: 2 }
+);
+
+monitorWorker.on("completed", (job) => console.log(`[Monitor] Job ${job.id} completed.`));
+monitorWorker.on("failed", (job, err) => console.error(`[Monitor] Job ${job?.id} failed: ${err.message}`));
