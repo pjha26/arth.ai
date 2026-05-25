@@ -448,7 +448,34 @@ function LeadsView({ leads, setLeads, loading }: any) {
                           </>
                         )}
                       </ul>
-                      
+                    </div>
+
+                    {selectedLead.insights?.visualIntelligence && (
+                      <div className="arth-panel-block">
+                        <div className="arth-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--c-accent)' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>visibility</span> Visual Intelligence
+                        </div>
+                        <ul className="arth-insight-list">
+                          <li style={{ marginBottom: 12 }}>
+                            <div style={{ fontWeight: 600, color: 'var(--c-heading)' }}>Design Maturity</div>
+                            <div style={{ marginTop: 4 }}>{selectedLead.insights.visualIntelligence.designMaturity}</div>
+                          </li>
+                          <li style={{ marginBottom: 12 }}>
+                            <div style={{ fontWeight: 600, color: 'var(--c-heading)' }}>UX Quality Signals</div>
+                            <div style={{ marginTop: 4 }}>{selectedLead.insights.visualIntelligence.uxQualitySignals?.join(', ')}</div>
+                          </li>
+                          <li style={{ marginBottom: 12 }}>
+                            <div style={{ fontWeight: 600, color: 'var(--c-heading)' }}>Conversion Gaps</div>
+                            <div style={{ marginTop: 4 }}>{selectedLead.insights.visualIntelligence.conversionGaps?.join(', ')}</div>
+                          </li>
+                          <li>
+                            <div style={{ fontWeight: 600, color: 'var(--c-heading)' }}>Company Stage Signal</div>
+                            <div style={{ marginTop: 4 }}>{selectedLead.insights.visualIntelligence.companyStageSignal}</div>
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+
                       {(selectedLead.insights?.marketPosition?.reasoning || (selectedLead.insights?.recommendedNextSteps && selectedLead.insights.recommendedNextSteps.some((s: any) => s.reasoning))) && (
                         <div style={{ marginTop: '1.5rem' }}>
                           <details className="arth-reasoning-collapsible" style={{ background: '#F8F9FA', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px' }}>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
 import { searchPastReports, getCompanyHistory, getSimilarCompanies } from "./vectorStore.js";
 import { getIndustryBenchmarks } from "./selfLearning.js";
+import { captureWebsiteScreenshot } from "./visualAnalysis.js";
 import { streamThought } from "./redisStream.js";
 import { Langfuse } from "langfuse";
 
@@ -52,6 +53,12 @@ const reportSchema = z.object({
     data: z.string().describe("The specific detail (e.g., 'Hiring 5 senior ML engineers')"),
     severity: z.enum(["high", "medium", "low"])
   })).default([]).describe("Any key market or company signals detected during research."),
+  visualIntelligence: z.object({
+    designMaturity: z.string().describe("Design maturity assessment (High/Medium/Low) with explanation"),
+    uxQualitySignals: z.array(z.string()).describe("UX quality signals observed"),
+    conversionGaps: z.array(z.string()).describe("Conversion optimization gaps visible above the fold"),
+    companyStageSignal: z.string().describe("What the visual design signals about their company stage")
+  }).optional().describe("Insights from visual analysis of the website. Can be omitted if visual data is unavailable."),
   auditScores: z.object({
     digitalReadiness: z.number().int().min(1).max(10),
     digitalReadinessReason: z.string().describe("1 sentence justifying this score."),
@@ -207,6 +214,43 @@ async function runParallelMarketAgent(lead, enrichedContext, similarContext, com
 
   generation.end({ output: JSON.stringify(object) });
   return object;
+}
+
+// ─── 2.5 Visual Agent ────────────────────────────────────────────────────
+
+async function runVisualAgent(lead, screenshotBase64, textContext, jobId) {
+  streamThought(jobId, `[Visual Agent 👁️] Multimodal Website Analysis running...`);
+  const trace = langfuse.trace({ name: "VisualAgent", sessionId: lead.companyName, metadata: { jobId } });
+  const generation = trace.generation({ name: "visual_generation", model: "gemini-2.5-flash" });
+
+  const visualAgentSchema = z.object({
+    designMaturity: z.string(),
+    uxQualitySignals: z.array(z.string()),
+    conversionGaps: z.array(z.string()),
+    companyStageSignal: z.string()
+  });
+
+  try {
+    const { object } = await generateObject({
+      model: geminiModel,
+      schema: visualAgentSchema,
+      system: "You are a UX & Design Strategy Agent. Extract intelligence from the visual website screenshot.",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `Here is the website visually AND as text.\nText Context: ${textContext}\nWhat does the visual design tell you that the text doesn't?` },
+            { type: "image", image: new URL(\`data:image/jpeg;base64,\${screenshotBase64}\`) }
+          ]
+        }
+      ]
+    });
+    generation.end({ output: JSON.stringify(object) });
+    return object;
+  } catch (err) {
+    console.warn("Visual Agent failed:", err.message);
+    return null;
+  }
 }
 
 // ─── 3. Writer Agent ─────────────────────────────────────────────────────
@@ -473,12 +517,18 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       similarContext = similarCompanies.map((r, i) => `Case Study ${i+1} (${r.companyName}): ${r.content}`).join("\n\n");
     }
 
-    const [researchData, financialData, techData, marketData] = await Promise.all([
+    const [researchData, financialData, techData, marketData, screenshotBase64] = await Promise.all([
       runParallelResearchAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Research failed", e); return {}; }),
       runParallelFinancialAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Financial failed", e); return {}; }),
       runParallelTechAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Tech failed", e); return {}; }),
-      runParallelMarketAgent(lead, enrichedContextStr, similarContext, companyHistory, jobId).catch(e => { console.error("Market failed", e); return {}; })
+      runParallelMarketAgent(lead, enrichedContextStr, similarContext, companyHistory, jobId).catch(e => { console.error("Market failed", e); return {}; }),
+      captureWebsiteScreenshot(enriched.rootDomain)
     ]);
+    
+    let visualData = null;
+    if (screenshotBase64) {
+      visualData = await runVisualAgent(lead, screenshotBase64, enrichedContextStr, jobId);
+    }
     
     streamThought(jobId, `[Orchestrator 🧠] Parallel Agents Completed. Synthesizing data...`);
 
@@ -487,7 +537,8 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       researchInsights: researchData,
       financialInsights: financialData,
       techInsights: techData,
-      marketInsights: marketData
+      marketInsights: marketData,
+      visualInsights: visualData
     }, null, 2);
     
     let draftReport = null;
