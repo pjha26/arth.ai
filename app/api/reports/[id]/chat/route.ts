@@ -117,7 +117,7 @@ Rules:
       }
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[Chat POST] Error:", error);
     return NextResponse.json({ error: "Failed to generate response" }, { status: 500 });
