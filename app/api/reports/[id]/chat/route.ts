@@ -80,20 +80,15 @@ export async function POST(request: Request, context: any) {
     const companyName = report?.company?.name || "the company";
 
     const systemPrompt = `
-You are an expert B2B business analyst and AI consultant answering questions about an AI intelligence report for ${companyName}.
-The user has the persona: ${persona.toUpperCase()}. Tailor your response to this persona (e.g., if Founder, focus on growth/market; if CTO, focus on tech/architecture; if Marketer, focus on positioning).
-
-Use the following highly relevant chunks extracted from the AI report to answer the user's query:
+You are an intelligence analyst for ArthAI.
+You have analyzed ${companyName}'s report.
+Answer based ONLY on the report data provided.
+Be specific, actionable, and concise.
+Never hallucinate facts not in the report.
 
 <report_context>
 ${contextStr}
 </report_context>
-
-Rules:
-1. Answer directly and concisely.
-2. If the answer is not in the context, use your general knowledge but state that it's an external observation.
-3. Keep formatting clean (markdown lists/bolding is good).
-4. Do NOT make up numbers or claims about the company not present in the context.
     `.trim();
 
     // 5. Stream the response using gemini-1.5-flash (or pro)
