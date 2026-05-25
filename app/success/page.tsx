@@ -225,23 +225,38 @@ function SuccessContent() {
                 <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "#71717A", margin: 0 }}>
                   View the full breakdown in your PDF report.
                 </p>
-                <a
-                  href={`/api/leads/${jobId}/download`}
-                  download
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                    background: "#18181B", color: "white",
-                    fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
-                    padding: "0.65rem 1.5rem", borderRadius: "100px",
-                    textDecoration: "none",
-                    boxShadow: "0 4px 14px rgba(24,24,27,0.2)",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseOver={(e) => (e.currentTarget.style.background = "#27272A")}
-                  onMouseOut={(e) => (e.currentTarget.style.background = "#18181B")}
-                >
-                  ↓ Download PDF
-                </a>
+                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                  <a
+                    href={`/report/${jobId}`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                      background: "linear-gradient(135deg, #18181B, #27272A)", color: "white",
+                      fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
+                      padding: "0.65rem 1.5rem", borderRadius: "100px",
+                      textDecoration: "none",
+                      boxShadow: "0 4px 14px rgba(24,24,27,0.2)",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    💬 Chat With Report
+                  </a>
+                  <a
+                    href={`/api/leads/${jobId}/download`}
+                    download
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                      background: "transparent", color: "#18181B", border: "1px solid #E8E6E1",
+                      fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
+                      padding: "0.65rem 1.5rem", borderRadius: "100px",
+                      textDecoration: "none",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = "#F4F4F5")}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    ↓ Download PDF
+                  </a>
+                </div>
               </div>
             )}
           </div>
