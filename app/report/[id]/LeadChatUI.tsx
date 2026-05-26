@@ -8,7 +8,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
   const [input, setInput] = useState("");
 
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: `/api/report/${reportId}/chat` }),
+    transport: new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` }),
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -28,7 +28,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
 
   // Fetch initial chat history
   useEffect(() => {
-    fetch(`/api/report/${reportId}/chat`)
+    fetch(`/api/reports/${reportId}/chat`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {

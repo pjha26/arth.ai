@@ -1,7 +1,7 @@
 import { google } from "@ai-sdk/google";
 import { generateText, generateObject, tool } from "ai";
 import { z } from "zod";
-import { scrapeWebsite, fetchDuckDuckGo } from "./enrichment.js";
+import { scrapeWebsite, fetchDuckDuckGo, fetchDuckDuckGoRaw } from "./enrichment.js";
 import { searchPastReports, getCompanyHistory, getSimilarCompanies } from "./vectorStore.js";
 import { getIndustryBenchmarks } from "./selfLearning.js";
 import { captureWebsiteScreenshot } from "./visualAnalysis.js";
@@ -466,6 +466,46 @@ TASK:
   }
 }
 
+// ─── 6. Planning Agent ───────────────────────────────────────────────────
+
+async function runPlanningAgent(lead, enrichedContextStr, jobId) {
+  streamThought(jobId, `[Planning Agent 🗺️] Evaluating domain and industry to design research strategy...`);
+  
+  const { object } = await generateObject({
+    model: geminiModel,
+    schema: z.object({
+      agentsToRun: z.array(z.enum(["research", "financial", "tech", "market"])).describe("The agents that MUST run based on the company type."),
+      skipAgents: z.array(z.enum(["research", "financial", "tech", "market"])).describe("Agents to completely skip because they are irrelevant."),
+      focusAreas: z.string().describe("Specific instructions for the chosen agents (e.g. 'Prioritize regulatory signals for this Fintech')."),
+      reasoning: z.string().describe("1 sentence explaining why this strategy was chosen.")
+    }),
+    system: "You are an Orchestration Planner. Your job is to select the best research agents for a specific company and industry. Be efficient: skip agents that add no value. For example, skip the Tech Agent for a local bakery, but prioritize Financial and Market agents for a Fintech startup.",
+    prompt: `Design a research plan for ${lead.companyName} (${lead.industry}).\nContext:\n${enrichedContextStr}`
+  });
+  
+  streamThought(jobId, `[Planning Agent 🗺️] Plan: ${object.reasoning}`);
+  return object;
+}
+
+// ─── 7. Reflection Agent ─────────────────────────────────────────────────
+
+async function runReflectionAgent(lead, currentDataStr, jobId) {
+  streamThought(jobId, `[Reflection Agent 🪞] Evaluating if gathered data is sufficient...`);
+  
+  const { object } = await generateObject({
+    model: geminiModel,
+    schema: z.object({
+      isSufficient: z.boolean().describe("True if we have enough data to confidently generate a specific report. False if critical data (like funding, specific products, or competitors) is missing."),
+      missingDataSummary: z.string().nullable().describe("What exactly is missing or contradictory?"),
+      followUpQueries: z.array(z.string()).describe("Targeted search engine queries to fill the gaps (e.g., 'Zepto crunchbase funding rounds 2024'). Max 2 queries.")
+    }),
+    system: "You are a Reflection and QA Agent. Review the raw data gathered by the specialized agents. If there are massive gaps (e.g., we know they are a startup but have zero funding data, or we don't know what they actually sell), return isSufficient: false and provide specific search queries to find the missing data.",
+    prompt: `Review the current gathered data for ${lead.companyName} (${lead.industry}):\n${currentDataStr}`
+  });
+  
+  return object;
+}
+
 // ─── Orchestrator ────────────────────────────────────────────────────────
 
 /**
@@ -517,22 +557,29 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       similarContext = similarCompanies.map((r, i) => `Case Study ${i+1} (${r.companyName}): ${r.content}`).join("\n\n");
     }
 
-    const [researchData, financialData, techData, marketData, screenshotBase64] = await Promise.all([
-      runParallelResearchAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Research failed", e); return {}; }),
-      runParallelFinancialAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Financial failed", e); return {}; }),
-      runParallelTechAgent(lead, enrichedContextStr, jobId).catch(e => { console.error("Tech failed", e); return {}; }),
-      runParallelMarketAgent(lead, enrichedContextStr, similarContext, companyHistory, jobId).catch(e => { console.error("Market failed", e); return {}; }),
-      captureWebsiteScreenshot(enriched.rootDomain)
-    ]);
+    // 1. Dynamic Agent Planning
+    const plan = await runPlanningAgent(lead, enrichedContextStr, jobId);
     
-    let visualData = null;
-    if (screenshotBase64) {
-      visualData = await runVisualAgent(lead, screenshotBase64, enrichedContextStr, jobId);
-    }
-    
-    streamThought(jobId, `[Orchestrator 🧠] Parallel Agents Completed. Synthesizing data...`);
+    // 2. Dispatch
+    let researchData = {}, financialData = {}, techData = {}, marketData = {}, visualData = null;
+    const targetedContextStr = `[FOCUS AREA: ${plan.focusAreas}]\n\n${enrichedContextStr}`;
 
-    const synthesisContextStr = JSON.stringify({
+    const agentPromises = [];
+    if (plan.agentsToRun.includes("research")) agentPromises.push(runParallelResearchAgent(lead, targetedContextStr, jobId).then(d => researchData = d).catch(e => { console.error("Research failed", e); }));
+    if (plan.agentsToRun.includes("financial")) agentPromises.push(runParallelFinancialAgent(lead, targetedContextStr, jobId).then(d => financialData = d).catch(e => { console.error("Financial failed", e); }));
+    if (plan.agentsToRun.includes("tech")) agentPromises.push(runParallelTechAgent(lead, targetedContextStr, jobId).then(d => techData = d).catch(e => { console.error("Tech failed", e); }));
+    if (plan.agentsToRun.includes("market")) agentPromises.push(runParallelMarketAgent(lead, targetedContextStr, similarContext, companyHistory, jobId).then(d => marketData = d).catch(e => { console.error("Market failed", e); }));
+    
+    agentPromises.push(captureWebsiteScreenshot(enriched.rootDomain).then(async (screenshotBase64) => {
+      if (screenshotBase64) {
+        visualData = await runVisualAgent(lead, screenshotBase64, enrichedContextStr, jobId);
+      }
+    }));
+
+    await Promise.all(agentPromises);
+    streamThought(jobId, `[Orchestrator 🧠] Initial Agents Completed. Checking data quality...`);
+
+    let synthesisContextStr = JSON.stringify({
       ...enrichedContextObject,
       researchInsights: researchData,
       financialInsights: financialData,
@@ -540,6 +587,30 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
       marketInsights: marketData,
       visualInsights: visualData
     }, null, 2);
+
+    // 3. Reflection Loop
+    let reflectionIterations = 0;
+    while (reflectionIterations < 2) {
+      const reflection = await runReflectionAgent(lead, synthesisContextStr, jobId);
+      if (reflection.isSufficient || !reflection.followUpQueries?.length) {
+        streamThought(jobId, `[Reflection Agent 🪞] Data is sufficient. Proceeding to synthesis.`);
+        break;
+      }
+      
+      streamThought(jobId, `[Reflection Agent 🪞] Gap detected: ${reflection.missingDataSummary}`);
+      streamThought(jobId, `[Reflection Agent 🪞] Dispatching follow-up queries: ${reflection.followUpQueries.join(", ")}`);
+      
+      reflectionIterations++;
+      
+      const newFindings = await Promise.all(reflection.followUpQueries.map(q => fetchDuckDuckGoRaw(q)));
+      const combinedNewFindings = newFindings.map((f, i) => `Query: ${reflection.followUpQueries[i]}\nResult: ${f}`).join("\n\n");
+      
+      const parsedContext = JSON.parse(synthesisContextStr);
+      parsedContext.followUpResearch = (parsedContext.followUpResearch || "") + "\n" + combinedNewFindings;
+      synthesisContextStr = JSON.stringify(parsedContext, null, 2);
+    }
+    
+    streamThought(jobId, `[Orchestrator 🧠] Reflection Loop Closed. Synthesizing final report...`);
     
     let draftReport = null;
     let approved = false;

@@ -191,6 +191,16 @@ export async function fetchDuckDuckGo(companyName) {
   }
 }
 
+// ── Generic DuckDuckGo Search (For Reflection Agent) ──
+export async function fetchDuckDuckGoRaw(query) {
+  try {
+    const res = await axios.get(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, { timeout: 6000 }).catch(() => ({ data: {} }));
+    return res.data?.AbstractText?.slice(0, 800) || "No abstract found for this query.";
+  } catch (err) {
+    return "Search failed.";
+  }
+}
+
 // ── Website Scraper (Firecrawl -> Cheerio fallback) ──
 export async function scrapeWebsite(url) {
   let scrapeData = { title: null, description: null, markdown: null, headline: null, techStack: [] };
