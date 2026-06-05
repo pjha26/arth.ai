@@ -192,10 +192,20 @@ const worker = new Worker(
         // 2. Push to CRM webhook (if configured)
         if (process.env.CRM_WEBHOOK_URL) {
           console.log(`[Job ${jobId}] Pushing lead and intelligence data to CRM webhook...`);
-          // Example stub: await fetch(process.env.CRM_WEBHOOK_URL, { method: "POST", body: JSON.stringify({ lead, reportId }) });
+          try {
+            await fetch(process.env.CRM_WEBHOOK_URL, { 
+              method: "POST", 
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lead, reportId }) 
+            });
+          } catch (err) {
+            console.error(`[Job ${jobId}] Webhook failed:`, err.message);
+          }
         }
         
-        // 3. Start monitoring (Mock)
+        // 3. Start monitoring
+        const monitoringQueue = new Queue("monitoring", { connection });
+        await monitoringQueue.add("check-company", { companyId: companyId });
         console.log(`[Job ${jobId}] Dispatched 'start_monitoring' task for ${lead.companyName} to background queue.`);
         
       } catch (e) {

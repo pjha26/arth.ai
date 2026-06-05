@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { Queue } from "bullmq";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import IORedis from "ioredis";
 
 export async function POST() {
   try {
-    const connection = new IORedis(process.env.UPSTASH_REDIS_URL, {
+    const connection = new IORedis(process.env.UPSTASH_REDIS_URL!, {
       maxRetriesPerRequest: null,
       tls: process.env.UPSTASH_REDIS_URL?.startsWith("rediss://") ? { rejectUnauthorized: false } : undefined,
     });
@@ -24,6 +24,6 @@ export async function POST() {
     });
   } catch (error) {
     console.error("Trigger monitor error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
   }
 }
