@@ -1,10 +1,15 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { embed, streamText } from "ai";
 import { prisma } from "@/lib/prisma";
 import { sendSlackNotification } from "@/lib/slack";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
+
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 export async function GET(request: Request, context: any) {
@@ -171,7 +176,7 @@ ${contextStr}
   }
 
   // ── 6. Stream the AI response ──────────────────────────────────
-  const ALLOWED_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"];
+  const ALLOWED_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "llama3-70b-8192"];
   const requestedModel = body.model || "gemini-1.5-flash";
   const selectedModel = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "gemini-1.5-flash";
 
@@ -180,29 +185,55 @@ ${contextStr}
     "gemini-1.5-flash": "gemini-flash-latest",
     "gemini-2.0-flash": "gemini-2.0-flash",
     "gemini-2.5-flash": "gemini-2.5-flash",
+    "llama3-70b-8192": "llama3-70b-8192",
   };
   const modelId = modelMap[selectedModel] || "gemini-1.5-flash";
   console.log(`[Chat POST] Using model: ${modelId} (requested: ${selectedModel})`);
 
-  try {
-    const result = await streamText({
-      model: google(modelId),
-      system: systemPrompt,
-      messages: coreMessages.slice(-4),
-      onFinish: async ({ text }) => {
-        try {
-          await prisma.chatMessage.create({
-            data: { reportId, role: "assistant", content: text },
-          });
-        } catch (e) {
-          console.error("Failed to save assistant msg:", e);
-        }
-      },
-    });
-
-    return result.toUIMessageStreamResponse();
-  } catch (streamError: any) {
-    console.error("[Chat POST] streamText failed:", streamError);
-    return Response.json({ error: streamError?.message || "AI generation failed" }, { status: 500 });
+  // ── 6.5 Setup Fallback Chain ────────────────────────────────────
+  let fallbackModels = [modelId];
+  // If they request a newer model, fall back to older/more stable models if quota fails
+  if (modelId === "gemini-2.5-flash") {
+    fallbackModels.push("gemini-2.0-flash", "gemini-flash-latest"); // Note: gemini-1.5-flash maps to gemini-flash-latest
+  } else if (modelId === "gemini-2.0-flash") {
+    fallbackModels.push("gemini-flash-latest"); 
+  } else if (modelId === "llama3-70b-8192") {
+    fallbackModels.push("gemini-flash-latest"); // If Groq fails, fallback to Gemini
   }
+
+  let lastError: any = null;
+
+  for (const currentModel of fallbackModels) {
+    try {
+      console.log(`[Chat POST] Attempting generation with model: ${currentModel}`);
+      const isGroq = currentModel.startsWith("llama");
+      const provider = isGroq ? groq(currentModel) : google(currentModel);
+
+      const result = await streamText({
+        model: provider,
+        system: systemPrompt,
+        messages: coreMessages.slice(-4),
+        onFinish: async ({ text }) => {
+          try {
+            await prisma.chatMessage.create({
+              data: { reportId, role: "assistant", content: text },
+            });
+          } catch (e) {
+            console.error("Failed to save assistant msg:", e);
+          }
+        },
+      });
+
+      // If it succeeded, return immediately
+      return result.toUIMessageStreamResponse();
+    } catch (e: any) {
+      console.warn(`[Chat POST] Model ${currentModel} failed:`, e?.message || e);
+      lastError = e;
+      // Loop continues and tries the next model in fallbackModels array
+    }
+  }
+
+  // If we reach here, ALL models in the fallback chain failed
+  console.error("[Chat POST] ALL fallback models failed. Last error:", lastError);
+  return Response.json({ error: lastError?.message || "AI generation failed after all fallbacks" }, { status: 500 });
 }
