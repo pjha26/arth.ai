@@ -69,7 +69,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
 
   const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash");
+  const [selectedModel, setSelectedModel] = useState("gemini-1.5-flash");
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -175,7 +175,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
                 color: 'var(--cr-accent, #C4922A)', display: 'flex', alignItems: 'center', gap: 4,
               }}
             >
-              ⚙ {MODELS.find(m => m.id === selectedModel)?.label || '2.0 Flash'}
+              ⚙ {MODELS.find(m => m.id === selectedModel)?.label || '1.5 Flash'}
             </button>
             {showModelPicker && (
               <div style={{

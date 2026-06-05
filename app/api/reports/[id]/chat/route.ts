@@ -172,8 +172,8 @@ ${contextStr}
 
   // ── 6. Stream the AI response ──────────────────────────────────
   const ALLOWED_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"];
-  const requestedModel = body.model || "gemini-2.0-flash";
-  const selectedModel = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "gemini-2.0-flash";
+  const requestedModel = body.model || "gemini-1.5-flash";
+  const selectedModel = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "gemini-1.5-flash";
 
   // Map to the actual model names available in the Google v1beta API
   const modelMap: Record<string, string> = {
@@ -181,7 +181,7 @@ ${contextStr}
     "gemini-2.0-flash": "gemini-2.0-flash",
     "gemini-2.5-flash": "gemini-2.5-flash",
   };
-  const modelId = modelMap[selectedModel] || "gemini-2.0-flash";
+  const modelId = modelMap[selectedModel] || "gemini-1.5-flash";
   console.log(`[Chat POST] Using model: ${modelId} (requested: ${selectedModel})`);
 
   try {
