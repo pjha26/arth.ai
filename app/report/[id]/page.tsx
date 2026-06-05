@@ -32,7 +32,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
   };
 
   return (
-    <div className="min-h-screen relative font-['Geist',_sans-serif] text-[#1b1b1b] overflow-hidden" style={{ backgroundColor: "#fcf9f8" }}>
+    <div className="min-h-screen relative font-['Geist',_sans-serif] text-[#1b1b1b] overflow-hidden">
       <ParticleBackground />
 
       {/* Navbar */}
@@ -74,7 +74,15 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
         </div>
 
         {/* Chat Interface Container - fully glassmorphic card */}
-        <div className="w-full max-w-[900px] flex-1 bg-[rgba(252,249,248,0.5)] backdrop-blur-3xl border border-white/60 rounded-[32px] shadow-[0_24px_64px_-12px_rgba(132,84,17,0.15),0_0_0_1px_rgba(213,195,179,0.3)] overflow-hidden flex flex-col relative mb-4">
+        <div 
+          className="w-full flex-1 backdrop-blur-3xl border rounded-[32px] overflow-hidden flex flex-col relative mb-4 mx-auto"
+          style={{ 
+            maxWidth: '900px', 
+            backgroundColor: 'rgba(252,249,248,0.5)', 
+            borderColor: 'rgba(255,255,255,0.6)',
+            boxShadow: '0 24px 64px -12px rgba(132,84,17,0.15), 0 0 0 1px rgba(213,195,179,0.3)' 
+          }}
+        >
           {report.status !== "done" ? (
             <div className="flex-1 flex flex-col items-center justify-center text-[#514538] p-12">
               <span className="material-symbols-outlined text-5xl mb-4 text-[#fbba6f] animate-pulse">hourglass_empty</span>

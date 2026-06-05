@@ -57,7 +57,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
               className="w-20 h-20 rounded-full bg-white/80 backdrop-blur-md border border-[#d5c3b3]/60 flex items-center justify-center mb-6 shadow-xl relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-tr from-[#fbba6f]/30 to-transparent" />
-              <span className="w-5 h-5 rounded-full bg-[#fbba6f] animate-pulse shadow-[0_0_12px_#fbba6f]"></span>
+              <span className="w-5 h-5 rounded-full bg-[#fbba6f] animate-pulse" style={{ boxShadow: '0 0 12px #fbba6f' }}></span>
             </motion.div>
             <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl font-['Newsreader',_serif] text-[#1b1b1b] mb-4">
               ArthAI is ready.
@@ -117,7 +117,8 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
         <form onSubmit={handleSubmit} className="relative w-full flex items-center">
           <input
             type="text"
-            className="w-full pl-8 pr-16 py-5 rounded-[32px] border-[1.5px] border-white/80 focus:outline-none focus:border-[#fbba6f] focus:ring-4 focus:ring-[#fbba6f]/20 transition-all text-[16px] text-[#1b1b1b] placeholder-[#a1a1a1] shadow-[0_8px_24px_rgba(132,84,17,0.08)] bg-white/80 backdrop-blur-xl"
+            className="w-full pl-8 pr-16 py-5 rounded-[32px] border-[1.5px] border-white/80 focus:outline-none focus:border-[#fbba6f] focus:ring-4 focus:ring-[#fbba6f]/20 transition-all text-[16px] text-[#1b1b1b] placeholder-[#a1a1a1] bg-white/80 backdrop-blur-xl"
+            style={{ boxShadow: '0 8px 24px rgba(132,84,17,0.08)' }}
             placeholder={`Ask anything about ${companyName}...`}
             value={input}
             onChange={handleInputChange}

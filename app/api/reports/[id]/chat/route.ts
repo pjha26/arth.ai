@@ -200,7 +200,7 @@ ${contextStr}
       },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toDataStreamResponse();
   } catch (streamError) {
     console.error("[Chat POST] streamText failed:", streamError);
     return Response.json({ error: "AI generation failed" }, { status: 500 });
