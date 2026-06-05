@@ -31,7 +31,7 @@ ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to g
 
 ### 5. Dynamic Intent Scoring (Real-time Buying Signals)
 - Every message sent in the interactive chat is analyzed by the backend.
-- If a prospect asks long questions or uses high-intent buying keywords (e.g., "pricing", "competitor", "integrate"), their CRM **Intent Score** instantly skyrockets.
+- **ML-Powered Lead Scoring Model**: Replaces keyword-based heuristics with a Logistic Regression classifier (trained on synthetic B2B SaaS data via Gemini) running on a standalone Python FastAPI microservice. It analyzes session context and language features to output a highly accurate 0.0–1.0 intent probability per message.
 - These scores are bubbled up to the dashboard, tagging the lead with a 🔥 HOT signal for the sales team.
 - **Slack Fire Alarms**: Whenever a high-intent signal is detected, a priority alert is immediately dispatched to your Slack channel so sales reps can strike while the iron is hot.
 
@@ -49,7 +49,8 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 1. **Next.js Web Tier**: Handles incoming traffic, serves the premium internal dashboard, manages public lead-facing interactive report views, and handles real-time streaming API routes.
 2. **Redis Task Queue (BullMQ)**: Incoming requests are placed on a persistent queue, decoupling slow web scraping and LLM generation times from the frontend UI.
 3. **Autonomous Node.js Worker**: A standalone process that consumes the queue, fetches external enrichment data (Clearbit, DuckDuckGo, Wikipedia), scrapes websites via Cheerio/Puppeteer, and orchestrates the massive multi-agent workflow.
-4. **PostgreSQL + pgvector Database**: Acts as the central nervous system, storing Leads, CRM metrics, pipeline states, chat histories, and vector embeddings natively via Prisma.
+4. **Python ML Microservice (FastAPI)**: A dedicated `localhost:8001` endpoint that runs a pre-trained scikit-learn Logistic Regression model to classify live prospect intent probability in real time.
+5. **PostgreSQL + pgvector Database**: Acts as the central nervous system, storing Leads, CRM metrics, pipeline states, chat histories, and vector embeddings natively via Prisma.
 
 ---
 
@@ -58,6 +59,7 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 ### Core Frameworks
 - **Next.js 16 (App Router + Turbopack)**: Core React framework for the frontend and API routes.
 - **Node.js**: Powers the separate background worker process.
+- **Python 3.11 & FastAPI**: High-performance backend running the ML intent scoring microservice.
 
 ### Database & Caching
 - **PostgreSQL**: Primary relational database.
@@ -68,6 +70,7 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 - **Google Generative AI (Gemini 1.5, 2.0, 2.5 Flash/Pro)**: The core intelligence engine.
 - **Groq (Llama 3.3 70B)**: Ultra-fast open-source LLM integration for fallback redundancy and user choice.
 - **pgvector**: Postgres extension used for vector embeddings and Semantic Search.
+- **Scikit-Learn**: Machine learning library used for the Logistic Regression intent classifier model.
 - **Vercel AI SDK**: Standardized streaming, UI hooks, and structured data extraction.
 - **Puppeteer & Cheerio**: Headless Chrome for complex website scraping, website screenshotting, and PDF generation.
 ### Integrations & Notifications
