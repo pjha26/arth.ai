@@ -212,7 +212,7 @@ export default function LandingPage() {
                 <Link href="/form" className="shimmer-btn" style={{ display: "inline-block", background: "#845411", color: "#fff", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Experience Adaptive AI</Link>
               </MagneticButton>
               <MagneticButton>
-                <Link href="/form" style={{ display: "inline-block", background: "transparent", color: "var(--text-primary)", border: "1px solid var(--btn-outline-border)", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
+                <Link href="/form" className="rotating-border-btn" style={{ display: "inline-block", background: "transparent", color: "var(--text-primary)", border: "1px solid var(--btn-outline-border)", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}><span>Book a Demo</span></Link>
               </MagneticButton>
             </motion.div>
           </motion.div>
