@@ -26,7 +26,7 @@ export default async function CompanyPage({ params }: Props) {
   const profile = await buildCompanyProfile(slug);
 
   return (
-    <div style={{ background: "#FAFAF8", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
 
       {/* ── Navbar ── */}
       <nav style={{
@@ -38,10 +38,10 @@ export default async function CompanyPage({ params }: Props) {
         borderBottom: "1px solid #E8E6E1",
       }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.55rem", textDecoration: "none" }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: "#18181B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
-          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "#18181B" }}>arth.ai</span>
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
+          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>arth.ai</span>
         </Link>
-        <Link href="/form" style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", background: "#18181B", color: "white", textDecoration: "none" }}>
+        <Link href="/form" style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", background: "var(--text-primary)", color: "white", textDecoration: "none" }}>
           Get your report
         </Link>
       </nav>
@@ -66,7 +66,7 @@ export default async function CompanyPage({ params }: Props) {
               fontFamily: "var(--font-heading)", fontSize: "0.78rem", fontWeight: 600,
               padding: "0.3rem 0.8rem", borderRadius: "100px",
               border: "1.5px solid #E0DDD8", background: "white",
-              color: "#71717A",
+              color: "var(--text-muted)",
             }}>
               arth.ai Intelligence &nbsp;·&nbsp; {profile.industry}
             </span>
@@ -76,7 +76,7 @@ export default async function CompanyPage({ params }: Props) {
             fontFamily: "var(--font-heading)",
             fontSize: "clamp(2.2rem, 5vw, 3.8rem)",
             fontWeight: 800, lineHeight: 1.08,
-            letterSpacing: "-0.03em", color: "#18181B",
+            letterSpacing: "-0.03em", color: "var(--text-primary)",
             marginBottom: "1.5rem",
           }}>
             {profile.headline}
@@ -95,7 +95,7 @@ export default async function CompanyPage({ params }: Props) {
             Get your free AI Audit →
           </Link>
 
-          <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "#A1A1AA", marginTop: "0.85rem" }}>
+          <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "var(--text-placeholder)", marginTop: "0.85rem" }}>
             Delivered to your inbox in 3 minutes · No account needed
           </p>
         </div>
@@ -109,7 +109,7 @@ export default async function CompanyPage({ params }: Props) {
           <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#C58B45", marginBottom: "1.25rem" }}>
             The Challenge
           </p>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", lineHeight: 1.2, marginBottom: "2rem" }}>
+          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.2, marginBottom: "2rem" }}>
             What your inbound team<br />deals with every week.
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
@@ -118,7 +118,7 @@ export default async function CompanyPage({ params }: Props) {
                 <div style={{ width: 20, height: 20, borderRadius: "50%", border: "1.5px solid #E8E6E1", background: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C58B45" }} />
                 </div>
-                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.95rem", color: "#3F3F46", lineHeight: 1.7 }}>{p}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.7 }}>{p}</p>
               </div>
             ))}
           </div>
@@ -133,16 +133,16 @@ export default async function CompanyPage({ params }: Props) {
           <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#C58B45", marginBottom: "1.25rem" }}>
             AI Opportunities
           </p>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", lineHeight: 1.2, marginBottom: "2rem" }}>
+          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.2, marginBottom: "2rem" }}>
             How arth.ai helps you<br />convert faster.
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {profile.aiOpportunities.map((o, i) => (
-              <div key={i} style={{ display: "flex", gap: "1rem", alignItems: "flex-start", padding: "1.25rem 1.5rem", background: "#FAFAF8", border: "1px solid #E8E6E1", borderRadius: "12px" }}>
+              <div key={i} style={{ display: "flex", gap: "1rem", alignItems: "flex-start", padding: "1.25rem 1.5rem", background: "var(--bg)", border: "1px solid #E8E6E1", borderRadius: "12px" }}>
                 <div style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.75rem", color: "#C58B45", paddingTop: 3, flexShrink: 0, minWidth: 20 }}>
                   {String(i + 1).padStart(2, "0")}
                 </div>
-                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#3F3F46", lineHeight: 1.7 }}>{o}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.7 }}>{o}</p>
               </div>
             ))}
           </div>
@@ -154,16 +154,16 @@ export default async function CompanyPage({ params }: Props) {
       {/* ── CTA ── */}
       <section style={{ padding: "7rem 2rem", textAlign: "center" }}>
         <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", lineHeight: 1.15, marginBottom: "1.1rem" }}>
+          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.15, marginBottom: "1.1rem" }}>
             See what your<br />AI audit would look like.
           </h2>
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.8, marginBottom: "2.25rem" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.8, marginBottom: "2.25rem" }}>
             {profile.ctaLine}
           </p>
           <Link href={`/form?company=${encodeURIComponent(profile.name)}&website=https://${profile.domain}`} style={{
             display: "inline-flex", alignItems: "center", gap: "0.4rem",
             padding: "0.85rem 2rem", borderRadius: "100px",
-            background: "#18181B", color: "white",
+            background: "var(--text-primary)", color: "white",
             fontFamily: "var(--font-heading)", fontSize: "0.95rem", fontWeight: 700,
             textDecoration: "none", letterSpacing: "-0.01em",
           }}>
@@ -175,10 +175,10 @@ export default async function CompanyPage({ params }: Props) {
       {/* ── Footer ── */}
       <footer style={{ borderTop: "1px solid #E8E6E1", padding: "1.75rem 2.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-          <div style={{ width: 22, height: 22, borderRadius: 5, background: "#18181B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
-          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.875rem", letterSpacing: "-0.03em", color: "#18181B" }}>arth.ai</span>
+          <div style={{ width: 22, height: 22, borderRadius: 5, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
+          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.875rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>arth.ai</span>
         </div>
-        <Link href="/" style={{ fontFamily: "var(--font-heading)", fontSize: "0.78rem", color: "#A1A1AA", textDecoration: "none" }}>
+        <Link href="/" style={{ fontFamily: "var(--font-heading)", fontSize: "0.78rem", color: "var(--text-placeholder)", textDecoration: "none" }}>
           ← Back to arth.ai
         </Link>
       </footer>

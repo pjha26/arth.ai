@@ -160,8 +160,7 @@
   --font-body:    var(--font-manrope), 'Manrope', system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+.dark {
     --bg:            #18181B; /* Charcoal base */
     --surface:       #27272A; /* Charcoal Soft */
     --surface-raised: #3F3F46;
@@ -186,7 +185,6 @@
     --shadow-md:  0 2px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.3);
     --shadow-lg:  0 4px 16px rgba(0,0,0,0.5), 0 24px 64px rgba(0,0,0,0.4);
     --shadow-saffron: 0 4px 20px rgba(197, 139, 69, 0.15);
-  }
 }
 
 /* ─── Reset ──────────────────────────────────────────────────── */

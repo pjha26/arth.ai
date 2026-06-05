@@ -129,8 +129,8 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
             disabled={isLoading || !(input?.trim())}
             className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
             style={{ 
-              background: (isLoading || !(input?.trim())) ? "#f0eded" : "linear-gradient(135deg, #fbba6f, #845411)", 
-              color: (isLoading || !(input?.trim())) ? "#d5c3b3" : "#ffffff",
+              background: (isLoading || !(input?.trim())) ? "var(--surface)" : "linear-gradient(135deg, #fbba6f, #845411)", 
+              color: (isLoading || !(input?.trim())) ? "var(--border)" : "#ffffff",
               boxShadow: (isLoading || !(input?.trim())) ? "none" : "0 4px 16px rgba(132, 84, 17, 0.4)"
             }}
           >

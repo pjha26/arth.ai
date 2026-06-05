@@ -80,9 +80,9 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
           className="w-full flex-1 backdrop-blur-3xl border rounded-[32px] overflow-hidden flex flex-col relative mb-4 mx-auto"
           style={{ 
             maxWidth: '900px', 
-            backgroundColor: 'rgba(252,249,248,0.5)', 
+            backgroundColor: 'var(--bg)', 
             borderColor: 'rgba(255,255,255,0.6)',
-            boxShadow: '0 24px 64px -12px rgba(132,84,17,0.15), 0 0 0 1px rgba(213,195,179,0.3)' 
+            boxShadow: '0 24px 64px -12px rgba(132,84,17,0.15), 0 0 0 1px var(--border)' 
           }}
         >
           {report.status !== "done" ? (

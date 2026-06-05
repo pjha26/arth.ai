@@ -141,7 +141,7 @@ function SuccessContent() {
   };
 
   return (
-    <div style={{ background: "#FAFAF8", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
       {/* Navbar */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
@@ -150,10 +150,10 @@ function SuccessContent() {
         backdropFilter: "blur(16px)", borderBottom: "1px solid #E8E6E1",
       }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.55rem", textDecoration: "none" }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: "#18181B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
-          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "#18181B" }}>arth.ai</span>
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
+          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>arth.ai</span>
         </Link>
-        <Link href="/dashboard" style={{ fontSize: "0.85rem", fontWeight: 600, color: "#18181B", textDecoration: "none" }}>
+        <Link href="/dashboard" style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
           Dashboard
         </Link>
       </nav>
@@ -170,25 +170,25 @@ function SuccessContent() {
           {allDone ? (
             <>
               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🎉</div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", marginBottom: "0.65rem" }}>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", marginBottom: "0.65rem" }}>
                 Your report is ready!
               </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.7 }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
                 {emailSkipped
-                  ? <>Your AI intelligence report for <strong style={{ color: "#18181B" }}>{company}</strong> has been generated.</>
-                  : <>Your AI intelligence report has been delivered to <strong style={{ color: "#18181B" }}>{email}</strong>.</>
+                  ? <>Your AI intelligence report for <strong style={{ color: "var(--text-primary)" }}>{company}</strong> has been generated.</>
+                  : <>Your AI intelligence report has been delivered to <strong style={{ color: "var(--text-primary)" }}>{email}</strong>.</>
                 }
               </p>
             </>
           ) : hasFailed ? (
             <>
               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚠️</div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", marginBottom: "0.65rem" }}>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", marginBottom: "0.65rem" }}>
                 Pipeline note
               </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.7 }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
                 {pdfReady
-                  ? <>Email delivery was restricted, but your PDF report for <strong style={{ color: "#18181B" }}>{company}</strong> was generated successfully.</>
+                  ? <>Email delivery was restricted, but your PDF report for <strong style={{ color: "var(--text-primary)" }}>{company}</strong> was generated successfully.</>
                   : <>Something went wrong during processing. Please try submitting again.</>
                 }
               </p>
@@ -196,11 +196,11 @@ function SuccessContent() {
           ) : (
             <>
               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⏳</div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "#18181B", marginBottom: "0.65rem" }}>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", marginBottom: "0.65rem" }}>
                 Compiling intelligence for {company}.
               </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "#71717A", lineHeight: 1.7 }}>
-                Your personalized audit will arrive at <strong style={{ color: "#18181B" }}>{email}</strong> in around 3 minutes.
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
+                Your personalized audit will arrive at <strong style={{ color: "var(--text-primary)" }}>{email}</strong> in around 3 minutes.
               </p>
             </>
           )}
@@ -213,16 +213,16 @@ function SuccessContent() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FDF5E8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>✨</div>
-              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#18181B" }}>Intelligence Brief</h2>
+              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>Intelligence Brief</h2>
             </div>
-            <p style={{ fontFamily: "var(--font-body)", fontSize: "0.95rem", color: "#3F3F46", lineHeight: 1.7, marginBottom: "1.5rem" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "1.5rem" }}>
               {aiSummary}
             </p>
             
             {/* Download Button inside the welcome screen */}
             {pdfReady && jobId && (
               <div style={{ borderTop: "1px solid #E8E6E1", paddingTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "#71717A", margin: 0 }}>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-muted)", margin: 0 }}>
                   View the full breakdown in your PDF report.
                 </p>
                 <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -245,7 +245,7 @@ function SuccessContent() {
                     download
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                      background: "transparent", color: "#18181B", border: "1px solid #E8E6E1",
+                      background: "transparent", color: "var(--text-primary)", border: "1px solid #E8E6E1",
                       fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
                       padding: "0.65rem 1.5rem", borderRadius: "100px",
                       textDecoration: "none",
@@ -271,7 +271,7 @@ function SuccessContent() {
             }}
           >
             <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📄</div>
-            <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "#18181B", marginBottom: "1rem" }}>
+            <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1rem" }}>
               Your AI Intelligence Report is ready
             </p>
             <a
@@ -305,20 +305,20 @@ function SuccessContent() {
                 {logo ? (
                   <img src={logo} alt={`${company} logo`} style={{ width: 48, height: 48, borderRadius: "8px", objectFit: "contain", border: "1px solid #E8E6E1" }} />
                 ) : (
-                  <div style={{ width: 48, height: 48, borderRadius: "8px", background: "#F4F4F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "bold", color: "#A1A1AA", border: "1px solid #E8E6E1" }}>
+                  <div style={{ width: 48, height: 48, borderRadius: "8px", background: "#F4F4F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "bold", color: "var(--text-placeholder)", border: "1px solid #E8E6E1" }}>
                     {company.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", fontWeight: 700, color: "#18181B", marginBottom: "0.15rem" }}>{company}</h2>
+                  <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.15rem" }}>{company}</h2>
                   <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                     {industry && <span style={{ fontSize: "0.7rem", background: "#FDF5E8", color: "#C58B45", padding: "0.15rem 0.5rem", borderRadius: "100px", fontWeight: 600 }}>{industry}</span>}
-                    {companySize && <span style={{ fontSize: "0.7rem", background: "#F4F4F5", color: "#71717A", padding: "0.15rem 0.5rem", borderRadius: "100px", fontWeight: 600 }}>{companySize}</span>}
+                    {companySize && <span style={{ fontSize: "0.7rem", background: "#F4F4F5", color: "var(--text-muted)", padding: "0.15rem 0.5rem", borderRadius: "100px", fontWeight: 600 }}>{companySize}</span>}
                   </div>
                 </div>
               </div>
               {description && (
-                <p style={{ fontSize: "0.85rem", color: "#71717A", lineHeight: 1.6, margin: 0, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6, margin: 0, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {description}
                 </p>
               )}
@@ -332,10 +332,10 @@ function SuccessContent() {
             }}>
               {/* Timer row */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#A1A1AA" }}>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-placeholder)" }}>
                   Pipeline
                 </span>
-                <span style={{ fontFamily: "monospace", fontSize: "0.78rem", color: "#A1A1AA" }}>
+                <span style={{ fontFamily: "monospace", fontSize: "0.78rem", color: "var(--text-placeholder)" }}>
                   {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
                 </span>
               </div>
@@ -372,19 +372,19 @@ function SuccessContent() {
                       <div style={{ flex: 1 }}>
                         <div style={{
                           fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 600,
-                          color: done ? "#5C7A62" : active ? "#18181B" : "#71717A",
+                          color: done ? "#5C7A62" : active ? "var(--text-primary)" : "var(--text-muted)",
                           marginBottom: active ? "0.35rem" : 0,
                           transition: "color 0.4s ease",
                         }}>
                           {stage.label}
                           {stage.key === "email" && emailSkipped && done && (
-                            <span style={{ fontSize: "0.72rem", color: "#A1A1AA", fontWeight: 400, marginLeft: "0.4rem" }}>(sandbox)</span>
+                            <span style={{ fontSize: "0.72rem", color: "var(--text-placeholder)", fontWeight: 400, marginLeft: "0.4rem" }}>(sandbox)</span>
                           )}
                         </div>
 
                         {/* Active progress bar */}
                         {active && (
-                          <div style={{ height: 3, borderRadius: 100, background: "#E8E6E1", overflow: "hidden" }}>
+                          <div style={{ height: 3, borderRadius: 100, background: "var(--border)", overflow: "hidden" }}>
                             <div style={{
                               height: "100%", width: "55%", borderRadius: 100,
                               background: "linear-gradient(90deg, #C58B45, #D4A04E, #C58B45)",
@@ -396,7 +396,7 @@ function SuccessContent() {
 
                         {/* Done bar */}
                         {done && (
-                          <div style={{ height: 3, borderRadius: 100, background: "#E8E6E1", overflow: "hidden" }}>
+                          <div style={{ height: 3, borderRadius: 100, background: "var(--border)", overflow: "hidden" }}>
                             <div style={{ height: "100%", width: "100%", background: "#5C7A62", borderRadius: 100 }} />
                           </div>
                         )}
@@ -515,7 +515,7 @@ function SuccessContent() {
 export default function SuccessPage() {
   return (
     <Suspense fallback={
-      <div style={{ background: "#FAFAF8", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontFamily: "var(--font-heading)", fontSize: "0.9rem", color: "#A1A1AA" }}>
+      <div style={{ background: "var(--bg)", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontFamily: "var(--font-heading)", fontSize: "0.9rem", color: "var(--text-placeholder)" }}>
         Loading…
       </div>
     }>
