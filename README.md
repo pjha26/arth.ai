@@ -8,6 +8,8 @@ ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to g
 
 ### 1. Autonomous Multi-Agent Intelligence Engine
 - **Parallel Research Agents**: Specialized agents (Research, Financial, Tech, Market) run concurrently to gather domain-specific intelligence.
+- **Adaptive Tier Detection**: Dynamically queries the web to classify if a company is a funded scale-up vs an obscure entity, hot-swapping the underlying system prompts to either leverage pre-trained LLM knowledge or strictly adhere to scraped data.
+- **Strict Data Sanitization**: A robust pre-processing layer that automatically strips marketing tracking parameters (e.g. `utm_`, `gclid`) from ingested URLs, and intercepts internal AI confidence markers (`ESTIMATED`, `~`) to ensure a polished final PDF.
 - **Visual Intelligence**: Uses Puppeteer and Gemini Vision to assess design maturity, UX quality, and conversion gaps from live website screenshots.
 - **Verification Agent**: An uncompromising post-processing agent that audits claims against raw data to detect and eliminate hallucinations.
 
@@ -22,7 +24,8 @@ ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to g
 ### 4. Interactive "Chat with your Report" (RAG)
 - Uses **pgvector** and `text-embedding-004` to semantically chunk and index the generated report.
 - The lead (or sales rep) can open a sleek React Chat UI to dynamically interrogate the intelligence report.
-- **Interactive Model Selection**: Seamlessly toggle the underlying chat AI between Gemini 1.5 Flash (Stable), 2.0 Flash (Fast), and 2.5 Flash (Latest) to manage rate limits and capabilities.
+- **Multi-Provider Fallback Cascade**: Uses a robust fallback chain integrating both **Google Gemini** and **Groq (Llama 3.3 70B)**. If one provider hits a hard rate limit or quota ceiling, the system gracefully falls back to the next available model.
+- **Interactive Provider Selection**: A sleek UI toggle allows users to seamlessly hot-swap the underlying brain between Google Gemini and Groq's insanely fast Llama 3.3.
 - Features a robust backend context-fallback so the AI never misses base insights if RAG vectorization fails.
 
 ### 5. Dynamic Intent Scoring (Real-time Buying Signals)
@@ -61,6 +64,7 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 
 ### AI & Data Enrichment
 - **Google Generative AI (Gemini 1.5, 2.0, 2.5 Flash/Pro)**: The core intelligence engine.
+- **Groq (Llama 3.3 70B)**: Ultra-fast open-source LLM integration for fallback redundancy and user choice.
 - **pgvector**: Postgres extension used for vector embeddings and Semantic Search.
 - **Vercel AI SDK**: Standardized streaming, UI hooks, and structured data extraction.
 - **Puppeteer & Cheerio**: Headless Chrome for complex website scraping, website screenshotting, and PDF generation.
@@ -68,5 +72,6 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 
 ### Frontend UI & Styling
 - **Tailwind CSS v4**
+- **Glassmorphic Aesthetics**: Built with deep aesthetic focus, featuring rich dark-mode palettes, dynamic background glow animations, and frosted glass (backdrop-blur) components for a truly premium "Wow" factor.
 - **Framer Motion**: Complex layout animations, staggered waterfalls, and slide-in panels.
 - **Radix UI & Lucide Icons**
