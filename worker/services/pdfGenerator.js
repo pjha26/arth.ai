@@ -60,12 +60,13 @@ function injectData(template, lead, enriched, report) {
   const scores = report.auditScores;
   const companyName = toTitleCase(lead.companyName);
 
-  const getConfidenceBadge = (confidence) => {
-    if (confidence == null) return '';
-    if (confidence < 0.5) return `<span class="conf-badge estimated">ESTIMATED</span> `;
-    if (confidence <= 0.8) return `<span class="conf-badge inferred">~</span> `;
-    return ''; // verified
-  };
+  function sanitizeVerificationText(text) {
+    if (typeof text !== 'string') return text;
+    return text.replace(/^[\s~]+/, '') // strip leading ~ and spaces
+               .replace(/\bESTIMATED\b:?/ig, '') // strip ESTIMATED tag globally
+               .trim()
+               .replace(/^[\s:\-]+/, ''); // clean up any leftover colons/dashes
+  }
 
   const painPointsHtml = (report.painPoints || [])
     .slice(0, 3)
@@ -73,7 +74,7 @@ function injectData(template, lead, enriched, report) {
       (p) => `
     <div class="card pain-card">
       <div class="pain-icon">⚡</div>
-      <div class="pain-text">${getConfidenceBadge(p.confidence)}${escapeHtml(p.text || p)}</div>
+      <div class="pain-text">${escapeHtml(sanitizeVerificationText(p.text || p))}</div>
     </div>`
     )
     .join("");
@@ -81,15 +82,21 @@ function injectData(template, lead, enriched, report) {
   const opportunitiesHtml = (report.aiOpportunities || [])
     .map(
       (opp, i) => {
-        const borderClass = opp.impact?.toLowerCase() === 'high' ? 'high' : 'medium';
+        // Enforce medium impact for low confidence items
+        let impact = (opp.impact || 'MEDIUM').toUpperCase();
+        if (opp.confidence != null && opp.confidence < 0.5) {
+          impact = 'MEDIUM';
+        }
+
+        const borderClass = impact.toLowerCase() === 'high' ? 'high' : 'medium';
         return `
     <div class="card opp-card ${borderClass}">
       <div class="opp-num">${String(i + 1).padStart(2, "0")}</div>
       <div class="opp-content">
-        <div class="opp-title">${getConfidenceBadge(opp.confidence)}${escapeHtml(opp.title)}</div>
-        <div class="opp-desc">${escapeHtml(opp.description)}</div>
+        <div class="opp-title">${escapeHtml(sanitizeVerificationText(opp.title))}</div>
+        <div class="opp-desc">${escapeHtml(sanitizeVerificationText(opp.description))}</div>
       </div>
-      <div class="impact-badge ${borderClass}">${(opp.impact || 'MEDIUM').toUpperCase()} IMPACT</div>
+      <div class="impact-badge ${borderClass}">${impact} IMPACT</div>
     </div>`;
       }
     )
