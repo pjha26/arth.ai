@@ -46,6 +46,77 @@ ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to g
 
 ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads efficiently without blocking the user interface:
 
+```mermaid
+graph TD
+    %% User Interfaces
+    subindex[User Interface Layer]
+    UI_Public(Public Landing & Form)
+    UI_Dashboard(Internal CRM Dashboard)
+    UI_Chat(Interactive RAG Chat)
+    end
+    
+    %% API Gateway & Backend
+    subindex[Next.js Backend]
+    API_Leads[/api/leads]
+    API_Chat[/api/chat]
+    end
+    
+    %% Async Workers & Queues
+    subindex[Async Worker Pipeline]
+    BullMQ([Redis / BullMQ])
+    NodeWorker(Node.js Worker)
+    Puppeteer(Puppeteer / Cheerio)
+    end
+    
+    %% AI & Data Stores
+    subindex[Data & AI Layer]
+    DB[(PostgreSQL + pgvector)]
+    ML(Python FastAPI ML Intent Scorer)
+    Gemini(Google Gemini AI)
+    Groq(Groq Llama 3)
+    Resend(Resend Email API)
+    Slack(Slack API)
+    end
+
+    %% Flow
+    UI_Public -->|Submits Lead| API_Leads
+    API_Leads -->|Saves raw data| DB
+    API_Leads -->|Enqueues Job| BullMQ
+    
+    BullMQ -->|Consumes Job| NodeWorker
+    NodeWorker <-->|Scrapes website & PDF| Puppeteer
+    NodeWorker <-->|Researches & Validates| Gemini
+    NodeWorker -->|Saves Report & Vector Embeddings| DB
+    NodeWorker -->|Sends Report| Resend
+    NodeWorker -->|Schedules Follow-up Sequence| BullMQ
+    NodeWorker -->|Alerts| Slack
+    
+    UI_Chat -->|Queries & Context| API_Chat
+    API_Chat <-->|Semantic Search| DB
+    API_Chat <-->|Generates Response| Gemini
+    API_Chat <-->|Fallback Generation| Groq
+    
+    %% Intent Flow
+    API_Chat -->|Live Chat Messages| ML
+    ML -->|Intent Score 0.0-1.0| DB
+    ML -->|Triggers Fire Alarm if HOT| Slack
+    
+    UI_Dashboard <-->|Reads leads, scores, CRM data| DB
+
+    %% Styling
+    classDef ui fill:#C58B45,stroke:#1b1b1b,stroke-width:2px,color:#fff;
+    classDef api fill:#FAFAF8,stroke:#1b1b1b,stroke-width:2px;
+    classDef worker fill:#5C7A62,stroke:#1b1b1b,stroke-width:2px,color:#fff;
+    classDef db fill:#27272A,stroke:#1b1b1b,stroke-width:2px,color:#fff;
+    classDef ext fill:#1b1b1b,stroke:#C58B45,stroke-width:2px,color:#fff;
+    
+    class UI_Public,UI_Dashboard,UI_Chat ui;
+    class API_Leads,API_Chat api;
+    class BullMQ,NodeWorker,Puppeteer worker;
+    class DB,ML db;
+    class Gemini,Groq,Resend,Slack ext;
+```
+
 1. **Next.js Web Tier**: Handles incoming traffic, serves the premium internal dashboard, manages public lead-facing interactive report views, and handles real-time streaming API routes.
 2. **Redis Task Queue (BullMQ)**: Incoming requests are placed on a persistent queue, decoupling slow web scraping and LLM generation times from the frontend UI.
 3. **Autonomous Node.js Worker**: A standalone process that consumes the queue, fetches external enrichment data (Clearbit, DuckDuckGo, Wikipedia), scrapes websites via Cheerio/Puppeteer, and orchestrates the massive multi-agent workflow.

@@ -7,6 +7,7 @@ import CustomCursor from "@/components/CustomCursor";
 import MagneticButton from "@/components/MagneticButton";
 import SpotlightCard from "@/components/SpotlightCard";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function AnimatedCounter({ value, duration = 2000 }: { value: number, duration?: number }) {
   const [display, setDisplay] = useState(0);
@@ -152,7 +153,8 @@ export default function LandingPage() {
           <Link href="#pricing" style={{ fontSize: 16, color: "var(--text-secondary)", textDecoration: "none", fontWeight: 400 }}>Pricing</Link>
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <Link href="/dashboard" style={{ fontSize: 16, color: "var(--text-secondary)", textDecoration: "none", fontWeight: 500, marginRight: 8 }}>Dashboard</Link>
+          <ThemeToggle />
+          <Link href="/dashboard" style={{ fontSize: 16, color: "var(--text-secondary)", textDecoration: "none", fontWeight: 500, marginRight: 8, marginLeft: 8 }}>Dashboard</Link>
           <Link href="/dashboard" style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--text-secondary)", textDecoration: "none", cursor: "pointer" }}>Login</Link>
           <Link href="/form" style={{ background: "#845411", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none", transition: "all 0.3s" }}>Book a Demo</Link>
         </div>

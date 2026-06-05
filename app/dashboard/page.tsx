@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // ── Shared UI Elements (Sparkline, MetricCard, etc.) ─────────
 
@@ -174,6 +175,9 @@ function Sidebar({ active, setActive, lastSyncedTime }: any) {
         ))}
       </nav>
       <div style={{ marginTop: "auto" }}>
+        <div style={{ padding: "0 12px", marginBottom: 12 }}>
+          <ThemeToggle />
+        </div>
         <Link href="/" className="arth-nav-item" style={{ width: "100%", color: "var(--c-muted)" }}>
           <span>🏠</span><span>Back to Home</span>
         </Link>
@@ -699,6 +703,24 @@ export default function Dashboard() {
           --c-shadow:      rgba(60,30,10,0.07);
           --font-display:  'Fraunces', Georgia, serif;
           --font-body:     'DM Sans', system-ui, sans-serif;
+        }
+
+        .dark {
+          --c-bg:          #161412;
+          --c-surface:     #1E1C1A;
+          --c-sidebar:     #181614;
+          --c-heading:     #F3ECE5;
+          --c-text:        #D4C8B0;
+          --c-muted:       #8A7D69;
+          --c-accent:      #DEB052;
+          --c-accent-light:#3A2D16;
+          --c-border:      #2A2622;
+          --c-border-strong:#3D3831;
+          --c-success:     #5C9B4A;
+          --c-success-bg:  #1F3218;
+          --c-danger:      #E25B4C;
+          --c-danger-bg:   #3B1A16;
+          --c-shadow:      rgba(0,0,0,0.3);
         }
 
         body { background: var(--c-bg); font-family: var(--font-body); }
