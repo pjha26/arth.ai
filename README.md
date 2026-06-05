@@ -17,9 +17,10 @@ ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to g
 - **Inbound Pipeline**: Users submit their URL and pain points. The system validates the input and dispatches a background job via BullMQ.
 - **Live Preview Engine**: The homepage features an instant AI-powered live preview that returns 3 highly specific factual insights about a company without requiring an account.
 
-### 3. Automated Outreach & Email Integration
+### 3. Automated Outreach & Slack Integration
 - Integrated with **Resend**, the system automatically generates a personalized HTML email once the report completes.
 - The email contains the prospect's AI Readiness Scores, their top identified opportunity, and a PDF attachment of the full report.
+- **Real-Time Slack Alerts**: The system pushes instant notifications to your designated Slack channel whenever a new Intelligence Report is successfully generated and delivered.
 
 ### 4. Interactive "Chat with your Report" (RAG)
 - Uses **pgvector** and `text-embedding-004` to semantically chunk and index the generated report.
@@ -32,6 +33,7 @@ ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to g
 - Every message sent in the interactive chat is analyzed by the backend.
 - If a prospect asks long questions or uses high-intent buying keywords (e.g., "pricing", "competitor", "integrate"), their CRM **Intent Score** instantly skyrockets.
 - These scores are bubbled up to the dashboard, tagging the lead with a 🔥 HOT signal for the sales team.
+- **Slack Fire Alarms**: Whenever a high-intent signal is detected, a priority alert is immediately dispatched to your Slack channel so sales reps can strike while the iron is hot.
 
 ### 6. Premium "Notion-Style" CRM Dashboard
 - **Analytics Tab**: Custom SVG sparklines, 24/7 submission heatmaps, persona conversion tracking, and an AI-generated daily Trend Feed.
@@ -68,7 +70,9 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 - **pgvector**: Postgres extension used for vector embeddings and Semantic Search.
 - **Vercel AI SDK**: Standardized streaming, UI hooks, and structured data extraction.
 - **Puppeteer & Cheerio**: Headless Chrome for complex website scraping, website screenshotting, and PDF generation.
+### Integrations & Notifications
 - **Resend**: Automated transactional email delivery.
+- **Slack API**: Real-time push notifications for report completion and high-intent buying signals.
 
 ### Frontend UI & Styling
 - **Tailwind CSS v4**
