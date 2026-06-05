@@ -6,7 +6,51 @@ import ParticleBackground from "@/components/ParticleBackground";
 import CustomCursor from "@/components/CustomCursor";
 import MagneticButton from "@/components/MagneticButton";
 import SpotlightCard from "@/components/SpotlightCard";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
+
+function AnimatedCounter({ value, duration = 2000 }: { value: number, duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    let start: number;
+    let animationFrame: number;
+    const tick = (now: number) => {
+      if (!start) start = now;
+      const p = Math.min((now - start) / duration, 1);
+      setDisplay(Math.floor(p * value));
+      if (p < 1) animationFrame = requestAnimationFrame(tick);
+    };
+    animationFrame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [value, duration]);
+  return <span>{display.toLocaleString()}</span>;
+}
+
+function LiveToasts() {
+  const [toast, setToast] = useState<{ name: string, company: string } | null>(null);
+  useEffect(() => {
+    const names = ["Alex", "Sarah", "David", "Elena", "Michael", "James", "Emma", "Olivia"];
+    const companies = ["TechFlow", "OmniStack", "Syncio", "Acme", "Globex", "Stripe", "Linear", "Vercel"];
+    const interval = setInterval(() => {
+      if (Math.random() > 0.3) {
+        setToast({ name: names[Math.floor(Math.random() * names.length)], company: companies[Math.floor(Math.random() * companies.length)] });
+        setTimeout(() => setToast(null), 4000);
+      }
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <AnimatePresence>
+      {toast && (
+        <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          style={{ position: "fixed", bottom: 80, right: 24, zIndex: 100, background: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(12px)", border: "1px solid rgba(213,195,179,0.5)", borderRadius: 12, padding: "12px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", gap: 12 }}
+        >
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3E7A2E", animation: "pulse 2s infinite" }} />
+          <div style={{ fontSize: 13, color: "#1b1b1b" }}><strong>{toast.name}</strong> from <strong>{toast.company}</strong> just generated a report.</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 const PERSONAS = {
   Founder: {
@@ -55,6 +99,7 @@ export default function LandingPage() {
     <div style={{ color: "#1b1b1b", minHeight: "100vh", fontFamily: "Geist, sans-serif", overflowX: "hidden" }}>
       <CustomCursor />
       <ParticleBackground />
+      <LiveToasts />
 
       {/* Live Intent Pulse — bottom left */}
       <div style={{
@@ -172,11 +217,16 @@ export default function LandingPage() {
 
           {/* Trust signals */}
           <div style={{ marginTop: 80, width: "100%" }}>
-            <p style={{ fontSize: 16, color: "#514538", marginBottom: 24 }}>Built for modern SaaS teams. Privacy-first by design.</p>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 48, opacity: 0.5, filter: "grayscale(1)" }}>
-              {["Acme Corp", "Globex", "SOYLENT", "Initech", "Umbrella"].map((b) => (
-                <span key={b} style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.03em" }}>{b}</span>
-              ))}
+            <p style={{ fontSize: 16, color: "#514538", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3E7A2E", animation: "pulse 2s infinite" }} />
+              Trusted by <strong style={{ color: "#1b1b1b" }}><AnimatedCounter value={1204} /></strong> teams. Privacy-first by design.
+            </p>
+            <div className="marquee-container" style={{ overflow: "hidden", whiteSpace: "nowrap", width: "100%", position: "relative" }}>
+              <div className="marquee-content" style={{ display: "inline-block", animation: "marquee 30s linear infinite" }}>
+                {["Vercel", "Supabase", "Stripe", "Linear", "Raycast", "Figma", "OpenAI", "Vercel", "Supabase", "Stripe", "Linear", "Raycast", "Figma", "OpenAI"].map((b, i) => (
+                  <span key={i} style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.04em", margin: "0 40px", color: "#1b1b1b", opacity: 0.6, display: "inline-block" }}>{b}</span>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -335,6 +385,72 @@ export default function LandingPage() {
           </div>
         </motion.section>
 
+        {/* ── TESTIMONIALS ── */}
+        <motion.section 
+          id="testimonials"
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
+          <div style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center" }}>
+            <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 48 }}>Loved by Adaptive Teams</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 32 }}>
+              {[
+                { quote: "ArthAI replaced 3 different intent tools for us. The automated personalization is literally magic. Our conversion rate jumped 40% in two weeks.", author: "Sarah Jenkins", role: "Founder & CEO, TechFlow" },
+                { quote: "Finally, a tool that respects our infrastructure. The API is robust, SOC2 ready, and it hasn't added a single millisecond to our load times.", author: "David Chen", role: "CTO, OmniStack" },
+                { quote: "We used to send the same email sequence to everyone. Now, ArthAI reads the exact signals and tailors the outreach. It's like having a 10x SDR.", author: "Elena Rostova", role: "VP of Growth, Syncio" },
+              ].map((t, i) => (
+                <div key={i} style={{ background: "rgba(255, 255, 255, 0.7)", backdropFilter: "blur(16px)", border: "1px solid rgba(213,195,179,0.5)", borderRadius: 16, padding: 32, textAlign: "left", position: "relative" }}>
+                  <div style={{ color: "#fbba6f", fontSize: 32, fontFamily: "serif", lineHeight: 1, marginBottom: 16 }}>"</div>
+                  <p style={{ fontSize: 16, color: "#1b1b1b", lineHeight: 1.6, marginBottom: 24, fontStyle: "italic" }}>{t.quote}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#d5c3b3", overflow: "hidden" }}>
+                       <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${t.author.replace(' ','')}`} alt={t.author} style={{ width: "100%", height: "100%" }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "#1b1b1b", fontSize: 14 }}>{t.author}</div>
+                      <div style={{ fontSize: 12, color: "#514538" }}>{t.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ── PRICING ── */}
+        <motion.section 
+          id="pricing"
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
+          <div style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center" }}>
+            <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>Simple, transparent pricing</h2>
+            <p style={{ fontSize: 16, color: "#514538", maxWidth: 600, margin: "0 auto 48px" }}>Start for free. Scale when you grow.</p>
+            <div style={{ display: "flex", gap: 32, justifyContent: "center", flexWrap: "wrap" }}>
+              <div style={{ background: "rgba(255, 255, 255, 0.7)", border: "1px solid rgba(213,195,179,0.5)", borderRadius: 16, padding: 40, width: 320, textAlign: "left" }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: "#1b1b1b", marginBottom: 8 }}>Starter</div>
+                <div style={{ fontSize: 40, fontFamily: "Newsreader, serif", color: "#1b1b1b", marginBottom: 24 }}>$0<span style={{ fontSize: 16, color: "#514538" }}>/mo</span></div>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, gap: 12, display: "flex", flexDirection: "column" }}>
+                  <li style={{ fontSize: 14, color: "#514538" }}>✓ 100 intelligence reports</li>
+                  <li style={{ fontSize: 14, color: "#514538" }}>✓ Basic intent signals</li>
+                </ul>
+                <Link href="/form" style={{ display: "block", textAlign: "center", background: "#f0eded", color: "#1b1b1b", padding: "12px", borderRadius: 8, marginTop: 32, textDecoration: "none", fontWeight: 500 }}>Get Started</Link>
+              </div>
+              <div style={{ background: "#845411", color: "#fff", borderRadius: 16, padding: 40, width: 320, textAlign: "left", position: "relative" }}>
+                <div style={{ position: "absolute", top: 12, right: 16, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(255,255,255,0.2)", padding: "4px 8px", borderRadius: 999 }}>Popular</div>
+                <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Pro</div>
+                <div style={{ fontSize: 40, fontFamily: "Newsreader, serif", marginBottom: 24 }}>$99<span style={{ fontSize: 16, opacity: 0.8 }}>/mo</span></div>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, gap: 12, display: "flex", flexDirection: "column" }}>
+                  <li style={{ fontSize: 14 }}>✓ Unlimited reports</li>
+                  <li style={{ fontSize: 14 }}>✓ Deep visual intelligence</li>
+                  <li style={{ fontSize: 14 }}>✓ Real-time webhooks</li>
+                </ul>
+                <Link href="/form" style={{ display: "block", textAlign: "center", background: "#fff", color: "#845411", padding: "12px", borderRadius: 8, marginTop: 32, textDecoration: "none", fontWeight: 600 }}>Start Free Trial</Link>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
       </main>
 
       {/* Footer */}
@@ -353,6 +469,7 @@ export default function LandingPage() {
       <style>{`
         html { scroll-behavior: smooth; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @media(max-width:768px){.hidden-mobile{display:none!important}}
       `}</style>
     </div>

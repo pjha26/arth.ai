@@ -455,7 +455,13 @@ function LeadsView({ leads, setLeads, loading }: any) {
                     )}
                     
                     <div className="arth-panel-block">
-                      <div className="arth-label">Engagement & Intent</div>
+                      <div className="arth-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Engagement & Intent</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--c-success)', background: 'var(--c-success-bg)', padding: '2px 6px', borderRadius: 4, textTransform: 'none', letterSpacing: 'normal', fontSize: 10 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 12 }}>verified</span>
+                          Verified by ArthAI
+                        </span>
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
                         <div style={{ fontSize: 32, fontWeight: 600, color: selectedLead.score >= 30 ? '#E85D04' : 'var(--c-accent)', lineHeight: 1 }}>
                            {selectedLead.score || 0}

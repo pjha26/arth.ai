@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import ParticleBackground from "@/components/ParticleBackground";
+import CustomCursor from "@/components/CustomCursor";
 import { LeadSchema, Step1Schema, Step2Schema, Step3Schema } from "@/lib/validation";
 import type { Lead } from "@/lib/validation";
 
@@ -119,7 +121,9 @@ export default function FormPage() {
   };
 
   return (
-    <div style={{ background: "#0E0C0A", minHeight: "100vh", display: "flex", color: "#F5F0E6", fontFamily: "var(--font-body)", overflow: "hidden" }}>
+    <div style={{ background: "#0E0C0A", minHeight: "100vh", display: "flex", color: "#F5F0E6", fontFamily: "var(--font-body)", overflow: "hidden", position: "relative" }}>
+      <CustomCursor />
+      <ParticleBackground />
       
       {/* ── LEFT PANEL (55%) ── */}
       <div className="form-left-panel">
