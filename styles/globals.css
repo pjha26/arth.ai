@@ -573,3 +573,110 @@ textarea.input-field { resize: vertical; line-height: 1.65; min-height: 120px; }
 .particle-canvas { opacity: 1; transition: opacity 0.3s ease; }
 .dark .particle-canvas { opacity: 0.4; }
 
+/* ─── Premium Dark Mode Effects ────────────────────────────── */
+
+/* Animated Gradient Glow Behind the Hero Heading */
+.dark-hero-glow { display: none; }
+.dark .dark-hero-glow {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  height: 80vw;
+  max-width: 1000px;
+  max-height: 1000px;
+  background: radial-gradient(circle, rgba(212, 168, 83, 0.15) 0%, transparent 60%);
+  z-index: -1;
+  pointer-events: none;
+  animation: pulseGlow 8s ease-in-out infinite alternate;
+}
+@keyframes pulseGlow {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+}
+
+/* Glassmorphism on Cards in Dark Mode */
+.dark .glass-card {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Noise Texture Overlay */
+.dark-noise { display: none; }
+.dark .dark-noise {
+  display: block;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Gold Shimmer on the CTA Button */
+.shimmer-btn {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 4s infinite;
+}
+@keyframes shimmer {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* Glowing Dot on the "QUIET INTELLIGENCE" Badge */
+.pulse-dot-glow {
+  animation: pulseDotGlow 2.5s infinite;
+}
+@keyframes pulseDotGlow {
+  0% { box-shadow: 0 0 0 0 rgba(251, 186, 111, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(251, 186, 111, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 186, 111, 0); }
+}
+
+/* Gradient Text on the Hero Heading */
+.dark .hero-gradient-text {
+  background: linear-gradient(180deg, #FFFFFF 0%, #D4A853 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glowing Navbar Border */
+.dark .navbar-glow {
+  box-shadow: 0 1px 0 0 rgba(212, 168, 83, 0.3) !important;
+  border-bottom: none !important;
+}
+
+/* Input Field Glow on Focus */
+.dark .focus-glow:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.4) !important;
+  border-color: rgba(212, 168, 83, 0.8) !important;
+}
+
+/* Section Transition Gradients */
+.section-divider { display: none; }
+.dark .section-divider {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(212, 168, 83, 0.5), transparent);
+  margin: 60px 0;
+}
+

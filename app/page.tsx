@@ -98,6 +98,7 @@ export default function LandingPage() {
 
   return (
     <div style={{ color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Geist, sans-serif", overflowX: "hidden" }}>
+      <div className="dark-noise" />
       <CustomCursor />
       <ParticleBackground />
       <LiveToasts />
@@ -135,6 +136,7 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <motion.nav
+        className="navbar-glow"
         variants={{ visible: { y: 0 }, hidden: { y: "-100%" } }}
         animate={navHidden ? "hidden" : "visible"}
         transition={{ duration: 0.35, ease: "easeInOut" }}
@@ -163,7 +165,8 @@ export default function LandingPage() {
       <main style={{ paddingTop: 128 }}>
 
         {/* ── HERO ── */}
-        <section style={{ padding: "80px 64px 120px", maxWidth: 1280, margin: "0 auto", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <section style={{ position: "relative", padding: "80px 64px 120px", maxWidth: 1280, margin: "0 auto", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div className="dark-hero-glow" />
           <motion.div
             initial="hidden"
             animate="show"
@@ -181,12 +184,13 @@ export default function LandingPage() {
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 12px", borderRadius: 9999, background: "var(--surface-raised)", backdropFilter: "blur(12px)", border: "1px solid var(--border)", marginBottom: 32 }}
               >
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbba6f", display: "inline-block" }} />
+                <span className="pulse-dot-glow" style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbba6f", display: "inline-block" }} />
                 <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-secondary)" }}>Quiet Intelligence</span>
               </motion.div>
             </motion.div>
 
             <motion.h1 
+              className="hero-gradient-text"
               variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } } }}
               style={{ fontFamily: "Newsreader, serif", fontSize: "clamp(40px,6vw,64px)", lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: 400, color: "var(--text-primary)", maxWidth: 800, marginBottom: 24 }}
             >
@@ -205,7 +209,7 @@ export default function LandingPage() {
               style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}
             >
               <MagneticButton>
-                <Link href="/form" style={{ display: "inline-block", background: "#845411", color: "#fff", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Experience Adaptive AI</Link>
+                <Link href="/form" className="shimmer-btn" style={{ display: "inline-block", background: "#845411", color: "#fff", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Experience Adaptive AI</Link>
               </MagneticButton>
               <MagneticButton>
                 <Link href="/form" style={{ display: "inline-block", background: "transparent", color: "var(--text-primary)", border: "1px solid var(--btn-outline-border)", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
@@ -233,6 +237,8 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <div className="section-divider" />
+
         {/* ── QUIET INTELLIGENCE IN MOTION ── */}
         <motion.section 
           initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
@@ -257,7 +263,7 @@ export default function LandingPage() {
             </div>
 
             {/* Dynamic persona card */}
-            <div style={{ maxWidth: 800, margin: "0 auto", background: "var(--surface-raised)", backdropFilter: "blur(16px)", border: "1px solid var(--border)", borderRadius: 16, padding: 48, textAlign: "left", position: "relative", overflow: "hidden" }}>
+            <div className="glass-card" style={{ maxWidth: 800, margin: "0 auto", background: "var(--surface-raised)", backdropFilter: "blur(16px)", border: "1px solid var(--border)", borderRadius: 16, padding: 48, textAlign: "left", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 4, background: "linear-gradient(90deg, #fbba6f, transparent)" }} />
               <span style={{ display: "inline-block", padding: "4px 12px", background: "rgba(132,84,17,0.1)", color: "#845411", borderRadius: 9999, fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", marginBottom: 16 }}>{p.badge}</span>
               <h3 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "var(--text-primary)", marginBottom: 16, transition: "all 0.3s" }}>{p.title}</h3>

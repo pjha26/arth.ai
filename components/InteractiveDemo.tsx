@@ -94,21 +94,22 @@ export default function InteractiveDemo() {
       
       {/* Input Card */}
       <motion.div 
+        className="glass-card"
         animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
         transition={{ duration: 0.4 }}
         style={{
-          background: "#FDFAF4",
-          border: "1px solid #E8E0D0",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
           borderRadius: 16,
           padding: "32px",
           textAlign: "center",
           boxShadow: "0 4px 20px rgba(0,0,0,0.03)"
         }}
       >
-        <h2 style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 28, fontWeight: 700, color: "#2C1A0E", marginBottom: 12 }}>
+        <h2 style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 28, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
           Try the personalization engine live
         </h2>
-        <p style={{ color: "#9C845F", fontSize: 15, marginBottom: 24, lineHeight: 1.5 }}>
+        <p style={{ color: "var(--text-secondary)", fontSize: 15, marginBottom: 24, lineHeight: 1.5 }}>
           Type any company name or website URL to see ArthAI generate a live intelligence preview instantly.
         </p>
 
@@ -118,14 +119,15 @@ export default function InteractiveDemo() {
               flex: "0 0 70%", 
               position: "relative",
               borderRadius: 10,
-              background: "#fff",
-              border: `1.5px solid ${isFocused ? "#C4922A" : "#E8E0D0"}`,
+              background: "var(--surface-raised)",
+              border: `1.5px solid ${isFocused ? "var(--saffron)" : "var(--border)"}`,
               boxShadow: isFocused ? "0 0 0 4px rgba(196,146,42,0.15)" : "none",
             }}
-            animate={{ borderColor: isFocused ? "#C4922A" : "#E8E0D0" }}
+            animate={{ borderColor: isFocused ? "var(--saffron)" : "var(--border)" }}
             transition={{ duration: 0.2 }}
           >
             <input
+              className="focus-glow"
               value={query}
               onChange={(e) => setQuery(e.target.value.substring(0, 100))}
               onFocus={() => setIsFocused(true)}
@@ -134,7 +136,7 @@ export default function InteractiveDemo() {
               style={{
                 width: "100%", height: "100%", padding: "16px",
                 border: "none", background: "transparent",
-                outline: "none", fontSize: 16, color: "#2C1A0E",
+                outline: "none", fontSize: 16, color: "var(--text-primary)",
                 borderRadius: 10
               }}
             />
@@ -212,23 +214,24 @@ export default function InteractiveDemo() {
         {status === "loading" && (
           <motion.div
             key="loading"
+            className="glass-card"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{ marginTop: 24, background: "#FDFAF4", border: "1px solid #E8E0D0", borderRadius: 16, padding: 32, overflow: "hidden" }}
+            style={{ marginTop: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 32, overflow: "hidden" }}
           >
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 24 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 8, background: "linear-gradient(90deg, #E8E0D0 25%, #F5F0E6 50%, #E8E0D0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
+              <div style={{ width: 48, height: 48, borderRadius: 8, background: "linear-gradient(90deg, var(--border) 25%, var(--surface-raised) 50%, var(--border) 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
               <div style={{ flex: 1 }}>
-                <div style={{ height: 20, width: "40%", borderRadius: 4, background: "#E8E0D0", marginBottom: 8 }} />
-                <div style={{ height: 12, width: "20%", borderRadius: 4, background: "#E8E0D0" }} />
+                <div style={{ height: 20, width: "40%", borderRadius: 4, background: "var(--border)", marginBottom: 8 }} />
+                <div style={{ height: 12, width: "20%", borderRadius: 4, background: "var(--border)" }} />
               </div>
             </div>
-            <div style={{ height: 16, width: "100%", borderRadius: 4, background: "#E8E0D0", marginBottom: 12 }} />
-            <div style={{ height: 16, width: "90%", borderRadius: 4, background: "#E8E0D0", marginBottom: 12 }} />
-            <div style={{ height: 16, width: "95%", borderRadius: 4, background: "#E8E0D0" }} />
+            <div style={{ height: 16, width: "100%", borderRadius: 4, background: "var(--border)", marginBottom: 12 }} />
+            <div style={{ height: 16, width: "90%", borderRadius: 4, background: "var(--border)", marginBottom: 12 }} />
+            <div style={{ height: 16, width: "95%", borderRadius: 4, background: "var(--border)" }} />
 
-            <div style={{ marginTop: 32, textAlign: "center", color: "#C4922A", fontSize: 14, fontWeight: 500 }}>
+            <div style={{ marginTop: 32, textAlign: "center", color: "var(--saffron)", fontSize: 14, fontWeight: 500 }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={loadingMsgIdx}
@@ -259,23 +262,24 @@ export default function InteractiveDemo() {
         {status === "success" && data && (
           <motion.div
             key="success"
+            className="glass-card"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             style={{ marginTop: 24, position: "relative" }}
           >
-            <div style={{ background: "#FDFAF4", border: "1px solid #E8E0D0", borderRadius: 16, padding: 32, position: "relative", zIndex: 2 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 32, position: "relative", zIndex: 2 }}>
               
-              <div style={{ position: "absolute", top: 16, right: 16, background: "#F5F0E6", color: "#C4922A", fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 100, letterSpacing: "0.1em" }}>
+              <div style={{ position: "absolute", top: 16, right: 16, background: "var(--surface-raised)", color: "var(--saffron)", fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 100, letterSpacing: "0.1em" }}>
                 LIVE PREVIEW
               </div>
 
               {/* Header */}
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 32 }}>
-                <img src={`https://www.google.com/s2/favicons?domain=${data.domain}&sz=64`} alt="" style={{ width: 48, height: 48, borderRadius: 8, background: "#fff", padding: 4, border: "1px solid #E8E0D0" }} />
+                <img src={`https://www.google.com/s2/favicons?domain=${data.domain}&sz=64`} alt="" style={{ width: 48, height: 48, borderRadius: 8, background: "var(--surface-raised)", padding: 4, border: "1px solid var(--border)" }} />
                 <div>
-                  <h3 style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 24, fontWeight: 700, color: "#2C1A0E", marginBottom: 4 }}>{data.companyName}</h3>
-                  <div style={{ display: "inline-block", border: "1px solid #C4922A", color: "#C4922A", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <h3 style={{ fontFamily: "var(--font-fraunces), serif", fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>{data.companyName}</h3>
+                  <div style={{ display: "inline-block", border: "1px solid var(--saffron)", color: "var(--saffron)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     {data.industry}
                   </div>
                 </div>
@@ -303,21 +307,21 @@ export default function InteractiveDemo() {
               </div>
 
               {/* Blurred Teaser */}
-              <div style={{ position: "relative", background: "#fff", border: "1px solid #E8E0D0", borderRadius: 10, padding: 24, overflow: "hidden", minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ position: "relative", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 10, padding: 24, overflow: "hidden", minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                 
                 {/* Mock BG */}
                 <div style={{ filter: "blur(6px)", opacity: 0.5, position: "absolute", top: 0, left: 0, right: 0, bottom: 0, padding: 24 }}>
                   <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-                    <div style={{ flex: 1, height: 80, background: "#E8E0D0", borderRadius: 8 }} />
-                    <div style={{ flex: 1, height: 80, background: "#E8E0D0", borderRadius: 8 }} />
-                    <div style={{ flex: 1, height: 80, background: "#E8E0D0", borderRadius: 8 }} />
+                    <div style={{ flex: 1, height: 80, background: "var(--border)", borderRadius: 8 }} />
+                    <div style={{ flex: 1, height: 80, background: "var(--border)", borderRadius: 8 }} />
+                    <div style={{ flex: 1, height: 80, background: "var(--border)", borderRadius: 8 }} />
                   </div>
-                  <div style={{ height: 16, background: "#E8E0D0", width: "100%", marginBottom: 12, borderRadius: 4 }} />
-                  <div style={{ height: 16, background: "#E8E0D0", width: "80%", borderRadius: 4 }} />
+                  <div style={{ height: 16, background: "var(--border)", width: "100%", marginBottom: 12, borderRadius: 4 }} />
+                  <div style={{ height: 16, background: "var(--border)", width: "80%", borderRadius: 4 }} />
                 </div>
 
                 <div style={{ position: "relative", zIndex: 10, textAlign: "center" }}>
-                  <p style={{ color: "#2C1A0E", fontWeight: 600, fontSize: 16, marginBottom: 16 }}>
+                  <p style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: 16, marginBottom: 16 }}>
                     Your full report includes 5 pages of personalized intelligence
                   </p>
                   <button 
