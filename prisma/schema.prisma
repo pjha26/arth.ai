@@ -49,6 +49,9 @@ model Lead {
   email             String
   painPoints        String
   intentProbability Float?
+  unsubscribed      Boolean  @default(false)
+  lastFollowUpSentAt DateTime?
+  followUpStage     Int      @default(0)
   createdAt         DateTime @default(now())
   company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }

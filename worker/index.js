@@ -10,6 +10,7 @@ import { storeReportIntelligence } from "./services/vectorStore.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
 import { driveUpload } from "./services/driveUploader.js";
 import { learnFromReport, generateDeltaInsights } from "./services/selfLearning.js";
+import { processFollowUp } from "./services/followupWorker.js";
 import dotenv from "dotenv";
 import pkg from "@prisma/client/index.js";
 const { PrismaClient } = pkg;
@@ -209,6 +210,13 @@ const worker = new Worker(
         await monitoringQueue.add("check-company", { companyId: companyId });
         console.log(`[Job ${jobId}] Dispatched 'start_monitoring' task for ${lead.companyName} to background queue.`);
         
+        // 3.5 Start Follow-up Sequence Automation
+        const followupsQueue = new Queue("followups", { connection });
+        await followupsQueue.add("followup-stage-1", { leadId: lead.id, stage: 1 }, { delay: 2 * 24 * 60 * 60 * 1000 });
+        await followupsQueue.add("followup-stage-2", { leadId: lead.id, stage: 2 }, { delay: 5 * 24 * 60 * 60 * 1000 });
+        await followupsQueue.add("followup-stage-3", { leadId: lead.id, stage: 3 }, { delay: 10 * 24 * 60 * 60 * 1000 });
+        console.log(`[Job ${jobId}] Enqueued follow-up sequence for ${lead.companyName}.`);
+        
         // 4. Slack Notification
         await sendSlackNotification(`✅ Intelligence Report for *${lead.companyName}* is ready.\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
         
@@ -258,6 +266,7 @@ process.on("SIGTERM", async () => {
   console.log("[Worker] Shutting down gracefully...");
   await worker.close();
   await monitorWorker.close();
+  await followupsWorker.close();
   process.exit(0);
 });
 
@@ -333,3 +342,13 @@ const monitorWorker = new Worker(
 
 monitorWorker.on("completed", (job) => console.log(`[Monitor] Job ${job.id} completed.`));
 monitorWorker.on("failed", (job, err) => console.error(`[Monitor] Job ${job?.id} failed: ${err.message}`));
+
+// ── Follow-up Sequence Worker ──
+const followupsWorker = new Worker(
+  "followups",
+  processFollowUp,
+  { connection, concurrency: 2 }
+);
+
+followupsWorker.on("completed", (job) => console.log(`[Followups] Job ${job.id} completed.`));
+followupsWorker.on("failed", (job, err) => console.error(`[Followups] Job ${job?.id} failed: ${err.message}`));
