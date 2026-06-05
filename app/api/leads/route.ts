@@ -230,6 +230,7 @@ export async function GET() {
         ...report, 
         hasPdf,
         companyName: report.company.name,
+        website: report.company.domain,
         industry: report.company.industry,
         email: "N/A (See Lead table)" 
       };
