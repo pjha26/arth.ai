@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import LeadChatUI from "./LeadChatUI";
 import Link from "next/link";
-import ParticleBackground from "@/components/ParticleBackground";
+import AnalysisBackground from "@/components/AnalysisBackground";
 
 const prisma = new PrismaClient();
 
@@ -33,7 +33,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
 
   return (
     <div className="min-h-screen relative font-['Geist',_sans-serif] text-[#1b1b1b] overflow-hidden">
-      <ParticleBackground />
+      <AnalysisBackground />
 
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-5 bg-[#fcf9f8]/60 backdrop-blur-2xl border-b border-[#d5c3b3]/40 sticky top-0 z-50">
