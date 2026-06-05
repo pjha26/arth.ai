@@ -16,9 +16,9 @@ def get_gemini_data():
     model = genai.GenerativeModel('gemini-2.5-flash')
     
     prompt = """
-    Generate a JSON array of 200 B2B SaaS prospect messages in a chat interface.
-    100 MUST BE HIGH INTENT (label: 1): asking about pricing, integration, onboarding, competitor vs, team size.
-    100 MUST BE LOW INTENT (label: 0): casual curiosity, one-word replies, off-topic.
+    Generate a JSON array of 60 B2B SaaS prospect messages in a chat interface.
+    30 MUST BE HIGH INTENT (label: 1): asking about pricing, integration, onboarding, competitor vs, team size.
+    30 MUST BE LOW INTENT (label: 0): casual curiosity, one-word replies, off-topic.
     Return ONLY a valid JSON array of objects with exactly two keys: 'message' (string) and 'label' (int 0 or 1).
     Do not wrap in markdown or backticks.
     """
