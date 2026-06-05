@@ -29,6 +29,17 @@ async function fetchCompanyPreview(companyName: string) {
   return { logo, description };
 }
 
+function cleanUrl(urlString: string) {
+  try {
+    const url = new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`);
+    const paramsToStrip = ['srsltid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ref'];
+    paramsToStrip.forEach(param => url.searchParams.delete(param));
+    return url.toString();
+  } catch {
+    return urlString;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -44,6 +55,7 @@ export async function POST(request: Request) {
     }
 
     const leadInput = result.data;
+    leadInput.website = cleanUrl(leadInput.website);
 
     // 1. Extract domain to use as unique company identifier
     let domain = "";

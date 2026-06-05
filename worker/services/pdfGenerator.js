@@ -60,6 +60,16 @@ function injectData(template, lead, enriched, report) {
   const scores = report.auditScores;
   const companyName = toTitleCase(lead.companyName);
 
+  function cleanDisplayUrl(urlString) {
+    if (!urlString) return "";
+    try {
+      const url = new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`);
+      return `${url.hostname.replace(/^www\./, '')}${url.pathname === '/' ? '' : url.pathname}`;
+    } catch {
+      return urlString;
+    }
+  }
+
   function sanitizeVerificationText(text) {
     if (typeof text !== 'string') return text;
     return text.replace(/^[\s~]+/, '') // strip leading ~ and spaces
@@ -132,7 +142,7 @@ function injectData(template, lead, enriched, report) {
     .replace(/\{\{COMPANY_NAME\}\}/g, escapeHtml(companyName))
     .replace(/\{\{FULL_NAME\}\}/g, escapeHtml(lead.fullName))
     .replace(/\{\{EMAIL\}\}/g, escapeHtml(lead.email))
-    .replace(/\{\{WEBSITE\}\}/g, escapeHtml(lead.website))
+    .replace(/\{\{WEBSITE\}\}/g, escapeHtml(cleanDisplayUrl(lead.website)))
     .replace(/\{\{META_STRIP_HTML\}\}/g, metaStripHtml)
     .replace(/\{\{LOGO_HTML\}\}/g, logoHtml)
     .replace(/\{\{EXECUTIVE_SUMMARY\}\}/g, escapeHtml(report.executiveSummary))
