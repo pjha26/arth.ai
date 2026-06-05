@@ -3,7 +3,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import InteractiveDemo from "@/components/InteractiveDemo";
 import ParticleBackground from "@/components/ParticleBackground";
-import { motion } from "framer-motion";
+import CustomCursor from "@/components/CustomCursor";
+import MagneticButton from "@/components/MagneticButton";
+import SpotlightCard from "@/components/SpotlightCard";
+import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 
 const PERSONAS = {
   Founder: {
@@ -34,10 +37,23 @@ type PersonaKey = keyof typeof PERSONAS;
 export default function LandingPage() {
   const [persona, setPersona] = useState<PersonaKey>("Founder");
   const [company, setCompany] = useState("");
+  const [navHidden, setNavHidden] = useState(false);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = scrollY.getPrevious() ?? 0;
+    if (latest > previous && latest > 150) {
+      setNavHidden(true);
+    } else {
+      setNavHidden(false);
+    }
+  });
+
   const p = PERSONAS[persona];
 
   return (
     <div style={{ color: "#1b1b1b", minHeight: "100vh", fontFamily: "Geist, sans-serif", overflowX: "hidden" }}>
+      <CustomCursor />
       <ParticleBackground />
 
       {/* Live Intent Pulse — bottom left */}
@@ -72,12 +88,17 @@ export default function LandingPage() {
       </div>
 
       {/* Navbar */}
-      <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        height: 80, display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 64px", background: "rgba(252,249,248,0.85)",
-        backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(213,195,179,0.3)",
-      }}>
+      <motion.nav
+        variants={{ visible: { y: 0 }, hidden: { y: "-100%" } }}
+        animate={navHidden ? "hidden" : "visible"}
+        transition={{ duration: 0.35, ease: "easeInOut" }}
+        style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          height: 80, display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 64px", background: "rgba(252,249,248,0.85)",
+          backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(213,195,179,0.3)",
+        }}
+      >
         <Link href="/" style={{ fontFamily: "Newsreader, serif", fontSize: 24, fontWeight: 700, color: "#1b1b1b", textDecoration: "none", letterSpacing: "-0.01em" }}>ArthAI</Link>
         <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
           {["Product", "Solutions", "Philosophy", "Pricing"].map((l) => (
@@ -89,7 +110,7 @@ export default function LandingPage() {
           <button style={{ background: "transparent", border: "none", fontSize: 16, color: "#514538", cursor: "pointer" }}>Login</button>
           <Link href="/form" style={{ background: "#845411", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none", transition: "all 0.3s" }}>Book a Demo</Link>
         </div>
-      </nav>
+      </motion.nav>
 
       <main style={{ paddingTop: 128 }}>
 
@@ -135,8 +156,12 @@ export default function LandingPage() {
               variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } } }}
               style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}
             >
-              <Link href="/form" style={{ background: "#845411", color: "#fff", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Experience Adaptive AI</Link>
-              <Link href="/form" style={{ background: "transparent", color: "#1b1b1b", border: "1px solid #d5c3b3", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
+              <MagneticButton>
+                <Link href="/form" style={{ display: "inline-block", background: "#845411", color: "#fff", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Experience Adaptive AI</Link>
+              </MagneticButton>
+              <MagneticButton>
+                <Link href="/form" style={{ display: "inline-block", background: "transparent", color: "#1b1b1b", border: "1px solid #d5c3b3", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
+              </MagneticButton>
             </motion.div>
           </motion.div>
 
@@ -156,7 +181,10 @@ export default function LandingPage() {
         </section>
 
         {/* ── QUIET INTELLIGENCE IN MOTION ── */}
-        <section style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
           <div style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center" }}>
             <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 16 }}>Quiet Intelligence in Motion</h2>
             <p style={{ fontSize: 16, color: "#514538", maxWidth: 600, margin: "0 auto 40px" }}>Experience how subtle contextual shifts create a tailored journey for different personas.</p>
@@ -184,10 +212,13 @@ export default function LandingPage() {
               <button style={{ background: "transparent", border: "none", fontSize: 16, fontWeight: 500, color: "#845411", cursor: "pointer" }}>{p.cta}</button>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── THE TRANSFORMATION ── */}
-        <section style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
           <div style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center" }}>
             <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>The Transformation</h2>
             <p style={{ fontSize: 16, color: "#514538", maxWidth: 600, margin: "0 auto 48px" }}>Move from static, one-size-fits-all pages to dynamic, breathing experiences.</p>
@@ -208,10 +239,13 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── CONTEXTUAL ADAPTATION ── */}
-        <section style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: 48 }}>
               <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>Contextual Adaptation</h2>
@@ -224,7 +258,7 @@ export default function LandingPage() {
                 { icon: "shopping_cart", title: "If you're selling online", desc: "An E-commerce director visits and the site shifts to showcase conversion rate lifts, cart abandonment recovery, and reliability.", intent: "Intent: Evaluation" },
                 { icon: "person_search", title: "If you're looking for talent", desc: "A Talent Acquisition specialist explores and the narrative revolves around employer branding and seamless ATS syncing.", intent: "Intent: Discovery" },
               ].map(({ icon, title, desc, intent }) => (
-                <div key={title} style={{ background: "rgba(246, 243, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(213,195,179,0.5)", borderRadius: 12, padding: 32, display: "flex", flexDirection: "column", gap: 16, transition: "all 0.3s" }}>
+                <SpotlightCard key={title} style={{ background: "rgba(246, 243, 242, 0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(213,195,179,0.5)", borderRadius: 12, padding: 32, display: "flex", flexDirection: "column", gap: 16, transition: "all 0.3s" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span className="material-symbols-outlined" style={{ color: "#fbba6f", fontSize: 24 }}>{icon}</span>
                     <h3 style={{ fontFamily: "Geist, sans-serif", fontSize: 18, fontWeight: 500, color: "#1b1b1b", letterSpacing: "-0.01em" }}>{title}</h3>
@@ -234,14 +268,17 @@ export default function LandingPage() {
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#514538" }}>{intent}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#845411" }}>See how it looks →</span>
                   </div>
-                </div>
+                </SpotlightCard>
               ))}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── THE RIPPLE EFFECT ── */}
-        <section style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: 32 }}>
               <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>The Ripple Effect</h2>
@@ -251,10 +288,13 @@ export default function LandingPage() {
               <img src="/ripple-effect.png" alt="The Ripple Effect Pipeline" style={{ width: "100%", height: "auto", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(213,195,179,0.3)" }} />
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── HOW WE HELP YOU CONNECT ── */}
-        <section style={{ maxWidth: 1280, margin: "0 auto", padding: "80px 64px", borderTop: "1px solid rgba(213,195,179,0.3)" }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ maxWidth: 1280, margin: "0 auto", padding: "80px 64px", borderTop: "1px solid rgba(213,195,179,0.3)" }}
+        >
           <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", textAlign: "center", marginBottom: 64 }}>How we help you connect</h2>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24, position: "relative" }}>
             <div style={{ position: "absolute", top: "50%", left: 0, width: "100%", height: 1, background: "rgba(213,195,179,0.3)", zIndex: 0 }} />
@@ -273,10 +313,13 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
         {/* ── PRIVACY BY DESIGN ── */}
-        <section style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
+        >
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: 48 }}>
               <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "#1b1b1b", marginBottom: 12 }}>Privacy by Design</h2>
@@ -286,7 +329,7 @@ export default function LandingPage() {
               <img src="/privacy-trust-map.png" alt="Interactive Trust Map" style={{ width: "100%", height: "auto", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(213,195,179,0.3)" }} />
             </div>
           </div>
-        </section>
+        </motion.section>
 
       </main>
 
