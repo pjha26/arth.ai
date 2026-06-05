@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 
 export default function LeadChatUI({ reportId, companyName }: { reportId: string, companyName: string }) {
   const [input, setInput] = useState("");
@@ -26,7 +27,6 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch initial chat history
   useEffect(() => {
     fetch(`/api/reports/${reportId}/chat`)
       .then(res => res.json())
@@ -38,7 +38,6 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
       .catch(console.error);
   }, [reportId, setMessages]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
@@ -51,69 +50,76 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
   ];
 
   return (
-    <div className="flex flex-col h-full w-full bg-white relative">
-      
-      {/* Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+    <div className="flex flex-col h-full w-full bg-transparent relative">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col justify-center items-center text-center opacity-90">
-            <div className="w-16 h-16 rounded-full bg-[#FAFAF8] border border-[#E8E6E1] flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-2xl text-[#18181B]">smart_toy</span>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+            className="h-full flex flex-col justify-center items-center text-center opacity-90"
+          >
+            <div className="w-16 h-16 rounded-full bg-[#fcf9f8] border border-[#d5c3b3]/50 flex items-center justify-center mb-6 shadow-sm relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#fbba6f]/20 to-transparent" />
+              <span className="w-4 h-4 rounded-full bg-[#fbba6f] animate-pulse"></span>
             </div>
-            <h2 className="text-lg font-bold text-[#18181B] mb-2">ArthAI is ready.</h2>
-            <p className="text-sm text-[#71717A] max-w-sm mb-8 leading-relaxed">
-              I've fully analyzed the intelligence report for {companyName}. What would you like to know?
+            <h2 className="text-2xl font-['Newsreader',_serif] text-[#1b1b1b] mb-3">ArthAI is ready.</h2>
+            <p className="text-[15px] text-[#514538] max-w-sm mb-8 leading-relaxed">
+              I've fully analyzed the intelligence report for <strong className="text-[#845411]">{companyName}</strong>. What would you like to explore?
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl w-full px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl w-full">
               {suggestedPrompts.map((prompt, i) => (
-                <button
+                <motion.button
                   key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 + 0.3 }}
                   onClick={() => sendMessage({ text: prompt })}
-                  className="text-sm px-4 py-3 rounded-xl border border-[#E8E6E1] text-left hover:border-[#18181B] hover:shadow-sm transition-all duration-200 text-[#3F3F46] hover:text-[#18181B] bg-white flex items-center justify-between group"
+                  className="text-[13px] px-5 py-4 rounded-xl border border-[#d5c3b3]/50 text-left transition-all duration-300 text-[#514538] hover:text-[#845411] bg-white/50 backdrop-blur-sm hover:bg-white flex items-center justify-between group shadow-sm hover:shadow-md"
                 >
                   <span>{prompt}</span>
-                  <span className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
-                </button>
+                  <span className="material-symbols-outlined text-[16px] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#fbba6f]">arrow_forward</span>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
         ) : (
-          messages.map((m) => (
-            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          messages.map((m, idx) => (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              key={m.id || idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
               <div 
-                className={`max-w-[85%] rounded-2xl px-5 py-4 text-[15px] leading-relaxed shadow-sm ${
+                className={`max-w-[85%] rounded-2xl px-6 py-4 text-[15px] leading-relaxed shadow-sm ${
                   m.role === 'user' 
-                    ? 'rounded-br-sm bg-[#18181B] text-white' 
-                    : 'rounded-bl-sm bg-[#FAFAF8] border border-[#E8E6E1] text-[#18181B]'
+                    ? 'rounded-br-sm bg-[#514538] text-white shadow-[#514538]/10' 
+                    : 'rounded-bl-sm bg-[#fcf9f8] border border-[#d5c3b3]/40 text-[#1b1b1b]'
                 }`}
               >
                 {(m.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '').split('\n').map((line: string, i: number) => (
-                  <p key={i} className="mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                  <p key={i} className="mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-[#845411]">$1</strong>') }} />
                 ))}
               </div>
-            </div>
+            </motion.div>
           ))
         )}
         
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-2xl px-5 py-4 text-[15px] rounded-bl-sm bg-[#FAFAF8] border border-[#E8E6E1] text-[#71717A] flex items-center gap-3 shadow-sm">
-              <span className="material-symbols-outlined animate-spin text-[#18181B]">progress_activity</span>
-              Analyzing intelligence...
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl px-6 py-4 text-[14px] rounded-bl-sm bg-[#fcf9f8] border border-[#d5c3b3]/40 text-[#514538] flex items-center gap-3 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-[#fbba6f] animate-ping" />
+              <span className="italic">Synthesizing...</span>
             </div>
-          </div>
+          </motion.div>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-4" />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 md:p-6 bg-white border-t border-[#E8E6E1]">
+      <div className="p-4 md:p-6 bg-white/40 backdrop-blur-xl border-t border-[#d5c3b3]/30">
         <form onSubmit={handleSubmit} className="relative max-w-4xl mx-auto flex items-center">
           <input
             type="text"
-            className="w-full pl-5 pr-14 py-4 rounded-2xl border border-[#E8E6E1] focus:outline-none focus:border-[#18181B] focus:ring-1 focus:ring-[#18181B] transition-all text-[15px] text-[#18181B] placeholder-[#A1A1AA] shadow-sm"
-            placeholder={`Ask anything about ${companyName}'s report...`}
+            className="w-full pl-6 pr-16 py-4 rounded-full border border-[#d5c3b3]/50 focus:outline-none focus:border-[#fbba6f] focus:ring-2 focus:ring-[#fbba6f]/20 transition-all text-[15px] text-[#1b1b1b] placeholder-[#a1a1a1] shadow-sm bg-white/80"
+            placeholder={`Ask anything about ${companyName}...`}
             value={input}
             onChange={handleInputChange}
             disabled={isLoading}
@@ -121,23 +127,22 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
           <button 
             type="submit" 
             disabled={isLoading || !(input?.trim())}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
             style={{ 
-              background: (isLoading || !(input?.trim())) ? "#F4F4F5" : "#18181B", 
-              color: (isLoading || !(input?.trim())) ? "#A1A1AA" : "#ffffff",
-              boxShadow: (isLoading || !(input?.trim())) ? "none" : "0 2px 8px rgba(24,24,27,0.2)"
+              background: (isLoading || !(input?.trim())) ? "#f0eded" : "#845411", 
+              color: (isLoading || !(input?.trim())) ? "#d5c3b3" : "#ffffff",
+              boxShadow: (isLoading || !(input?.trim())) ? "none" : "0 4px 12px rgba(132, 84, 17, 0.25)"
             }}
           >
             <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
           </button>
         </form>
-        <div className="text-center mt-3">
-          <p className="text-[11px] text-[#A1A1AA]">
-            Powered by ArthAI Intelligence. Chat history is saved to enhance future recommendations.
+        <div className="text-center mt-4">
+          <p className="text-[11px] text-[#837567] font-medium tracking-wide">
+            Powered by ArthAI. Intent is monitored to enhance adaptations.
           </p>
         </div>
       </div>
-      
     </div>
   );
 }

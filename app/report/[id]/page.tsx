@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import LeadChatUI from "./LeadChatUI";
+import Link from "next/link";
 
 const prisma = new PrismaClient();
 
@@ -32,21 +33,24 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] flex flex-col font-sans">
+    <div className="min-h-screen relative font-['Geist',_sans-serif] text-[#1b1b1b]" style={{ backgroundColor: "#fcf9f8" }}>
+      {/* Subtle ambient background */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at 50% 0%, rgba(251, 186, 111, 0.08), transparent 70%)" }} />
+
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-4 bg-white/80 backdrop-blur-md border-b border-[#E8E6E1] sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded flex items-center justify-center bg-[#18181B] text-white font-black text-xs">
-            a
+      <nav className="flex items-center justify-between px-8 py-4 bg-[#fcf9f8]/80 backdrop-blur-xl border-b border-[#d5c3b3]/30 sticky top-0 z-50">
+        <Link href="/" className="flex items-center gap-2 decoration-transparent">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#fbba6f]">
+            <span className="w-2 h-2 rounded-full bg-[#845411]"></span>
           </div>
-          <span className="font-extrabold text-[#18181B] tracking-tight">arth.ai</span>
-        </div>
+          <span className="font-['Newsreader',_serif] text-xl font-bold tracking-tight text-[#1b1b1b]">ArthAI</span>
+        </Link>
         <div className="flex items-center gap-4">
           {report.status === "done" && (
             <a 
               href={initialData.pdfUrl}
               download
-              className="text-xs font-bold text-[#71717A] hover:text-[#18181B] transition-colors"
+              className="text-sm font-medium text-[#514538] hover:text-[#845411] transition-colors border border-[#d5c3b3]/50 bg-white/50 px-4 py-2 rounded-full shadow-sm"
             >
               Download PDF
             </a>
@@ -55,24 +59,28 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
       </nav>
 
       {/* Main Layout */}
-      <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full p-4 md:p-8 h-[calc(100vh-65px)]">
+      <main className="relative flex-1 flex flex-col max-w-5xl mx-auto w-full p-4 md:p-8 h-[calc(100vh-73px)] z-10">
         
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-[#18181B] tracking-tight mb-2">
-            Intelligence Report: {companyName}
+        <div className="mb-6 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f6f3f2] border border-[#d5c3b3]/50 mb-4">
+            <span className="w-2 h-2 rounded-full bg-[#fbba6f] animate-pulse" />
+            <span className="text-[10px] font-bold tracking-widest uppercase text-[#514538]">Intelligence Report</span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-['Newsreader',_serif] font-normal text-[#1b1b1b] tracking-tight mb-4">
+            {companyName}
           </h1>
-          <p className="text-[#71717A] text-sm max-w-3xl leading-relaxed">
+          <p className="text-[#514538] text-base max-w-2xl mx-auto leading-relaxed">
             {initialData.executiveSummary}
           </p>
         </div>
 
         {/* Chat Interface Container */}
-        <div className="flex-1 bg-white border border-[#E8E6E1] rounded-2xl shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white/60 backdrop-blur-xl border border-[#d5c3b3]/40 rounded-2xl shadow-[0_8px_32px_rgba(213,195,179,0.2)] overflow-hidden flex flex-col relative">
           {report.status !== "done" ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-[#71717A]">
-              <span className="material-symbols-outlined text-4xl mb-2 text-[#E8E6E1] animate-pulse">hourglass_empty</span>
-              <p className="font-medium">Your report is currently processing.</p>
-              <p className="text-xs mt-1">Chat will be enabled once the audit completes.</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-[#514538]">
+              <span className="material-symbols-outlined text-4xl mb-3 text-[#fbba6f] animate-pulse">hourglass_empty</span>
+              <p className="font-medium text-[#1b1b1b] text-lg font-['Newsreader',_serif]">Analyzing Intent Signals...</p>
+              <p className="text-sm mt-1">Your report is currently processing. Chat will be enabled shortly.</p>
             </div>
           ) : (
             <LeadChatUI 
