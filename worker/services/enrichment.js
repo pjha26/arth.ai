@@ -61,8 +61,8 @@ export async function enrich(lead) {
   const contextParts = [
     `Company: ${enrichmentData.companyName}`,
     `Domain: ${enrichmentData.rootDomain}`,
-    `Industry: ${enrichmentData.industry} ${enrichmentData.subIndustry ? `(${enrichmentData.subIndustry})` : ''}`,
-    `Employees: ${enrichmentData.employeeRange || "Unknown"}`,
+    `Industry: ${enrichmentData.industry && enrichmentData.industry.toLowerCase() !== 'unknown' ? enrichmentData.industry + (enrichmentData.subIndustry ? ` (${enrichmentData.subIndustry})` : '') : "Not categorized. Please infer from website content."}`,
+    `Employees: ${enrichmentData.employeeRange && enrichmentData.employeeRange.toLowerCase() !== 'unknown' ? enrichmentData.employeeRange : "Not publicly listed. Please infer from scale, traffic, and context."}`,
     `Description: ${enrichmentData.description}`,
     `Tech Stack: ${enrichmentData.techStack.join(", ")}`,
     enrichmentData.recentNews.length ? `Recent News: ${enrichmentData.recentNews.map(n => n.headline).join(" | ")}` : null,

@@ -258,10 +258,10 @@ async function runVisualAgent(lead, screenshotBase64, textContext, jobId) {
 async function runWriterAgent(lead, synthesisContextStr, previousFeedback, companyHistory, jobId, industryBenchmarks) {
   streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report from synthesized multi-agent data...`);
   
-  let prompt = `Draft a hyper-specific report for ${lead.companyName} (${lead.industry}).
+  let prompt = `Draft a hyper-specific report for ${lead.companyName}.
 
 STRICT RULES — violating any of these invalidates the report:
-1. NEVER write "Unknown" anywhere. If a field is missing, infer it from available context or omit it entirely.
+1. NEVER write "Unknown" anywhere. If a field like company size, industry, or funding stage is missing from context, infer it intelligently from their website content, product scope, job listings, and market signals, or omit the descriptor entirely.
 2. NEVER write generic statements that could apply to any company. Every sentence must reference ${lead.companyName} specifically.
 3. NEVER use the company's industry category as a substitute for company-specific knowledge. "Technology company" tells the reader nothing. Be specific.
 4. NEVER paste raw form tags. Expanded pain points are provided in the context — use those verbatim.
@@ -667,8 +667,11 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
 // ─── Fallback ────────────────────────────────────────────────────────────
 
 function getFallbackReport(lead) {
+  const sizeText = lead.companySize && lead.companySize.toLowerCase() !== "unknown" ? `${lead.companySize} ` : "";
+  const indText = lead.industry && lead.industry.toLowerCase() !== "unknown" ? lead.industry : "technology";
+
   return {
-    executiveSummary: `${lead.companyName} is a ${lead.companySize} company operating in the ${lead.industry} sector. Based on the information provided, the company is actively looking to address operational challenges and scale efficiently. This report highlights key AI opportunities aligned with their stated goals.`,
+    executiveSummary: `${lead.companyName} is a ${sizeText}company operating in the ${indText} sector. Based on the information provided, the company is actively looking to address operational challenges and scale efficiently. This report highlights key AI opportunities aligned with their stated goals.`,
     marketPosition: {
       reasoning: `The ${lead.industry} space is becoming highly saturated. Companies without strong AI automation will struggle with margins. ${lead.companyName}'s size makes them particularly vulnerable to agile competitors, meaning operational differentiation is critical right now.`,
       content: `Within the ${lead.industry} industry, companies of ${lead.companyName}'s size typically face competitive pressure to differentiate through operational efficiency and customer experience. Strategic AI adoption can provide a meaningful competitive advantage.`
