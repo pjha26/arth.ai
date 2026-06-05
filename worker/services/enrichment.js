@@ -22,18 +22,20 @@ export async function enrich(lead) {
   const { companyName, website, industry } = lead;
   const rootDomain = normalizeUrl(website);
 
-  const [clearbitResult, wikiResult, ddgResult, scrapeResult] =
+  const [clearbitResult, wikiResult, ddgResult, scrapeResult, tierResult] =
     await Promise.allSettled([
       fetchClearbit(rootDomain, companyName),
       fetchWikipedia(companyName),
       fetchDuckDuckGo(companyName),
       scrapeWebsite(rootDomain),
+      detectCompanyTier(companyName),
     ]);
 
   const clearbit = clearbitResult.status === "fulfilled" ? clearbitResult.value : {};
   const wiki = wikiResult.status === "fulfilled" ? wikiResult.value : {};
   const ddg = ddgResult.status === "fulfilled" ? ddgResult.value : {};
   const scrape = scrapeResult.status === "fulfilled" ? scrapeResult.value : {};
+  const companyTier = tierResult.status === "fulfilled" ? tierResult.value : "unknown";
 
   const finalDescription = (clearbit.description && clearbit.description.length >= 50) 
     ? clearbit.description 
@@ -42,6 +44,7 @@ export async function enrich(lead) {
   const enrichmentData = {
     websiteUrl: website,
     rootDomain,
+    companyTier,
     companyName: clearbit.name || companyName,
     industry: clearbit.industry || industry,
     subIndustry: clearbit.subIndustry || null,
@@ -199,6 +202,20 @@ export async function fetchDuckDuckGoRaw(query) {
   } catch (err) {
     return "Search failed.";
   }
+}
+
+// ── Company Tier Detection (Well-Known vs Unknown) ──
+export async function detectCompanyTier(companyName) {
+  try {
+    const query = `${companyName} funding OR business model OR valuation`;
+    const res = await axios.get(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, { timeout: 6000 }).catch(() => ({ data: {} }));
+    
+    // If the abstract has significant content, it's likely a known entity
+    if (res.data?.AbstractText && res.data.AbstractText.length > 50) {
+      return "well-known";
+    }
+  } catch (err) {}
+  return "unknown";
 }
 
 // ── Website Scraper (Firecrawl -> Cheerio fallback) ──

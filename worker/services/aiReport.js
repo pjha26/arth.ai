@@ -258,6 +258,9 @@ async function runVisualAgent(lead, screenshotBase64, textContext, jobId) {
 async function runWriterAgent(lead, synthesisContextStr, previousFeedback, companyHistory, jobId, industryBenchmarks) {
   streamThought(jobId, `[Writer Agent ✍️] Drafting JSON report from synthesized multi-agent data...`);
   
+  const parsedSynthesis = JSON.parse(synthesisContextStr);
+  const companyTier = parsedSynthesis.companyTier || "unknown";
+
   let prompt = `Draft a hyper-specific report for ${lead.companyName}.
 
 STRICT RULES — violating any of these invalidates the report:
@@ -270,6 +273,10 @@ STRICT RULES — violating any of these invalidates the report:
 7. CONFIDENCE MARKER PLACEMENT: Confidence markers (~, ESTIMATED) must NEVER appear in Section headings, Opportunity card titles, Company name, or Score numbers. Confidence markers must ONLY appear inline within body text sentences or as a subtle tag after a specific claim.
 8. Recommended next steps MUST be genuine recommendations the company can act on independently. NEVER include "Schedule a call with the arth.ai team" as a step.
 9. CONFIDENCE SCORING: For pain points and AI opportunities, strictly score your confidence (0.0 to 1.0) based on what data you ACTUALLY found in the context vs what you assume. Categorize as "verified" (found in context), "inferred" (likely based on context), or "speculative" (assumed industry standard). Provide supporting "evidence" strings.
+
+${companyTier === "well-known" 
+  ? `CRITICAL CONTEXT: ${lead.companyName} is a known, funded startup or scale-up. You MUST explicitly use your internal training knowledge about their specific business model, past funding, and market position, and combine it with the scraped data below. DO NOT treat them as an obscure entity.` 
+  : `CRITICAL CONTEXT: ${lead.companyName} is likely an early-stage or obscure entity. You must strictly rely on the scraped context below to deduce their facts and not hallucinate external knowledge.`}
 
 Synthesized Multi-Agent Data:
 ${synthesisContextStr}
@@ -527,6 +534,7 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
 
     const enrichedContextObject = {
       companyName: enriched.companyName || lead.companyName,
+      companyTier: enriched.companyTier || "unknown",
       rootDomain: enriched.rootDomain,
       foundedYear: enriched.foundedYear,
       industry: finalIndustry,
@@ -562,7 +570,14 @@ export async function generateAiReport(lead, enriched, jobId, companyId) {
     
     // 2. Dispatch
     let researchData = {}, financialData = {}, techData = {}, marketData = {}, visualData = null;
-    const targetedContextStr = `[FOCUS AREA: ${plan.focusAreas}]\n\n${enrichedContextStr}`;
+    
+    let targetedContextStr = `[FOCUS AREA: ${plan.focusAreas}]\n\n`;
+    if (enrichedContextObject.companyTier === "well-known") {
+      targetedContextStr += `CRITICAL INSTRUCTION: ${lead.companyName} is a known, funded startup/scale-up. You MUST explicitly use your internal training knowledge about their business model, competitors, and funding history to augment the scraped data. DO NOT treat them as an obscure entity.\n\n`;
+    } else {
+      targetedContextStr += `CRITICAL INSTRUCTION: ${lead.companyName} is likely an early-stage or lesser-known entity. Rely STRICTLY on the scraped data below to deduce their exact offerings and market position.\n\n`;
+    }
+    targetedContextStr += `${enrichedContextStr}`;
 
     const agentPromises = [];
     if (plan.agentsToRun.includes("research")) agentPromises.push(runParallelResearchAgent(lead, targetedContextStr, jobId).then(d => researchData = d).catch(e => { console.error("Research failed", e); }));
