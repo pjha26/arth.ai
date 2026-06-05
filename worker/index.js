@@ -4,6 +4,7 @@ import { enrich } from "./services/enrichment.js";
 import { generateAiReport } from "./services/aiReport.js";
 import { generatePDF } from "./services/pdfGenerator.js";
 import { sendEmail, sendSignalEmail } from "./services/emailService.js";
+import { sendSlackNotification } from "./services/slack.js";
 import { checkCompanySignals } from "./services/signals.js";
 import { storeReportIntelligence } from "./services/vectorStore.js";
 import { sheetsLog } from "./services/sheetsLogger.js";
@@ -208,6 +209,9 @@ const worker = new Worker(
         await monitoringQueue.add("check-company", { companyId: companyId });
         console.log(`[Job ${jobId}] Dispatched 'start_monitoring' task for ${lead.companyName} to background queue.`);
         
+        // 4. Slack Notification
+        await sendSlackNotification(`✅ Intelligence Report for *${lead.companyName}* is ready.\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
+        
       } catch (e) {
         console.error(`[Job ${jobId}] Failed Stage 1 Deliver Hooks:`, e.message);
       }
@@ -316,6 +320,9 @@ const monitorWorker = new Worker(
         
         // 4. Send Email Alert
         await sendSignalEmail(latestLead, signal);
+        
+        // 5. Send Slack Alert
+        await sendSlackNotification(`🔥 High Signal Detected for *${company.name}*\n${signalResult.message}\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`);
       }
     } else {
       console.log(`[Monitor Worker] No significant signals for ${company.name}`);

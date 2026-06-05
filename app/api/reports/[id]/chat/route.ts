@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { embed, streamText } from "ai";
 import { prisma } from "@/lib/prisma";
+import { sendSlackNotification } from "@/lib/slack";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -77,10 +78,17 @@ export async function POST(request: Request, context: any) {
     if (hotWords.some((w) => lower.includes(w))) scoreBump += 10;
     
     try {
-      const report = await prisma.report.findUnique({ where: { id: reportId }, select: { score: true } });
+      const report = await prisma.report.findUnique({ 
+        where: { id: reportId }, 
+        select: { score: true, company: { select: { name: true } } } 
+      });
       if (report) {
         const newScore = (report.score || 0) + scoreBump;
         await prisma.report.update({ where: { id: reportId }, data: { score: newScore } });
+
+        if (scoreBump >= 10) {
+          await sendSlackNotification(`🚀 *${report.company?.name || 'A company'}* just asked a high-intent question!\n*Question:* "${userText}"\n*Intent Score Spike:* +${scoreBump} (Total: ${newScore})\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
+        }
       }
     } catch (e) {
       console.error("Failed to update intent score:", e);
