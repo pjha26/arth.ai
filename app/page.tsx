@@ -101,13 +101,14 @@ export default function LandingPage() {
       >
         <Link href="/" style={{ fontFamily: "Newsreader, serif", fontSize: 24, fontWeight: 700, color: "#1b1b1b", textDecoration: "none", letterSpacing: "-0.01em" }}>ArthAI</Link>
         <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
-          {["Product", "Solutions", "Philosophy", "Pricing"].map((l) => (
-            <Link key={l} href="#" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 400 }}>{l}</Link>
-          ))}
+          <Link href="#product" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 400 }}>Product</Link>
+          <Link href="#solutions" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 400 }}>Solutions</Link>
+          <Link href="#philosophy" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 400 }}>Philosophy</Link>
+          <Link href="#pricing" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 400 }}>Pricing</Link>
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <Link href="/dashboard" style={{ fontSize: 16, color: "#514538", textDecoration: "none", fontWeight: 500, marginRight: 8 }}>Dashboard</Link>
-          <button style={{ background: "transparent", border: "none", fontSize: 16, color: "#514538", cursor: "pointer" }}>Login</button>
+          <Link href="/dashboard" style={{ background: "transparent", border: "none", fontSize: 16, color: "#514538", textDecoration: "none", cursor: "pointer" }}>Login</Link>
           <Link href="/form" style={{ background: "#845411", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none", transition: "all 0.3s" }}>Book a Demo</Link>
         </div>
       </motion.nav>
@@ -216,6 +217,7 @@ export default function LandingPage() {
 
         {/* ── THE TRANSFORMATION ── */}
         <motion.section 
+          id="product"
           initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
           style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
         >
@@ -243,6 +245,7 @@ export default function LandingPage() {
 
         {/* ── CONTEXTUAL ADAPTATION ── */}
         <motion.section 
+          id="solutions"
           initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
           style={{ background: "rgba(252, 249, 248, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
         >
@@ -317,6 +320,7 @@ export default function LandingPage() {
 
         {/* ── PRIVACY BY DESIGN ── */}
         <motion.section 
+          id="philosophy"
           initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6, ease: "easeOut" }}
           style={{ background: "rgba(246, 243, 242, 0.4)", backdropFilter: "blur(12px)", borderTop: "1px solid rgba(213,195,179,0.3)", padding: "80px 64px" }}
         >
@@ -347,6 +351,7 @@ export default function LandingPage() {
       </footer>
 
       <style>{`
+        html { scroll-behavior: smooth; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         @media(max-width:768px){.hidden-mobile{display:none!important}}
       `}</style>
