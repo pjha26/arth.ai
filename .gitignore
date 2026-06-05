@@ -50,3 +50,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python / ml
+/ml/venv/
+/ml/__pycache__/
+*.pkl
+/ml/data.csv

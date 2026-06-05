@@ -3,6 +3,7 @@ import { createGroq } from "@ai-sdk/groq";
 import { embed, streamText } from "ai";
 import { prisma } from "@/lib/prisma";
 import { sendSlackNotification } from "@/lib/slack";
+import axios from "axios";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -76,24 +77,44 @@ export async function POST(request: Request, context: any) {
 
   // Intent scoring
   (async () => {
-    let scoreBump = 2;
-    const lower = userText.toLowerCase();
-    if (userText.length > 50) scoreBump += 3;
-    const hotWords = ["pricing", "cost", "integrate", "competitor", "buy", "sales", "purchase", "vs"];
-    if (hotWords.some((w) => lower.includes(w))) scoreBump += 10;
-    
     try {
       const report = await prisma.report.findUnique({ 
         where: { id: reportId }, 
-        select: { score: true, company: { select: { name: true } } } 
+        select: { score: true, generatedAt: true, companyId: true, company: { select: { name: true } } } 
       });
-      if (report) {
-        const newScore = (report.score || 0) + scoreBump;
-        await prisma.report.update({ where: { id: reportId }, data: { score: newScore } });
+      
+      if (!report) return;
 
-        if (scoreBump >= 10) {
-          await sendSlackNotification(`🚀 *${report.company?.name || 'A company'}* just asked a high-intent question!\n*Question:* "${userText}"\n*Intent Score Spike:* +${scoreBump} (Total: ${newScore})\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
+      const messageIndex = await prisma.chatMessage.count({ where: { reportId } });
+      const minutesSinceDelivery = report.generatedAt 
+        ? (Date.now() - report.generatedAt.getTime()) / 60000 
+        : 0;
+
+      const mlRes = await axios.post("http://localhost:8001/score", {
+        message: userText,
+        session_context: {
+          messageIndex,
+          minutesSinceDelivery
         }
+      }).catch(e => {
+        console.error("ML service unreachable, falling back to basic scoring", e.message);
+        return { data: { intent_probability: 0.1, delta: 2 } };
+      });
+
+      const { intent_probability, delta } = mlRes.data;
+      
+      const newScore = (report.score || 0) + delta;
+      
+      await prisma.$transaction([
+        prisma.report.update({ where: { id: reportId }, data: { score: newScore } }),
+        prisma.lead.updateMany({ 
+          where: { companyId: report.companyId }, 
+          data: { intentProbability: intent_probability } 
+        })
+      ]);
+
+      if (intent_probability > 0.75) {
+        await sendSlackNotification(`🔥 *High-Intent Signal detected for ${report.company?.name || 'A company'}*!\n*Message:* "${userText}"\n*ML Confidence:* ${(intent_probability*100).toFixed(1)}%\n*Intent Score Spike:* +${delta} (Total: ${newScore})\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
       }
     } catch (e) {
       console.error("Failed to update intent score:", e);

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\"",
+    "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\" \"cd ml && .\\venv\\Scripts\\uvicorn app:app --port 8001\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

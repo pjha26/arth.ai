@@ -43,13 +43,14 @@ model Signal {
 }
 
 model Lead {
-  id          String   @id @default(uuid())
-  companyId   String
-  fullName    String
-  email       String
-  painPoints  String
-  createdAt   DateTime @default(now())
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  companyId         String
+  fullName          String
+  email             String
+  painPoints        String
+  intentProbability Float?
+  createdAt         DateTime @default(now())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 
 model Report {
