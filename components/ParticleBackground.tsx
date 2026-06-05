@@ -118,8 +118,9 @@ const ParticleBackground: React.FC = () => {
     };
 
     const animate = (time: number) => {
-      // Create a trailing effect by using a slightly opaque fill instead of clearRect
-      ctx.fillStyle = "rgba(252, 249, 248, 0.2)"; // Matches the primary theme background #fcf9f8
+      // Check for dark mode via document Element
+      const isDark = document.documentElement.classList.contains("dark");
+      ctx.fillStyle = isDark ? "rgba(13, 13, 13, 0.2)" : "rgba(252, 249, 248, 0.2)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       for (const particle of particles) {
@@ -144,6 +145,7 @@ const ParticleBackground: React.FC = () => {
   return (
     <canvas
       ref={canvasRef}
+      className="particle-canvas"
       style={{
         position: "fixed",
         top: 0,
@@ -152,7 +154,7 @@ const ParticleBackground: React.FC = () => {
         height: "100vh",
         zIndex: -1,
         pointerEvents: "none",
-        background: "#fcf9f8",
+        background: "var(--bg)",
       }}
     />
   );

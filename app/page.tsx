@@ -117,7 +117,7 @@ export default function LandingPage() {
       {/* Ghost Persona Toggle — bottom right */}
       <div style={{
         position: "fixed", bottom: 24, right: 24, zIndex: 50,
-        display: "flex", background: "rgba(240,237,237,0.92)", backdropFilter: "blur(12px)",
+        display: "flex", background: "var(--surface-raised)", backdropFilter: "blur(12px)",
         border: "1px solid var(--border)", borderRadius: 9999,
         padding: 4, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
       }}>
@@ -125,7 +125,7 @@ export default function LandingPage() {
           <button key={key} onClick={() => setPersona(key)} style={{
             padding: "6px 16px", borderRadius: 9999, border: "none", cursor: "pointer",
             fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-            background: persona === key ? "#ffffff" : "transparent",
+            background: persona === key ? "var(--surface)" : "transparent",
             color: persona === key ? "var(--text-primary)" : "var(--text-secondary)",
             boxShadow: persona === key ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
             transition: "all 0.2s",
@@ -208,7 +208,7 @@ export default function LandingPage() {
                 <Link href="/form" style={{ display: "inline-block", background: "#845411", color: "#fff", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Experience Adaptive AI</Link>
               </MagneticButton>
               <MagneticButton>
-                <Link href="/form" style={{ display: "inline-block", background: "transparent", color: "var(--text-primary)", border: "1px solid #d5c3b3", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
+                <Link href="/form" style={{ display: "inline-block", background: "transparent", color: "var(--text-primary)", border: "1px solid var(--btn-outline-border)", padding: "16px 32px", borderRadius: 8, fontSize: 16, fontWeight: 500, textDecoration: "none" }}>Book a Demo</Link>
               </MagneticButton>
             </motion.div>
           </motion.div>
