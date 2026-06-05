@@ -50,7 +50,7 @@ const MODELS = [
   { id: "gemini-1.5-flash", label: "1.5 Flash", badge: "Stable" },
   { id: "gemini-2.0-flash", label: "2.0 Flash", badge: "Fast" },
   { id: "gemini-2.5-flash", label: "2.5 Flash", badge: "Latest" },
-  { id: "llama3-70b-8192", label: "Llama 3 70B", badge: "Groq (Free)" },
+  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", badge: "Groq (Free)" },
 ];
 
 // Create transport OUTSIDE the component to avoid re-creation on every render

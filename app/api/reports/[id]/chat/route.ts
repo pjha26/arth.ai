@@ -176,7 +176,7 @@ ${contextStr}
   }
 
   // ── 6. Stream the AI response ──────────────────────────────────
-  const ALLOWED_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "llama3-70b-8192"];
+  const ALLOWED_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "llama-3.3-70b-versatile"];
   const requestedModel = body.model || "gemini-1.5-flash";
   const selectedModel = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "gemini-1.5-flash";
 
@@ -185,7 +185,7 @@ ${contextStr}
     "gemini-1.5-flash": "gemini-flash-latest",
     "gemini-2.0-flash": "gemini-2.0-flash",
     "gemini-2.5-flash": "gemini-2.5-flash",
-    "llama3-70b-8192": "llama3-70b-8192",
+    "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
   };
   const modelId = modelMap[selectedModel] || "gemini-1.5-flash";
   console.log(`[Chat POST] Using model: ${modelId} (requested: ${selectedModel})`);
@@ -197,7 +197,7 @@ ${contextStr}
     fallbackModels.push("gemini-2.0-flash", "gemini-flash-latest"); // Note: gemini-1.5-flash maps to gemini-flash-latest
   } else if (modelId === "gemini-2.0-flash") {
     fallbackModels.push("gemini-flash-latest"); 
-  } else if (modelId === "llama3-70b-8192") {
+  } else if (modelId === "llama-3.3-70b-versatile") {
     fallbackModels.push("gemini-flash-latest"); // If Groq fails, fallback to Gemini
   }
 
