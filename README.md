@@ -57,8 +57,8 @@ graph TD
     
     %% API Gateway & Backend
     subgraph Next.js Backend
-    API_Leads[/api/leads]
-    API_Chat[/api/chat]
+    API_Leads["/api/leads"]
+    API_Chat["/api/chat"]
     end
     
     %% Async Workers & Queues
