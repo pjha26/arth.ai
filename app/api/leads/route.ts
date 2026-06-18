@@ -105,7 +105,7 @@ export async function POST(request: Request) {
           }
         });
 
-        console.log(`[arth.ai] Returning CACHED or IN-PROGRESS report: ${company.name} (${existingReport.id})`);
+        if (process.env.NODE_ENV !== 'production') console.log(`[arth.ai] Returning CACHED or IN-PROGRESS report: ${company.name} (${existingReport.id})`);
 
         return NextResponse.json(
           { 
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
       { jobId }
     );
 
-    console.log(`[arth.ai] Report enqueued: ${company.name} (${jobId})`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[arth.ai] Report enqueued: ${company.name} (${jobId})`);
 
     return NextResponse.json(
       {

@@ -123,6 +123,17 @@ graph TD
 4. **Python ML Microservice (FastAPI)**: A dedicated `localhost:8001` endpoint that runs a pre-trained scikit-learn Logistic Regression model to classify live prospect intent probability in real time.
 5. **PostgreSQL + pgvector Database**: Acts as the central nervous system, storing Leads, CRM metrics, pipeline states, chat histories, and vector embeddings natively via Prisma.
 
+## 📂 Folder Structure
+```text
+arth.ai/
+├── app/               # Next.js App Router (Frontend, API routes, Dashboard)
+├── components/        # React components (Radix UI, Framer Motion, Tailwind)
+├── ml/                # Python FastAPI Microservice (Scikit-Learn Intent Scorer)
+├── prisma/            # PostgreSQL Schema & Migrations
+├── public/            # Static assets & locally generated PDFs
+└── worker/            # Autonomous Node.js/BullMQ Worker (Scraping, AI Agents)
+```
+
 ---
 
 ## 🛠️ Technology Stack Used

@@ -1,3 +1,4 @@
+import { APP_URL } from "../lib/config.js";
 import { Worker, Queue } from "bullmq";
 import IORedis from "ioredis";
 import { enrich } from "./services/enrichment.js";
@@ -218,7 +219,7 @@ const worker = new Worker(
         console.log(`[Job ${jobId}] Enqueued follow-up sequence for ${lead.companyName}.`);
         
         // 4. Slack Notification
-        await sendSlackNotification(`✅ Intelligence Report for *${lead.companyName}* is ready.\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
+        await sendSlackNotification(`✅ Intelligence Report for *${lead.companyName}* is ready.\nView Dashboard: ${APP_URL}/dashboard/reports/${reportId}`);
         
       } catch (e) {
         console.error(`[Job ${jobId}] Failed Stage 1 Deliver Hooks:`, e.message);
@@ -331,7 +332,7 @@ const monitorWorker = new Worker(
         await sendSignalEmail(latestLead, signal);
         
         // 5. Send Slack Alert
-        await sendSlackNotification(`🔥 High Signal Detected for *${company.name}*\n${signalResult.message}\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`);
+        await sendSlackNotification(`🔥 High Signal Detected for *${company.name}*\n${signalResult.message}\nView Dashboard: ${APP_URL}/dashboard`);
       }
     } else {
       console.log(`[Monitor Worker] No significant signals for ${company.name}`);

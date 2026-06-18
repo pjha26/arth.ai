@@ -64,7 +64,7 @@ export async function POST(
       { jobId: bullJobId }
     );
 
-    console.log(`[arth.ai] Report re-enqueued: ${report.company.name} (${id})`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[arth.ai] Report re-enqueued: ${report.company.name} (${id})`);
 
     return NextResponse.json({
       success: true,

@@ -4,6 +4,7 @@ import { embed, streamText } from "ai";
 import { prisma } from "@/lib/prisma";
 import { sendSlackNotification } from "@/lib/slack";
 import axios from "axios";
+import { APP_URL, ML_SERVICE_URL } from "@/lib/config";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -68,7 +69,7 @@ export async function POST(request: Request, context: any) {
     return Response.json({ error: "No message text found" }, { status: 400 });
   }
 
-  console.log(`[Chat POST] reportId=${reportId} userText="${userText.slice(0, 80)}"`);
+  if (process.env.NODE_ENV !== 'production') console.log(`[Chat POST] reportId=${reportId} userText="${userText.slice(0, 80)}"`);
 
   // ── 2. Fire-and-forget: save user message + update intent score ─
   prisma.chatMessage
@@ -90,7 +91,7 @@ export async function POST(request: Request, context: any) {
         ? (Date.now() - report.generatedAt.getTime()) / 60000 
         : 0;
 
-      const mlRes = await axios.post("http://localhost:8001/score", {
+      const mlRes = await axios.post(`${ML_SERVICE_URL}/score`, {
         message: userText,
         session_context: {
           messageIndex,
@@ -114,7 +115,7 @@ export async function POST(request: Request, context: any) {
       ]);
 
       if (intent_probability > 0.75) {
-        await sendSlackNotification(`🔥 *High-Intent Signal detected for ${report.company?.name || 'A company'}*!\n*Message:* "${userText}"\n*ML Confidence:* ${(intent_probability*100).toFixed(1)}%\n*Intent Score Spike:* +${delta} (Total: ${newScore})\nView Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/reports/${reportId}`);
+        await sendSlackNotification(`🔥 *High-Intent Signal detected for ${report.company?.name || 'A company'}*!\n*Message:* "${userText}"\n*ML Confidence:* ${(intent_probability*100).toFixed(1)}%\n*Intent Score Spike:* +${delta} (Total: ${newScore})\nView Dashboard: ${APP_URL}/dashboard/reports/${reportId}`);
       }
     } catch (e) {
       console.error("Failed to update intent score:", e);
@@ -209,7 +210,7 @@ ${contextStr}
     "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
   };
   const modelId = modelMap[selectedModel] || "gemini-1.5-flash";
-  console.log(`[Chat POST] Using model: ${modelId} (requested: ${selectedModel})`);
+  if (process.env.NODE_ENV !== 'production') console.log(`[Chat POST] Using model: ${modelId} (requested: ${selectedModel})`);
 
   // ── 6.5 Setup Fallback Chain ────────────────────────────────────
   let fallbackModels = [modelId];
@@ -226,7 +227,7 @@ ${contextStr}
 
   for (const currentModel of fallbackModels) {
     try {
-      console.log(`[Chat POST] Attempting generation with model: ${currentModel}`);
+      if (process.env.NODE_ENV !== 'production') console.log(`[Chat POST] Attempting generation with model: ${currentModel}`);
       const isGroq = currentModel.startsWith("llama");
       const provider = isGroq ? groq(currentModel) : google(currentModel);
 
