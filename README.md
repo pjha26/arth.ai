@@ -49,27 +49,27 @@ ArthAI utilizes a robust, decoupled architecture to handle heavy AI workloads ef
 ```mermaid
 graph TD
     %% User Interfaces
-    subindex[User Interface Layer]
+    subgraph User Interface Layer
     UI_Public(Public Landing & Form)
     UI_Dashboard(Internal CRM Dashboard)
     UI_Chat(Interactive RAG Chat)
     end
     
     %% API Gateway & Backend
-    subindex[Next.js Backend]
+    subgraph Next.js Backend
     API_Leads[/api/leads]
     API_Chat[/api/chat]
     end
     
     %% Async Workers & Queues
-    subindex[Async Worker Pipeline]
+    subgraph Async Worker Pipeline
     BullMQ([Redis / BullMQ])
     NodeWorker(Node.js Worker)
     Puppeteer(Puppeteer / Cheerio)
     end
     
     %% AI & Data Stores
-    subindex[Data & AI Layer]
+    subgraph Data & AI Layer
     DB[(PostgreSQL + pgvector)]
     ML(Python FastAPI ML Intent Scorer)
     Gemini(Google Gemini AI)
