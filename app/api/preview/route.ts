@@ -7,27 +7,9 @@ const google = createGoogleGenerativeAI({
 import { generateObject } from "ai";
 import { z } from "zod";
 
-const ratelimitMap = new Map<string, { count: number; timestamp: number }>();
-const cacheMap = new Map<string, any>();
+import { livePreviewRateLimit, livePreviewGlobalRateLimit } from "@/lib/rateLimit";
 
-// In-memory rate limiting: 5 requests per hour
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const ONE_HOUR = 60 * 60 * 1000;
-  
-  let record = ratelimitMap.get(ip);
-  if (!record || now - record.timestamp > ONE_HOUR) {
-    ratelimitMap.set(ip, { count: 1, timestamp: now });
-    return true;
-  }
-  
-  if (record.count >= 5) {
-    return false;
-  }
-  
-  record.count += 1;
-  return true;
-}
+const cacheMap = new Map<string, any>();
 
 function resolveDomain(input: string): string {
   const cleanInput = input.trim().toLowerCase();
@@ -78,10 +60,19 @@ export async function POST(request: Request) {
     }
 
     // Rate Limit
-    if (!checkRateLimit(ip)) {
+    const globalLimit = await livePreviewGlobalRateLimit.limit("global");
+    if (!globalLimit.success) {
+      return NextResponse.json(
+        { success: false, rateLimited: true, message: "Our service is currently at capacity. Please try again later." },
+        { status: 429, headers: { "X-RateLimit-Limit": globalLimit.limit.toString(), "X-RateLimit-Remaining": globalLimit.remaining.toString() } }
+      );
+    }
+
+    const ipLimit = await livePreviewRateLimit.limit(ip);
+    if (!ipLimit.success) {
       return NextResponse.json(
         { success: false, rateLimited: true, message: "You've used your free previews. Submit the form for your full report →" },
-        { status: 429 }
+        { status: 429, headers: { "X-RateLimit-Limit": ipLimit.limit.toString(), "X-RateLimit-Remaining": ipLimit.remaining.toString() } }
       );
     }
 

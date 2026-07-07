@@ -16,6 +16,8 @@
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-table": "^8.21.3",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "ai": "^6.0.191",
     "axios": "^1.16.1",
     "bullmq": "^5.76.9",
