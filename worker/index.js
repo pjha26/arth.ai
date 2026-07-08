@@ -1,4 +1,4 @@
-import { APP_URL } from "../lib/config.js";
+const APP_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 import { Worker, Queue } from "bullmq";
 import IORedis from "ioredis";
 import { enrich } from "./services/enrichment.js";
