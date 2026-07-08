@@ -23,6 +23,7 @@ export async function generatePDF(lead, enriched, report) {
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
+      "--single-process"
     ],
   });
 

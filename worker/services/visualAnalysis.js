@@ -10,6 +10,7 @@ export async function captureWebsiteScreenshot(url) {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
+        "--single-process"
       ],
     });
 
