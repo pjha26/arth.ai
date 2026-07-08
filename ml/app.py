@@ -3,22 +3,26 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import uvicorn
+from contextlib import asynccontextmanager
 
 from train import extract_features
-
-app = FastAPI(title="ML Lead Scoring API")
 
 MODEL_PATH = "model.pkl"
 model = None
 
-@app.on_event("startup")
-def load_model():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global model
     if os.path.exists(MODEL_PATH):
         model = joblib.load(MODEL_PATH)
         print(f"Loaded ML model from {MODEL_PATH}")
     else:
         print(f"WARNING: Model file {MODEL_PATH} not found. Please run train.py first.")
+    yield
+    # No teardown needed
+
+app = FastAPI(title="ML Lead Scoring API", lifespan=lifespan)
 
 class SessionContext(BaseModel):
     messageIndex: int = 0
@@ -31,6 +35,10 @@ class ScoreRequest(BaseModel):
 class ScoreResponse(BaseModel):
     intent_probability: float
     delta: int
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 @app.post("/score", response_model=ScoreResponse)
 def score_message(request: ScoreRequest):
@@ -64,3 +72,7 @@ def score_message(request: ScoreRequest):
         intent_probability=float(prob),
         delta=delta
     )
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
