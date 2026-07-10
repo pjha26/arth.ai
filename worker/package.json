@@ -23,6 +23,7 @@
     "dotenv": "^16.0.0",
     "googleapis": "^144.0.0",
     "ioredis": "^5.3.0",
+    "langfuse": "^3.38.20",
     "p-retry": "^8.0.0",
     "pino": "^10.3.1",
     "prisma": "^5.13.0",
