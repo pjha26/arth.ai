@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { GoogleGenerativeAI } from "@google/generativeai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import pkg from "@prisma/client/index.js";
 const { PrismaClient } = pkg;
 
