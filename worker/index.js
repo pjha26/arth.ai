@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const APP_URL = process.env.NEXT_PUBLIC_API_URL || "https://arth-ai-nu.vercel.app";
 import { Worker, Queue } from "bullmq";
 import IORedis from "ioredis";
 import { enrich } from "./services/enrichment.js";

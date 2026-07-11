@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const APP_URL = process.env.NEXT_PUBLIC_API_URL || "https://arth-ai-nu.vercel.app";
 import { Resend } from "resend";
 
 export async function sendEmail(lead, pdfBuffer, report) {

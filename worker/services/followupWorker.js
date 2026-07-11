@@ -68,7 +68,7 @@ export async function processFollowUp(job) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const FROM_EMAIL = process.env.EMAIL_FROM || "arth.ai Reports <onboarding@resend.dev>";
     const REPLY_TO = process.env.EMAIL_REPLY_TO || "hello@arth.ai";
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://arth-ai-nu.vercel.app";
 
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
