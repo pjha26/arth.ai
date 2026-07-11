@@ -2,6 +2,7 @@
 
 ArthAI is a full-fledged AI platform and advanced Intelligence CRM designed to generate automated, deep-dive intelligence reports for inbound leads. Built around an autonomous multi-agent pipeline, ArthAI dynamically scrapes websites, orchestrates specialized parallel AI agents to research and analyze data, verifies facts to prevent hallucinations, and synthesizes deep strategic insights using Google's Gemini models.
 
+**🔴 Live Deployment:** [https://arth-ai-nu.vercel.app/](https://arth-ai-nu.vercel.app/)
 ---
 
 ## 🚀 Key Features
