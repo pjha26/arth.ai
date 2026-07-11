@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
+}
+
+model Company {
+  id              String      @id @default(uuid())
+  domain          String      @unique
+  name            String
+  industry        String?
+  size            String?
+  techStack       Json?       // ["React", "Node", "AWS"]
+  fundingStage    String?
+  lastAuditedAt   DateTime?
+  auditCount      Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  leads           Lead[]
+  reports         Report[]
+  signals         Signal[]
+  embeddings      Embedding[]
+}
+
+model Signal {
+  id          String   @id @default(uuid())
+  companyId   String
+  type        String   // "hiring_spike", "funding", "leadership_change"
+  detectedAt  DateTime @default(now())
+  data        Json
+  severity    String   // "high", "medium", "low"
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id                String   @id @default(uuid())
+  companyId         String
+  fullName          String
+  email             String
+  painPoints        String
+  intentProbability Float?
+  unsubscribed      Boolean  @default(false)
+  lastFollowUpSentAt DateTime?
+  followUpStage     Int      @default(0)
+  createdAt         DateTime @default(now())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id            String   @id @default(uuid())
+  companyId     String
+  personaType   String   @default("general") // "founder", "cto", "marketer"
+  score         Int?     // AI quality score 0-100
+  insights      Json?    // structured AI output
+  deltaInsights Json?    // diff from previous report
+  pdfUrl        String?
+  
+  // Mirror fields used by the frontend while processing
+  logo          String?  
+  description   String?
+  aiSummary     String?
+  
+  status        String   @default("pending") // pending | processing | done | failed
+  chatEnabled   Boolean  @default(false)
+  generatedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stages        PipelineStage[]
+  chatMessages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  reportId  String
+  role      String   // "user" or "assistant"
+  content   String
+  createdAt DateTime @default(now())
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model PipelineStage {
+  id        String   @id @default(uuid())
+  reportId  String
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  stage     String   // enrich | ai_report | pdf | email
+  status    String   // running | done | failed
+  message   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Embedding {
+  id          String   @id @default(uuid())
+  companyId   String
+  reportId    String?
+  chunk       String
+  embedding   Unsupported("vector(768)")?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model IndustryBenchmark {
+  id          String   @id @default(uuid())
+  industry    String
+  metric      String   // "avg_tech_stack_size", "avg_team_size"
+  value       Float
+  sampleSize  Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}

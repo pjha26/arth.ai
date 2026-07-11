@@ -10,7 +10,7 @@
     "build": "prisma generate"
   },
   "prisma": {
-    "schema": "../prisma/schema.prisma"
+    "schema": "prisma/schema.prisma"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.75",
