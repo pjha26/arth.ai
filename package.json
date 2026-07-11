@@ -6,7 +6,8 @@
     "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\" \"cd ml && .\\venv\\Scripts\\uvicorn app:app --port 8001\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.79",
@@ -49,5 +50,8 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
   }
 }
