@@ -179,10 +179,17 @@ export async function POST(request: Request) {
       },
       { status: 202 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("[arth.ai] API error:", error);
+    console.error("[arth.ai] Full error details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    
+    // In Vercel, the stringified error is much more reliable to read than the native console.error object serialization
     return NextResponse.json(
-      { success: false, message: "Internal server error. Please try again." },
+      { 
+        success: false, 
+        message: "Internal server error. Please try again.", 
+        error: error?.message || String(error)
+      },
       { status: 500 }
     );
   }
