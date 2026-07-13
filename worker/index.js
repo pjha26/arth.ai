@@ -44,6 +44,9 @@ async function logStage(reportId, stageName, status, message = null) {
 
 const connection = new IORedis(process.env.UPSTASH_REDIS_URL, {
   maxRetriesPerRequest: null,
+  retryStrategy(times) {
+    return Math.min(times * 1000, 10000); // 1s to 10s backoff for Redis reconnections
+  },
   tls: process.env.UPSTASH_REDIS_URL?.startsWith("rediss://")
     ? { rejectUnauthorized: false }
     : undefined,
@@ -272,7 +275,16 @@ process.on("SIGTERM", async () => {
 });
 
 // ── Background Monitoring Worker ──
-const leadsQueue = new Queue("leads", { connection });
+const leadsQueue = new Queue("leads", {
+  connection,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+  },
+});
 
 const monitorWorker = new Worker(
   "monitoring",
