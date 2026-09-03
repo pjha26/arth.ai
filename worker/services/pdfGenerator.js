@@ -153,8 +153,11 @@ function injectData(template, lead, enriched, report) {
     .replace(/\{\{OPPORTUNITIES_HTML\}\}/g, opportunitiesHtml)
     .replace(/\{\{STEPS_HTML\}\}/g, stepsHtml)
     .replace(/\{\{SCORE_DIGITAL\}\}/g, scores.digitalReadiness || 0)
+    .replace(/\{\{STYLE_DIGITAL\}\}/g, `style="width: ${(scores.digitalReadiness || 0) * 10}%;"`)
     .replace(/\{\{SCORE_AUTOMATION\}\}/g, scores.automationPotential || 0)
+    .replace(/\{\{STYLE_AUTOMATION\}\}/g, `style="width: ${(scores.automationPotential || 0) * 10}%;"`)
     .replace(/\{\{SCORE_GROWTH\}\}/g, scores.growthIndex || 0)
+    .replace(/\{\{STYLE_GROWTH\}\}/g, `style="width: ${(scores.growthIndex || 0) * 10}%;"`)
     .replace(
       /\{\{SCORE_OVERALL\}\}/g,
       Math.round(
