@@ -54,9 +54,15 @@ const connection = new IORedis(process.env.UPSTASH_REDIS_URL, {
 
 console.log("[arth.ai worker] Starting BullMQ worker...");
 
+import { processDiscoverySearch } from "./services/discovery.js";
+
 const worker = new Worker(
   "leads",
   async (job) => {
+    if (job.name === "discover-companies") {
+      await processDiscoverySearch(job.data.searchId, job.data);
+      return;
+    }
     const { leadInput: lead, companyId, reportId, jobId, submittedAt } = job.data;
     console.log(`\n[Job ${jobId}] Processing: ${lead.companyName}`);
 

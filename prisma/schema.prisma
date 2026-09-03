@@ -46,8 +46,9 @@ model Signal {
 model Lead {
   id                String   @id @default(uuid())
   companyId         String
-  fullName          String
-  email             String
+  fullName          String?
+  email             String?
+  source            String   @default("manual") // manual | auto_discovered
   painPoints        String
   intentProbability Float?
   unsubscribed      Boolean  @default(false)
@@ -120,4 +121,45 @@ model IndustryBenchmark {
   value       Float
   sampleSize  Int      @default(0)
   updatedAt   DateTime @updatedAt
+}
+
+model DiscoverySearch {
+  id          String   @id @default(cuid())
+  industry    String
+  region      String
+  sizeMin     Int?
+  sizeMax     Int?
+  signal      String?
+  status      String   @default("pending") // pending | processing | completed | failed
+  createdAt   DateTime @default(now())
+  companies   DiscoveredCompany[]
+}
+
+model DiscoveredCompany {
+  id                    String   @id @default(cuid())
+  searchId              String
+  search                DiscoverySearch @relation(fields: [searchId], references: [id])
+  companyId             String?
+  name                  String
+  domain                String?
+  source                String   // "google_places" | "web_search"
+
+  websiteLive           Boolean?
+  sourcesCorroborating  Int      @default(0)
+  confidenceTier        String   @default("unconfirmed") // verified | likely | unconfirmed
+  verificationSignals   Json?
+
+  fitScore              Float?
+  fitReasons            Json?
+
+  status                String   @default("discovered") // discovered | filtered_out | queued | researched
+  rank                  Int?
+  createdAt             DateTime @default(now())
+}
+
+model LeadOutcome {
+  id                    String   @id @default(cuid())
+  discoveredCompanyId   String
+  outcome               String   // contacted | engaged | converted | rejected
+  updatedAt             DateTime @updatedAt
 }
