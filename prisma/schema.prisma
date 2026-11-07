@@ -110,6 +110,7 @@ model Report {
   sources       ReportSource[]
   events        ReportEvent[]
   followUps     FollowUp[]
+  modelCalls    ModelCall[]
   @@index([status, dispatchedAt])
   @@index([leadId, createdAt])
 }
@@ -127,6 +128,23 @@ model FollowUp {
   @@unique([reportId, stage])
   @@index([status, dueAt])
   @@index([status, startedAt])
+}
+
+model ModelCall {
+  id String @id @default(uuid())
+  reportId String?
+  report Report? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  operation String
+  provider String
+  model String
+  status String
+  durationMs Int
+  inputTokens Int?
+  outputTokens Int?
+  estimatedCostUSD Float?
+  createdAt DateTime @default(now())
+  @@index([reportId])
+  @@index([createdAt])
 }
 
 model ReportSource {

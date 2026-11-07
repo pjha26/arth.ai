@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed } from 'ai';
+import { measureModelCall } from '../../shared/usage.js';
 import { prisma } from '../../shared/db.js';
 import { reportChunks } from '../../shared/jobs.js';
 
@@ -8,8 +9,8 @@ export async function storeReportIntelligence(lead, report, companyId, reportId)
   const rows = [];
   const modelId = process.env.EMBEDDING_MODEL || 'gemini-embedding-001';
   for (const chunk of reportChunks(lead, report)) {
-    const { embedding } = await embed({ model: google.textEmbeddingModel(modelId), value: chunk,
-      providerOptions: { google: { outputDimensionality: 768 } }, maxRetries: 0, abortSignal: AbortSignal.timeout(10000) });
+    const { embedding } = await measureModelCall(prisma, { reportId, operation: 'embedding', provider: 'google', model: modelId }, () => embed({ model: google.textEmbeddingModel(modelId), value: chunk,
+      providerOptions: { google: { outputDimensionality: 768 } }, maxRetries: 0, abortSignal: AbortSignal.timeout(10000) }));
     if (embedding.length !== 768) throw new Error('Embedding dimensions do not match the database');
     rows.push({ chunk, embedding: JSON.stringify(embedding) });
   }

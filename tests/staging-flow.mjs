@@ -52,6 +52,7 @@ try {
     do { const result = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100); cursor = result[0]; if (result[1].length) await redis.del(...result[1]); } while (cursor !== '0');
   }
   assert.equal((await call('/api/leads')).status, 401); pass('Anonymous CRM access denied');
+  assert.equal((await call('/api/operations')).status, 401);
   const login = await fetch(base + '/api/auth/login', { method: 'POST', redirect: 'manual', headers: { Origin: base },
     body: new URLSearchParams({ password: process.env.STAFF_PASSWORD }), signal: AbortSignal.timeout(60000) });
   assert.equal(login.status, 303, `Login failed: ${await login.clone().text()}`);
@@ -148,6 +149,12 @@ try {
   assert.equal(badWebhook.status, 400); pass('Unsigned delivery webhook rejected');
   const analytics = await call('/api/analytics', { jar: staff }); assert.equal(analytics.status, 200);
   assert.ok((await analytics.json()).data.overview.totalLeads >= 2); pass('CRM analytics read real staging records');
+  const operations = await call('/api/operations', { jar: staff });
+  assert.equal(operations.status, 200);
+  const measured = await operations.json();
+  assert.ok(measured.recordedModelCalls >= 5); assert.ok(measured.recordedInputTokens > 0);
+  assert.equal(measured.cost.estimatedTotalUSD, null); assert.ok(measured.cost.unknownCostCalls > 0);
+  assert.ok(measured.completionTimeMs.p50 > 0); pass('Staff operations show recorded model usage and measured timing without inventing prices');
   const result = { passed: true, checkedAt: new Date().toISOString(), providers: 'simulated; no real email or paid AI calls', reportId: first.id, checks };
   await writeFile('.data/staging/flow-check.json', JSON.stringify(result, null, 2));
   console.log(`Staging flow passed: ${checks.length} checks.`);
