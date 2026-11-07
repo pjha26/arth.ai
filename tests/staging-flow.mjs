@@ -3,12 +3,15 @@ import { randomUUID, createHmac } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
 import IORedis from 'ioredis';
+import { Queue } from 'bullmq';
+import { reconcileFollowUps } from '../worker/services/followupWorker.js';
 import { assertStaging } from './fixtures/staging-safety.mjs';
 
 assertStaging();
 const base = 'http://127.0.0.1:3101';
 const prisma = new PrismaClient();
 const redis = new IORedis(process.env.UPSTASH_REDIS_URL, { maxRetriesPerRequest: 1 });
+const followupsQueue = new Queue('followups', { connection: redis });
 const checks = [];
 const pass = name => { checks.push(name); console.log('PASS', name); };
 const cookie = response => response.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
@@ -29,7 +32,7 @@ async function submit(index) {
   const key = randomUUID();
   const body = { fullName: 'Staging Prospect', email: `qa-${key}@example.invalid`, companyName: 'Staging Research Company',
     website: 'https://www.iana.org', personaType: index === 1 ? 'Founder' : 'CTO', challengeTags: ['Automating workflows'],
-    painPoints: 'Controlled integration-test context. No real prospect.', outreachConsent: false };
+    painPoints: 'Controlled integration-test context. No real prospect.', outreachConsent: index === 1 };
   const response = await call('/api/leads', { method: 'POST', body, headers: { 'Idempotency-Key': key } });
   assert.equal(response.status, 202, `Submission failed: ${await response.clone().text()}`);
   const result = await response.json();
@@ -58,6 +61,7 @@ try {
   const report = await until(async () => {
     const row = await prisma.report.findUnique({ where: { id: first.id }, include: { lead: true, sources: true } });
     if (row.status === 'failed') throw new Error(`Report failed: ${row.errorMessage}`);
+    if (row.deliveryStatus === 'uncertain') throw new Error(`Delivery needs review: ${row.deliveryError}`);
     return row.status === 'done' && row.deliveryStatus === 'accepted' ? row : null;
   }, 'Report or local email acceptance did not complete');
   assert.equal(report.verificationStatus, 'reviewed'); assert.equal(report.artifactStatus, 'ready');
@@ -76,8 +80,29 @@ try {
   const access = await fetch(accessUrl, { redirect: 'manual' });
   assert.equal(access.status, 303); assert.equal(access.headers.get('location'), `${base}/report/${first.id}`);
   assert.ok(cookie(access).includes(`arth_report_${first.id}=`)); pass('Email access link exchanges its token and redirects to the public origin');
-  assert.equal((await redis.keys(`bull:followups:*${first.id}*`)).length, 0); pass('No follow-up scheduled without consent');
-  assert.equal(await prisma.followUp.count({ where: { reportId: first.id } }), 0); pass('No durable follow-up tasks created without consent');
+  await until(async () => (await prisma.report.findUnique({ where: { id: second.id } })).deliveryStatus === 'accepted', 'Second report did not reach provider acceptance');
+  assert.equal(await prisma.followUp.count({ where: { reportId: second.id } }), 0); pass('No durable follow-up tasks created without consent');
+  const tasks = await prisma.followUp.findMany({ where: { reportId: first.id }, orderBy: { stage: 'asc' } });
+  assert.deepEqual(tasks.map(task => task.stage), [1, 2, 3]); pass('Consented acceptance durably records all three follow-up stages');
+  await followupsQueue.pause();
+  try {
+    await prisma.followUp.update({ where: { id: tasks[0].id }, data: { dueAt: new Date(Date.now() - 1000) } });
+    await assert.rejects(reconcileFollowUps({ prisma, followupsQueue: { add: async () => { throw new Error('Injected queue outage'); } } }), /Injected queue outage/);
+    assert.equal((await prisma.followUp.findUnique({ where: { id: tasks[0].id } })).status, 'pending');
+    await reconcileFollowUps({ prisma, followupsQueue });
+  } finally { await followupsQueue.resume(); }
+  await until(async () => {
+    const task = await prisma.followUp.findUnique({ where: { id: tasks[0].id } });
+    if (task.status === 'uncertain') throw new Error(`Follow-up needs review: ${task.errorMessage}`);
+    return task.status === 'accepted';
+  }, 'Recovered follow-up did not complete');
+  const capturedEvents = (await readFile('.data/staging/provider-events.jsonl', 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(capturedEvents.filter(event => event.key === `followup-${first.id}-1`).length, 1); pass('Persisted follow-up recovers after queue failure and sends once through the real worker');
+  await prisma.lead.update({ where: { id: report.leadId }, data: { unsubscribed: true } });
+  await prisma.followUp.update({ where: { id: tasks[1].id }, data: { dueAt: new Date(Date.now() - 1000) } });
+  await reconcileFollowUps({ prisma, followupsQueue });
+  await until(async () => (await prisma.followUp.findUnique({ where: { id: tasks[1].id } })).status === 'skipped', 'Unsubscribe did not stop a scheduled follow-up');
+  pass('Unsubscribe stops a previously saved follow-up at send time');
   const sendChat = async jar => {
     const response = await call(`/api/reports/${first.id}/chat`, { method: 'POST', jar,
       body: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What should I prioritize first?' }] }] } });
@@ -106,4 +131,4 @@ try {
   const result = { passed: true, checkedAt: new Date().toISOString(), providers: 'simulated; no real email or paid AI calls', reportId: first.id, checks };
   await writeFile('.data/staging/flow-check.json', JSON.stringify(result, null, 2));
   console.log(`Staging flow passed: ${checks.length} checks.`);
-} finally { await prisma.$disconnect(); redis.disconnect(); }
+} finally { await followupsQueue.close(); await prisma.$disconnect(); redis.disconnect(); }
