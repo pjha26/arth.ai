@@ -64,7 +64,7 @@ const PERSONAS = {
   CTO: {
     badge: "Detected: Engineering Leader",
     title: "Infrastructure that scales with you.",
-    desc: "99.9% uptime, SOC2-ready APIs, and full audit logs. ArthAI plugs into your existing stack — no re-architecture required.",
+    desc: "Signed staff access, private report links, and recorded pipeline states keep the research workflow controlled and visible.",
     cta: "Read the CTO Guide →",
     pulse: "Analyzing engineering intent...",
   },
@@ -315,7 +315,7 @@ export default function LandingPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 24 }}>
               {[
                 { icon: "rocket_launch", title: "If you're building software", desc: "A SaaS Founder enters and immediately sees startup-focused messaging, highlighting rapid integration and scalability.", intent: "Intent: High" },
-                { icon: "domain", title: "If you're a big company", desc: "An Enterprise leader arrives and the interface brings SOC2 compliance, SLA guarantees, and dedicated support to the forefront.", intent: "Intent: Research" },
+                { icon: "domain", title: "If you're a big company", desc: "Review authorized report access, delivery status, and practical integration requirements with your team.", intent: "Intent: Research" },
                 { icon: "shopping_cart", title: "If you're selling online", desc: "An E-commerce director visits and the site shifts to showcase conversion rate lifts, cart abandonment recovery, and reliability.", intent: "Intent: Evaluation" },
                 { icon: "person_search", title: "If you're looking for talent", desc: "A Talent Acquisition specialist explores and the narrative revolves around employer branding and seamless ATS syncing.", intent: "Intent: Discovery" },
               ].map(({ icon, title, desc, intent }) => (
@@ -400,15 +400,15 @@ export default function LandingPage() {
           style={{ background: "var(--bg)", backdropFilter: "blur(12px)", borderTop: "1px solid var(--border)", padding: "80px 64px" }}
         >
           <div style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center" }}>
-            <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "var(--text-primary)", marginBottom: 48 }}>Loved by Adaptive Teams</h2>
+            <h2 style={{ fontFamily: "Newsreader, serif", fontSize: 32, fontWeight: 400, color: "var(--text-primary)", marginBottom: 48 }}>Illustrative Team Workflows</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 32 }}>
               {[
-                { quote: "ArthAI replaced 3 different intent tools for us. The automated personalization is literally magic. Our conversion rate jumped 40% in two weeks.", author: "Sarah Jenkins", role: "Founder & CEO, TechFlow" },
-                { quote: "Finally, a tool that respects our infrastructure. The API is robust, SOC2 ready, and it hasn't added a single millisecond to our load times.", author: "David Chen", role: "CTO, OmniStack" },
-                { quote: "We used to send the same email sequence to everyone. Now, ArthAI reads the exact signals and tailors the outreach. It's like having a 10x SDR.", author: "Elena Rostova", role: "VP of Growth, Syncio" },
+                { quote: "Review public company information and prioritize a small, measurable automation experiment.", author: "Founders", role: "Example: growth planning" },
+                { quote: "Inspect the evidence behind a recommendation and discuss integration constraints with your technical team.", author: "Technical teams", role: "Example: implementation review" },
+                { quote: "Use the prospect’s stated challenge to shape a relevant conversation, and track the actual outcome.", author: "Sales and marketing", role: "Example: prospect follow-up" },
               ].map((t, i) => (
                 <div key={i} style={{ background: "rgba(255, 255, 255, 0.7)", backdropFilter: "blur(16px)", border: "1px solid var(--border)", borderRadius: 16, padding: 32, textAlign: "left", position: "relative" }}>
-                  <div style={{ color: "#fbba6f", fontSize: 32, fontFamily: "serif", lineHeight: 1, marginBottom: 16 }}>"</div>
+                  <div style={{ color: "#fbba6f", fontSize: 32, fontFamily: "serif", lineHeight: 1, marginBottom: 16 }}>&quot;</div>
                   <p style={{ fontSize: 16, color: "var(--text-primary)", lineHeight: 1.6, marginBottom: 24, fontStyle: "italic" }}>{t.quote}</p>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--border)", overflow: "hidden" }}>

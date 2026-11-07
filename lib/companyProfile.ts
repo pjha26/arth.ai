@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
-import * as cheerio from "cheerio";
+import { z } from "zod";
+import { cache } from "react";
+import { limitRequest } from "@/lib/rateLimit";
 
 function getGeminiClient(): GoogleGenerativeAI | null {
   const key = process.env.GEMINI_API_KEY;
@@ -20,7 +22,8 @@ export interface CompanyProfile {
   ctaLine: string;
 }
 
-export async function buildCompanyProfile(slug: string): Promise<CompanyProfile> {
+export const buildCompanyProfile = cache(async (slug: string): Promise<CompanyProfile> => {
+  if (!/^[a-z0-9-]{2,60}$/i.test(slug)) throw new Error("Invalid company slug");
   const name = slug.charAt(0).toUpperCase() + slug.slice(1);
 
   // 1. Clearbit autocomplete (free, no key)
@@ -92,6 +95,8 @@ Generate a JSON object with these fields:
 Be specific to ${name}'s actual business. No generic filler. Respond with raw JSON only, no markdown formatting or text before/after.`;
 
   try {
+    const limited = await limitRequest(new Request("http://localhost/company-profile"), "company-profile", 10, 3600, 100);
+    if (limited || !description) return { name, domain, logo, description, industry, headline, painPoints, aiOpportunities, ctaLine };
     const genAI = getGeminiClient();
     if (!genAI) {
       console.warn("[companyProfile] GEMINI_API_KEY not set — using default copy.");
@@ -99,7 +104,7 @@ Be specific to ${name}'s actual business. No generic filler. Respond with raw JS
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: process.env.CHAT_MODEL || "gemini-2.5-flash",
       systemInstruction: "You are an expert SaaS copywriter. Output strictly valid JSON without any markdown tags.",
     });
 
@@ -115,7 +120,7 @@ Be specific to ${name}'s actual business. No generic filler. Respond with raw JS
       .replace(/\s*```$/i, "")
       .trim();
 
-    const parsed = JSON.parse(cleaned);
+    const parsed = z.object({ industry: z.string().max(100), headline: z.string().max(300), painPoints: z.array(z.string().max(500)).max(5), aiOpportunities: z.array(z.string().max(500)).max(5), ctaLine: z.string().max(300) }).parse(JSON.parse(cleaned));
     if (parsed.industry) industry = parsed.industry;
     if (parsed.headline) headline = parsed.headline;
     if (parsed.painPoints?.length) painPoints = parsed.painPoints;
@@ -126,4 +131,4 @@ Be specific to ${name}'s actual business. No generic filler. Respond with raw JS
   }
 
   return { name, domain, logo, description, industry, headline, painPoints, aiOpportunities, ctaLine };
-}
+});

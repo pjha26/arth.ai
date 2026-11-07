@@ -1,8 +1,11 @@
+import { requireStaff } from "@/lib/auth";
+import type { ReportView } from "@/lib/ui-types";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import ReportLayoutClient from "./ReportLayoutClient";
 
-export default async function ReportPage(props: any) {
+export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
+  await requireStaff();
   const params = await props.params;
   const { id } = params;
 
@@ -13,5 +16,5 @@ export default async function ReportPage(props: any) {
 
   if (!report) return notFound();
 
-  return <ReportLayoutClient report={report} />;
+  return <ReportLayoutClient report={report as unknown as ReportView} />;
 }

@@ -1,255 +1,75 @@
-import { NextResponse } from "next/server";
-import { LeadSchema } from "@/lib/validation";
-import { leadsQueue } from "@/lib/queue";
-import { randomUUID } from "crypto";
-import { prisma } from "@/lib/prisma";
-import path from "path";
-import fs from "fs";
-import axios from "axios";
-
-// Helper function to quickly fetch company logo and description (timeout optimized for fast API response)
-async function fetchCompanyPreview(companyName: string) {
-  let logo = null;
-  let description = null;
-  
-  try {
-    const { data } = await axios.get(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(companyName)}`, { timeout: 2000 });
-    if (data && data[0]) logo = data[0].logo;
-  } catch (err) {
-    console.warn("[arth.ai] Clearbit preview fetch failed");
-  }
-  
-  try {
-    const { data } = await axios.get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(companyName.replace(/\s+/g, "_"))}`, { timeout: 2000 });
-    if (data?.extract) description = data.extract.slice(0, 300);
-  } catch (err) {
-    console.warn("[arth.ai] Wiki preview fetch failed");
-  }
-  
-  return { logo, description };
-}
-
-function cleanUrl(urlString: string) {
-  try {
-    const url = new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`);
-    const paramsToStrip = ['srsltid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ref'];
-    paramsToStrip.forEach(param => url.searchParams.delete(param));
-    return url.toString();
-  } catch {
-    return urlString;
-  }
-}
+import { createHash } from 'node:crypto';
+import { NextResponse } from 'next/server';
+import { LeadSchema } from '@/lib/validation';
+import { prisma } from '@/lib/prisma';
+import { sameOrigin, guard } from '@/lib/auth';
+import { limitRequest } from '@/lib/rateLimit';
+import { dispatchReport } from '@/lib/dispatch';
+import { assertPublicUrl } from '@/shared/network.js';
+import { cookieOptions, reportCookie, signAccess } from '@/shared/access.js';
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return new Response('Invalid origin', { status: 403 });
+  const limited = await limitRequest(request, 'reports', 3, 3600, 100);
+  if (limited) return limited;
+  if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) return Response.json({ message: 'Report access is not configured' }, { status: 503 });
+  const input = LeadSchema.safeParse(await request.json().catch(() => null));
+  if (!input.success) return Response.json({ message: 'Validation failed', errors: input.error.flatten().fieldErrors }, { status: 400 });
+  let website: URL;
+  try { website = await assertPublicUrl(input.data.website); }
+  catch { return Response.json({ message: 'Enter a publicly accessible HTTP or HTTPS website' }, { status: 400 }); }
+  const domain = website.hostname.replace(/^www\./, '').toLowerCase();
+  const data = input.data;
+  const requestKey = request.headers.get('Idempotency-Key');
+  if (!requestKey || !/^[a-f0-9-]{36}$/i.test(requestKey)) return Response.json({ message: 'A valid submission ID is required' }, { status: 400 });
+  const fingerprint = createHash('sha256').update(JSON.stringify(data)).digest('hex');
   try {
-    const body = await request.json();
-
-    // Zod validation
-    const result = LeadSchema.safeParse(body);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors;
-      return NextResponse.json(
-        { success: false, message: "Validation failed", errors },
-        { status: 400 }
-      );
+    // Each requester gets a private report. Research reuse must never share another lead's context.
+    let report = await prisma.report.findUnique({ where: { requestKey } });
+    if (report && report.requestFingerprint !== fingerprint) return Response.json({ message: 'Submission ID was already used for different details' }, { status: 409 });
+    if (!report) try { report = await prisma.$transaction(async tx => {
+      const company = await tx.company.upsert({
+        where: { domain }, update: {},
+        create: { domain, website: website.origin, name: data.companyName || domain.split('.')[0], industry: data.industry, size: data.companySize },
+      });
+      const lead = await tx.lead.create({ data: {
+        companyId: company.id, fullName: data.fullName, email: data.email.toLowerCase(),
+        personaType: data.personaType.toLowerCase(), challengeTags: data.challengeTags,
+        painPoints: data.painPoints || '', outreachConsent: data.outreachConsent,
+      } });
+      return tx.report.create({ data: { companyId: company.id, leadId: lead.id, personaType: lead.personaType, requestKey, requestFingerprint: fingerprint } });
+    }); } catch (error) {
+      report = await prisma.report.findUnique({ where: { requestKey } });
+      if (!report || report.requestFingerprint !== fingerprint) throw error;
     }
-
-    const leadInput = result.data;
-    leadInput.website = cleanUrl(leadInput.website);
-
-    // 1. Extract domain to use as unique company identifier
-    let domain = "";
-    try {
-      domain = new URL(leadInput.website).hostname.replace(/^www\./, '').toLowerCase();
-    } catch {
-      // Fallback if URL parsing fails despite zod validation
-      domain = leadInput.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
-    }
-
-    // 2. Upsert Company
-    const derivedCompanyName = leadInput.companyName || (domain.charAt(0).toUpperCase() + domain.slice(1).split('.')[0]);
-
-    const company = await prisma.company.upsert({
-      where: { domain },
-      update: {
-        name: derivedCompanyName,
-        industry: leadInput.industry || "Technology",
-        size: leadInput.companySize || "Unknown",
-      },
-      create: {
-        domain,
-        name: derivedCompanyName,
-        industry: leadInput.industry || "Technology",
-        size: leadInput.companySize || "Unknown",
-      }
-    });
-
-    // 3. Deduplication check: Has this company been audited in the last 30 days?
-    const existingReport = await prisma.report.findFirst({
-      where: { companyId: company.id },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    if (existingReport) {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      if (existingReport.createdAt > thirtyDaysAgo && existingReport.personaType === leadInput.personaType) {
-        // Save the new lead contact info so sales knows they requested it
-        await prisma.lead.create({
-          data: {
-            companyId: company.id,
-            fullName: leadInput.fullName,
-            email: leadInput.email,
-            painPoints: `Challenges: ${leadInput.challengeTags.join(", ")}` + (leadInput.painPoints ? `\n\nContext: ${leadInput.painPoints}` : ""),
-          }
-        });
-
-        if (process.env.NODE_ENV !== 'production') console.log(`[arth.ai] Returning CACHED or IN-PROGRESS report: ${company.name} (${existingReport.id})`);
-
-        return NextResponse.json(
-          { 
-            success: true, 
-            message: existingReport.status === 'done' 
-              ? `Found a fresh AI report for ${company.name}. Loading instantly...`
-              : `A report for ${company.name} is already generating. Joining stream...`,
-            jobId: existingReport.id,
-            fromCache: existingReport.status === 'done'
-          },
-          { status: 200 }
-        );
-      }
-    }
-
-    // Fetch instant mirror preview data
-    const preview = await fetchCompanyPreview(derivedCompanyName);
-
-    // 4. Create Lead
-    const lead = await prisma.lead.create({
-      data: {
-        companyId: company.id,
-        fullName: leadInput.fullName,
-        email: leadInput.email,
-        painPoints: `Challenges: ${leadInput.challengeTags.join(", ")}` + (leadInput.painPoints ? `\n\nContext: ${leadInput.painPoints}` : ""),
-      }
-    });
-
-    // 5. Create Report Shell
-    const report = await prisma.report.create({
-      data: {
-        companyId: company.id,
-        personaType: leadInput.personaType,
-        status: "pending",
-        logo: preview.logo,
-        description: preview.description,
-      }
-    });
-
-    const jobId = report.id;
-
-    // 6. Enqueue the background job
-    await leadsQueue.add(
-      "process-report",
-      {
-        leadId: lead.id,
-        companyId: company.id,
-        reportId: report.id,
-        leadInput: {
-          fullName: leadInput.fullName,
-          email: leadInput.email,
-          website: leadInput.website,
-          companyName: derivedCompanyName,
-          industry: leadInput.industry || "Technology",
-          companySize: leadInput.companySize || "Unknown",
-          painPoints: `Challenges: ${leadInput.challengeTags.join(", ")}` + (leadInput.painPoints ? `\n\nContext: ${leadInput.painPoints}` : ""),
-        },
-        jobId,
-        submittedAt: new Date().toISOString(),
-      },
-      { jobId }
-    );
-
-    if (process.env.NODE_ENV !== 'production') console.log(`[arth.ai] Report enqueued: ${company.name} (${jobId})`);
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: `Your AI report for ${company.name} is being generated.`,
-        jobId,
-      },
-      { status: 202 }
-    );
-  } catch (error: any) {
-    console.error("[arth.ai] API error:", error);
-    console.error("[arth.ai] Full error details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    
-    // In Vercel, the stringified error is much more reliable to read than the native console.error object serialization
-    return NextResponse.json(
-      { 
-        success: false, 
-        message: "Internal server error. Please try again.", 
-        error: error?.message || String(error)
-      },
-      { status: 500 }
-    );
-  }
-}
-
-// CORS pre-flight
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-  });
-}
-
-export async function GET() {
-  try {
-    const reports = await prisma.report.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        company: {
-          include: {
-            signals: { orderBy: { detectedAt: "desc" }, take: 1 }
-          }
-        },
-        stages: {
-          orderBy: { createdAt: "asc" }
-        }
-      }
-    });
-
-    const reportsDir = path.join(process.cwd(), "public", "reports");
-    // Ensure the directory exists before checking
-    if (!fs.existsSync(reportsDir)) {
-      fs.mkdirSync(reportsDir, { recursive: true });
-    }
-
-    const reportsWithPdf = reports.map((report) => {
-      const pdfPath = path.join(reportsDir, `${report.id}.pdf`);
-      const hasPdf = fs.existsSync(pdfPath);
-      // Map company data to the root for backwards compatibility in the admin UI
-      return { 
-        ...report, 
-        hasPdf,
-        companyName: report.company.name,
-        website: report.company.domain,
-        industry: report.company.industry,
-        email: "N/A (See Lead table)" 
-      };
-    });
-
-    // Return under "leads" key temporarily to avoid breaking frontend dashboard
-    return NextResponse.json({ success: true, leads: reportsWithPdf });
+    // Pending records are a durable dispatch intent. The worker reconciles failed enqueue attempts.
+    await dispatchReport(report.id).catch(() => console.warn('Dispatch deferred to reconciliation:', report.id));
+    const response = NextResponse.json({ success: true, jobId: report.id, message: 'Your report request has been saved.' }, { status: 202 });
+    response.cookies.set(reportCookie(report.id), signAccess('report', report.id, report.leadId!), { ...cookieOptions, maxAge: 7 * 86400 });
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   } catch (error) {
-    console.error("Error fetching reports:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to fetch reports" },
-      { status: 500 }
-    );
+    console.error('Lead submission failed', error);
+    return Response.json({ message: 'Unable to save your request. Please try again.' }, { status: 500 });
   }
+}
+
+export async function GET(request: Request) {
+  const denied = await guard(request); if (denied) return denied;
+  const query = new URL(request.url).searchParams;
+  const page = Math.max(1, Number(query.get('page')) || 1);
+  const take = 50;
+  const [reports, total] = await Promise.all([
+    prisma.report.findMany({ orderBy: { createdAt: 'desc' }, take, skip: (page - 1) * take,
+      include: { lead: true, company: { include: { signals: { orderBy: { detectedAt: 'desc' }, take: 1 } } } } }),
+    prisma.report.count(),
+  ]);
+  const leads = reports.map(({ lead, ...report }) => ({
+    ...report, companyName: report.company.name, website: report.company.domain,
+    industry: report.company.industry, companySize: report.company.size,
+    salesStatus: lead?.salesStatus || "new",
+    email: lead?.email || '', fullName: lead?.fullName || '', painPoints: lead?.painPoints || '',
+    intentProbability: lead?.intentProbability ?? null, hasPdf: report.artifactStatus === 'ready',
+  }));
+  return Response.json({ success: true, leads, page, total, pages: Math.ceil(total / take) }, { headers: { 'Cache-Control': 'no-store' } });
 }

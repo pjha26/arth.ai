@@ -21,7 +21,7 @@ const AnalysisBackground: React.FC = () => {
     const colors = ["#fbba6f", "#845411", "#d5c3b3", "#a97030"];
 
     // Mouse interaction
-    let mouse = { x: -1000, y: -1000, radius: 250 };
+    const mouse = { x: -1000, y: -1000, radius: 250 };
 
     const handleMouseMove = (e: MouseEvent) => {
       mouse.x = e.clientX;

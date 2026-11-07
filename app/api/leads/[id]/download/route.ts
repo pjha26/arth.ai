@@ -1,58 +1,22 @@
-import { NextResponse } from "next/server";
-import path from "path";
-import fs from "fs";
-import { prisma } from "@/lib/prisma";
+import { prisma } from '@/lib/prisma';
+import { accessFor, guard } from '@/lib/auth';
+import { readReportPdf } from '@/shared/storage.js';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
+  const denied = await guard(request, id); if (denied) return denied;
+  const report = await prisma.report.findUnique({ where: { id }, include: { company: true } });
+  const access = await accessFor(id);
+  if (!report || !access?.staff && report.leadId !== access?.leadId) return new Response('Report not found', { status: 404 });
+  if (!report.pdfUrl || report.artifactStatus !== 'ready') return Response.json({ message: 'PDF is not available yet' }, { status: 404 });
   try {
-    // Verify the report exists
-    const report = await prisma.report.findUnique({ 
-      where: { id },
-      include: { company: true }
-    });
-    if (!report) {
-      return NextResponse.json(
-        { success: false, message: "Lead not found" },
-        { status: 404 }
-      );
-    }
-
-    // Locate the PDF file
-    const pdfPath = path.join(process.cwd(), "public", "reports", `${id}.pdf`);
-
-    if (!fs.existsSync(pdfPath)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "PDF not yet generated. Please wait for the pipeline to complete.",
-        },
-        { status: 404 }
-      );
-    }
-
-    const pdfBuffer = fs.readFileSync(pdfPath);
-    const fileName = `arth_ai_report_${report.company.name.replace(/\s+/g, "_").toLowerCase()}.pdf`;
-
-    return new Response(pdfBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${fileName}"`,
-        "Content-Length": pdfBuffer.length.toString(),
-        "Cache-Control": "private, no-cache",
-      },
-    });
+    const bytes = await readReportPdf(report.pdfUrl);
+    await prisma.reportEvent.create({ data: { reportId: id, type: 'download', actor: access.staff ? 'staff' : access.leadId } });
+    const name = report.company.name.replace(/[^a-z0-9_-]/gi, '_');
+    return new Response(new Uint8Array(bytes), { headers: { 'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${name}-arth-report.pdf"`, 'Cache-Control': 'private, no-store' } });
   } catch (error) {
-    console.error("[arth.ai] PDF download error:", error);
-    return NextResponse.json(
-      { success: false, message: "Internal server error" },
-      { status: 500 }
-    );
+    console.error('PDF storage read failed', error);
+    return Response.json({ message: 'PDF storage is temporarily unavailable' }, { status: 503 });
   }
 }

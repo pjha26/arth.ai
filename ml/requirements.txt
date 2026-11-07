@@ -1,9 +1,9 @@
 fastapi
 uvicorn[standard]
-scikit-learn
-pandas
-numpy
+scikit-learn==1.3.2
+pandas==2.1.3
+numpy==1.26.2
 google-generativeai
 python-dotenv
 pydantic
-joblib
+joblib==1.5.3

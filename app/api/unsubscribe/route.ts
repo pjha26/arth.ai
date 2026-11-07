@@ -1,52 +1,19 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from '@/lib/prisma';
+import { verifyAccess } from '@/shared/access.js';
+import { escapeHtml } from '@/shared/html.js';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const leadId = searchParams.get("leadId");
+  const params = new URL(request.url).searchParams;
+  const id = params.get('leadId') || '', token = params.get('token') || '';
+  if (!verifyAccess(token, 'unsubscribe', id)) return new Response('Invalid or expired unsubscribe link', { status: 403 });
+  // Email scanners may follow links automatically. Only the user's confirmation changes state.
+  return new Response(`<html><head><title>Unsubscribe</title></head><body><h1>Unsubscribe from ArthAI outreach</h1><form method="post"><input type="hidden" name="leadId" value="${escapeHtml(id)}"><input type="hidden" name="token" value="${escapeHtml(token)}"><button type="submit">Confirm unsubscribe</button></form></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+}
 
-  if (!leadId) {
-    return new NextResponse("Missing leadId", { status: 400 });
-  }
-
-  try {
-    const lead = await prisma.lead.findUnique({
-      where: { id: leadId },
-    });
-
-    if (!lead) {
-      return new NextResponse("Lead not found", { status: 404 });
-    }
-
-    await prisma.lead.update({
-      where: { id: leadId },
-      data: { unsubscribed: true },
-    });
-
-    return new NextResponse(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Unsubscribed</title>
-        <style>
-          body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f9fafb; margin: 0; }
-          .container { background: white; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
-          h1 { color: #111827; margin-bottom: 0.5rem; }
-          p { color: #6b7280; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>Unsubscribed</h1>
-          <p>You have been successfully unsubscribed from all follow-up emails.</p>
-        </div>
-      </body>
-      </html>
-    `, {
-      headers: { "Content-Type": "text/html" }
-    });
-  } catch (error) {
-    console.error("Unsubscribe error:", error);
-    return new NextResponse("An error occurred", { status: 500 });
-  }
+export async function POST(request: Request) {
+  const form = await request.formData();
+  const id = String(form.get('leadId') || ''), token = String(form.get('token') || '');
+  if (!verifyAccess(token, 'unsubscribe', id)) return new Response('Invalid or expired unsubscribe link', { status: 403 });
+  await prisma.lead.updateMany({ where: { id }, data: { unsubscribed: true, outreachConsent: false } });
+  return new Response('You have been unsubscribed from future ArthAI outreach.', { headers: { 'Cache-Control': 'no-store' } });
 }

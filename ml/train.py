@@ -42,28 +42,7 @@ def get_gemini_data():
         print("Raw output:", response.text)
         return pd.DataFrame(columns=["message", "label"])
 
-def extract_features(message, session_context=None):
-    if session_context is None:
-        session_context = {"messageIndex": 0, "minutesSinceDelivery": 0.0}
-    
-    if not isinstance(message, str):
-        message = ""
-        
-    lower_msg = message.lower()
-    
-    return {
-        "char_length": len(message),
-        "word_count": len(message.split()),
-        "question_count": message.count('?'),
-        "exclamation_count": message.count('!'),
-        "has_pricing": int(any(w in lower_msg for w in ["pricing", "cost", "budget", "price", "pay"])),
-        "has_competitor": int(any(w in lower_msg for w in ["competitor", "alternative", "vs", "versus", "compare"])),
-        "has_integration": int(any(w in lower_msg for w in ["integrate", "api", "connect", "plugin"])),
-        "has_timeline": int(any(w in lower_msg for w in ["timeline", "onboard", "start", "when", "how long"])),
-        "has_team": int(any(w in lower_msg for w in ["team", "seats", "users", "licenses"])),
-        "message_index": session_context.get("messageIndex", 0),
-        "minutes_since_delivery": session_context.get("minutesSinceDelivery", 0.0)
-    }
+from features import extract_features
 
 def build_features_df(df):
     features_list = []

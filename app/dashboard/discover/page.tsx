@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import type { DiscoveryRecord } from "@/lib/ui-types";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 // Sidebar Component (simplified reuse)
-function Sidebar({ active, setActive }: any) {
+function Sidebar({ active }: { active: string }) {
   const nav = [
     { id: "analytics", icon: "📊", label: "Analytics", href: "/dashboard" },
     { id: "leads", icon: "👥", label: "Leads & Reports", href: "/dashboard" },
@@ -44,32 +45,18 @@ function Sidebar({ active, setActive }: any) {
 }
 
 export default function DiscoverPage() {
-  const [searches, setSearches] = useState<any[]>([]);
+  const [searches, setSearches] = useState<DiscoveryRecord[]>([]);
   const [activeSearchId, setActiveSearchId] = useState<string | null>(null);
-  const [activeSearchData, setActiveSearchData] = useState<any>(null);
+  const [activeSearchData, setActiveSearchData] = useState<DiscoveryRecord | null>(null);
   const [loading, setLoading] = useState(false);
-  const [polling, setPolling] = useState(false);
+  const [sizeMin, setSizeMin] = useState("");
+  const [sizeMax, setSizeMax] = useState("");
 
   // Form State
   const [industry, setIndustry] = useState("");
   const [region, setRegion] = useState("");
   const [signal, setSignal] = useState("");
   
-  useEffect(() => {
-    fetchSearches();
-  }, []);
-
-  useEffect(() => {
-    let interval: any;
-    if (activeSearchId) {
-       fetchActiveSearch(activeSearchId);
-       interval = setInterval(() => {
-         fetchActiveSearch(activeSearchId);
-       }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [activeSearchId]);
-
   const fetchSearches = async () => {
     try {
       const res = await fetch("/api/discovery");
@@ -94,6 +81,22 @@ export default function DiscoverPage() {
     }
   };
 
+  useEffect(() => {
+    const initial = setTimeout(() => void fetchSearches(), 0);
+    return () => clearTimeout(initial);
+  }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (activeSearchId) {
+       setTimeout(() => void fetchActiveSearch(activeSearchId), 0);
+       interval = setInterval(() => {
+         fetchActiveSearch(activeSearchId);
+       }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [activeSearchId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -101,7 +104,7 @@ export default function DiscoverPage() {
       const res = await fetch("/api/discovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ industry, region, signal: signal || undefined })
+        body: JSON.stringify({ industry, region, signal: signal || undefined, sizeMin: sizeMin ? Number(sizeMin) : null, sizeMax: sizeMax ? Number(sizeMax) : null })
       });
       const data = await res.json();
       if (data.success) {
@@ -122,7 +125,7 @@ export default function DiscoverPage() {
 
   return (
     <div className="arth-layout">
-      <Sidebar active="discover" setActive={() => {}} />
+      <Sidebar active="discover"  />
       <main className="arth-main" style={{ display: 'flex', gap: 24, padding: '32px 36px' }}>
         
         {/* Left Column: Form & History */}
@@ -147,6 +150,7 @@ export default function DiscoverPage() {
                 <label className="arth-label">Intent Signal (Optional)</label>
                 <input type="text" value={signal} onChange={e => setSignal(e.target.value)} placeholder="e.g. Hiring, Funding" className="arth-input" />
               </div>
+              <label className="arth-label">Employee range (optional)<input aria-label="Minimum employees" type="number" min="0" value={sizeMin} onChange={e => setSizeMin(e.target.value)} className="arth-input" /><input aria-label="Maximum employees" type="number" min="0" value={sizeMax} onChange={e => setSizeMax(e.target.value)} className="arth-input" /></label>
               <button disabled={loading} type="submit" className="arth-btn-primary" style={{ marginTop: 8, padding: 10, borderRadius: 8, width: '100%', display: 'flex', justifyContent: 'center' }}>
                 {loading ? "Starting..." : "Run Discovery"}
               </button>
@@ -181,12 +185,12 @@ export default function DiscoverPage() {
                      &nbsp;&nbsp;•&nbsp;&nbsp;Found: {activeSearchData.companies?.length || 0} companies
                    </div>
                  </div>
-                 {activeSearchData.status !== 'completed' && <div className="arth-status-pill arth-status-processing"><span className="dot pulse"></span>Discovering...</div>}
+                 {['pending', 'processing'].includes(activeSearchData.status) && <div className="arth-status-pill arth-status-processing"><span className="dot pulse"></span>Discovering...</div>}
                </div>
 
                <div style={{ flex: 1, overflowY: 'auto', paddingRight: 8 }}>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                   {activeSearchData.companies?.map((company: any) => (
+                   {activeSearchData.companies?.map((company) => (
                      <div key={company.id} className="arth-lead-row" style={{ cursor: 'default' }}>
                        <div className="arth-lead-avatar">
                          <img src={`https://www.google.com/s2/favicons?domain=${company.domain || 'google.com'}&sz=64`} alt="" />

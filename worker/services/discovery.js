@@ -1,273 +1,54 @@
-import axios from "axios";
-import { scrapeWebsite, fetchDuckDuckGoRaw } from "./enrichment.js";
-import pkg from "@prisma/client/index.js";
-const { PrismaClient } = pkg;
-import { Queue } from "bullmq";
-import IORedis from "ioredis";
+import axios from 'axios';
+import { prisma } from '../../shared/db.js';
+import { publicUrl } from '../../shared/network.js';
+import { candidateFit } from '../../shared/discovery.js';
+import { scrapeWebsite } from './enrichment.js';
 
-const prisma = new PrismaClient();
-
-const connection = new IORedis(process.env.UPSTASH_REDIS_URL, {
-  maxRetriesPerRequest: null,
-  retryStrategy(times) {
-    return Math.min(times * 1000, 10000);
-  },
-  tls: process.env.UPSTASH_REDIS_URL?.startsWith("rediss://")
-    ? { rejectUnauthorized: false }
-    : undefined,
-});
-
-const leadsQueue = new Queue("leads", { connection });
-
-function cleanUrl(urlString) {
-  try {
-    const url = new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`);
-    return `${url.protocol}//${url.hostname.replace(/^www\./, '')}`;
-  } catch {
-    return urlString;
-  }
-}
-
-function extractDomain(urlString) {
-  try {
-    return new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`).hostname.replace(/^www\./, '').toLowerCase();
-  } catch {
-    return urlString.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
-  }
-}
 
 export async function processDiscoverySearch(searchId, input) {
-  const { industry, region, sizeMin, sizeMax, signal } = input;
-  console.log(`[Discovery] Starting for ${industry} in ${region} (Search: ${searchId})`);
-
   try {
-    await prisma.discoverySearch.update({
-      where: { id: searchId },
-      data: { status: "processing" },
-    });
-
-    const discoveredMap = new Map();
-
-    // Step A: Discovery via Google Places
-    if (process.env.GOOGLE_PLACES_API_KEY) {
+    if (!process.env.GOOGLE_PLACES_API_KEY) throw new Error('GOOGLE_PLACES_API_KEY is required for verified business records');
+    await prisma.discoverySearch.update({ where: { id: searchId }, data: { status: 'processing' } });
+    const { data: results } = await axios.post('https://places.googleapis.com/v1/places:searchText', { textQuery: `${input.industry} companies in ${input.region}`, pageSize: 10 }, { timeout: 10000, maxRedirects: 0,
+      headers: { 'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,places.formattedAddress,places.googleMapsUri' } });
+    const candidates = [], domains = new Set();
+    for (const listing of (results.places || []).slice(0, 10)) {
+      const business = { name: listing.displayName?.text, website: listing.websiteUri, formatted_address: listing.formattedAddress, url: listing.googleMapsUri };
+      if (!business?.website || !business.name) continue; // Never invent domains or substitute name autocomplete.
       try {
-        const query = encodeURIComponent(`${industry} companies in ${region}`);
-        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${process.env.GOOGLE_PLACES_API_KEY}`;
-        const { data } = await axios.get(url, { timeout: 10000 });
-        
-        if (data.results) {
-          for (const place of data.results) {
-            // Text Search doesn't reliably return website. Let's do a quick DDG search to find the domain if needed,
-            // or just rely on the secondary web search to populate domains.
-            // For now, we will use the name.
-            const name = place.name;
-            const domainRes = await axios.get(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(name)}`).catch(() => ({ data: [] }));
-            let domain = null;
-            if (domainRes.data && domainRes.data.length > 0) {
-               domain = domainRes.data[0].domain;
-            }
-            if (!domain) {
-              domain = name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
-            }
-            
-            if (domain) {
-               discoveredMap.set(domain, { name, domain, source: "google_places", sources: 1 });
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("[Discovery] Google Places API failed:", e.message);
-      }
+        const url = publicUrl(business.website), domain = url.hostname.replace(/^www\./, '');
+        if (domains.has(domain)) continue; domains.add(domain);
+        const page = await scrapeWebsite(url.href);
+        if (new URL(page.url).hostname.replace(/^www\./, '') !== domain) continue;
+        const fit = candidateFit(input, { name: business.name, address: business.formatted_address || '' }, page);
+        candidates.push({ domain, name: business.name, fit, listingUrl: business.url || null, sourceUrl: page.url });
+      } catch (error) { console.warn('Discovery candidate could not be established:', error.message); }
     }
-
-    // Secondary Web Search using DuckDuckGo
-    try {
-      const webQuery = `top ${industry} companies in ${region} list`;
-      const webRes = await fetchDuckDuckGoRaw(webQuery);
-      // Try to extract domains/names from abstract? It's plain text.
-      // We can use clearbit autocomplete again on extracted capitalized words.
-      const words = webRes.match(/\b[A-Z][a-zA-Z]+\b/g) || [];
-      for (const word of words.slice(0, 10)) { // limit to avoid too many requests
-        if (word.length > 3) {
-          const domainRes = await axios.get(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(word)}`).catch(() => ({ data: [] }));
-          if (domainRes.data && domainRes.data.length > 0) {
-            const domain = domainRes.data[0].domain;
-            const name = domainRes.data[0].name;
-            if (discoveredMap.has(domain)) {
-              discoveredMap.get(domain).sources += 1;
-            } else {
-              discoveredMap.set(domain, { name, domain, source: "web_search", sources: 1 });
-            }
-          }
+    const rows = candidates.sort((a,b) => b.fit.score - a.fit.score);
+    await prisma.$transaction(async tx => {
+      await tx.discoveredCompany.deleteMany({ where: { searchId } });
+      let rank = 0;
+      for (const candidate of rows) {
+        let companyId = null, status = 'filtered_out';
+        if (candidate.fit.eligible) {
+          const company = await tx.company.upsert({ where: { domain: candidate.domain }, update: {}, create: { domain: candidate.domain, website: candidate.sourceUrl, name: candidate.name, industry: input.industry } });
+          companyId = company.id;
+          const existing = await tx.report.findFirst({ where: { companyId, createdAt: { gte: new Date(Date.now() - 30 * 86400000) }, status: { in: ['done', 'pending', 'processing'] } }, orderBy: { createdAt: 'desc' } });
+          if (!existing) {
+            const lead = await tx.lead.create({ data: { companyId, source: 'auto_discovered', painPoints: `Research fit for ${input.industry} in ${input.region}`, personaType: 'general' } });
+            await tx.report.create({ data: { companyId, leadId: lead.id, personaType: 'general', deliveryStatus: 'skipped' } });
+            status = 'queued'; // The reconciler dispatches the transaction's pending report.
+          } else status = existing.status === 'done' ? 'researched' : 'queued';
         }
+        await tx.discoveredCompany.create({ data: { searchId, companyId, name: candidate.name, domain: candidate.domain,
+          source: 'google_places', websiteLive: true, sourcesCorroborating: 2,
+          confidenceTier: candidate.fit.eligible ? 'likely' : 'unconfirmed', verificationSignals: { listingUrl: candidate.listingUrl, websiteUrl: candidate.sourceUrl },
+          fitScore: candidate.fit.score, fitReasons: candidate.fit.reasons, status, rank: ++rank } });
       }
-    } catch (e) {
-       console.warn("[Discovery] Web search failed:", e.message);
-    }
-
-    // Step B & C & D
-    let rank = 1;
-    for (const [domain, companyData] of discoveredMap.entries()) {
-      // Deduplicate against existing Company table
-      const existingCompany = await prisma.company.findUnique({ where: { domain } });
-      let companyId = existingCompany ? existingCompany.id : null;
-
-      // Verification
-      const scrape = await scrapeWebsite(`https://${domain}`);
-      const websiteLive = scrape.title !== null || scrape.description !== null || scrape.markdown !== null;
-      
-      const sourcesCorroborating = companyData.sources;
-      
-      let confidenceTier = "unconfirmed";
-      if (websiteLive && sourcesCorroborating >= 2) confidenceTier = "verified";
-      else if (websiteLive && sourcesCorroborating === 1) confidenceTier = "likely";
-
-      const verificationSignals = [
-        `${companyData.source === 'google_places' ? 'Google Places listing found' : 'Web search result found'}`,
-        websiteLive ? 'Website is live' : 'Website appears inactive'
-      ];
-
-      // Fit Scoring
-      let fitScore = 0;
-      const fitReasons = [];
-
-      if (confidenceTier === "verified" || confidenceTier === "likely") {
-        const textToSearch = ((scrape.title || '') + ' ' + (scrape.description || '')).toLowerCase();
-        
-        let industryMatch = 0;
-        if (textToSearch.includes(industry.toLowerCase())) {
-          industryMatch = 1;
-          fitReasons.push(`Industry keyword match (${industry})`);
-        }
-
-        let sizeMatch = 0.5; // Neutral default
-        if (sizeMin || sizeMax) {
-           fitReasons.push(`Size parameters considered`);
-        }
-
-        let regionMatch = 1; // Assumed from initial search
-        fitReasons.push(`Region match (${region})`);
-
-        let signalMatch = 0;
-        if (signal && textToSearch.includes(signal.toLowerCase())) {
-          signalMatch = 1;
-          fitReasons.push(`Signal match (${signal})`);
-        } else if (!signal) {
-          signalMatch = 1; // If no signal required, give full points
-        }
-
-        const hasActiveWebsite = websiteLive ? 1 : 0;
-
-        fitScore = (industryMatch * 0.30) + (sizeMatch * 0.20) + (hasActiveWebsite * 0.15) + (regionMatch * 0.15) + (signalMatch * 0.20);
-      }
-
-      // Determine Outcome
-      let status = "discovered";
-      if ((confidenceTier === "verified" || confidenceTier === "likely") && fitScore >= 0.6) {
-         status = "queued";
-         
-         // Auto-queue winners natively
-         try {
-           const derivedCompanyName = companyData.name;
-           
-           // Upsert Company
-           const upsertedCompany = await prisma.company.upsert({
-             where: { domain },
-             update: {
-               name: derivedCompanyName,
-               industry: industry,
-             },
-             create: {
-               domain,
-               name: derivedCompanyName,
-               industry: industry,
-             }
-           });
-           
-           companyId = upsertedCompany.id;
-
-           // Deduplication check
-           const existingReport = await prisma.report.findFirst({
-             where: { companyId },
-             orderBy: { createdAt: 'desc' }
-           });
-
-           if (!existingReport) {
-             // Create Lead (nullable email/fullName via auto_discovered source)
-             const lead = await prisma.lead.create({
-               data: {
-                 companyId,
-                 source: "auto_discovered",
-                 painPoints: `Auto discovered via ${industry} search in ${region}` + (signal ? ` (Signal: ${signal})` : ""),
-               }
-             });
-
-             // Create Report Shell
-             const report = await prisma.report.create({
-               data: {
-                 companyId,
-                 personaType: "general",
-                 status: "pending",
-               }
-             });
-
-             // Enqueue process-report
-             await leadsQueue.add(
-               "process-report",
-               {
-                 leadId: lead.id,
-                 companyId,
-                 reportId: report.id,
-                 leadInput: {
-                   website: domain,
-                   companyName: derivedCompanyName,
-                   industry: industry,
-                   painPoints: `Auto discovered via ${industry} search in ${region}` + (signal ? ` (Signal: ${signal})` : ""),
-                 },
-                 jobId: report.id,
-                 submittedAt: new Date().toISOString(),
-               },
-               { jobId: report.id }
-             );
-           }
-         } catch (queueErr) {
-           console.error("[Discovery] Error auto-queueing winner", queueErr);
-           status = "discovered"; // fallback
-         }
-      } else {
-         status = "filtered_out";
-      }
-
-      await prisma.discoveredCompany.create({
-        data: {
-          searchId,
-          companyId,
-          name: companyData.name,
-          domain: companyData.domain,
-          source: companyData.source,
-          websiteLive,
-          sourcesCorroborating,
-          confidenceTier,
-          verificationSignals,
-          fitScore,
-          fitReasons,
-          status,
-          rank: rank++,
-        }
-      });
-    }
-
-    // Step E: Complete
-    await prisma.discoverySearch.update({
-      where: { id: searchId },
-      data: { status: "completed" },
-    });
-    console.log(`[Discovery] Completed for search: ${searchId}`);
-  } catch (err) {
-    console.error(`[Discovery] Failed for search ${searchId}:`, err);
-    await prisma.discoverySearch.update({
-      where: { id: searchId },
-      data: { status: "failed" },
-    });
+      await tx.discoverySearch.update({ where: { id: searchId }, data: { status: 'completed' } });
+    }, { timeout: 20000 });
+  } catch (error) {
+    await prisma.discoverySearch.update({ where: { id: searchId }, data: { status: 'failed' } });
+    throw error;
   }
 }

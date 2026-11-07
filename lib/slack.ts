@@ -5,6 +5,7 @@ export async function sendSlackNotification(message: string) {
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
+      signal: AbortSignal.timeout(5000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: message }),
     });

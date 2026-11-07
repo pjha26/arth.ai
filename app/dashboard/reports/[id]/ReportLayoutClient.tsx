@@ -1,16 +1,17 @@
 "use client";
 
+import Link from "next/link";
+import type { ReportView } from "@/lib/ui-types";
 import { useState } from "react";
 import ReportChatUI from "./ReportChatUI";
 import "./report-chat.css";
 
-export default function ReportLayoutClient({ report }: { report: any }) {
+export default function ReportLayoutClient({ report }: { report: ReportView }) {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfZoom, setPdfZoom] = useState(100);
   const [pdfError, setPdfError] = useState(false);
 
-  const TOTAL_PAGES = 6;
   const pdfUrl = `/api/leads/${report.id}/download`;
   const pdfSrc = pdfUrl ? `${pdfUrl}#page=${pdfPage}&zoom=${pdfZoom}` : null;
 
@@ -20,9 +21,9 @@ export default function ReportLayoutClient({ report }: { report: any }) {
         {/* ── Top bar ── */}
         <div className="cr-topbar">
           <div className="cr-topbar-left">
-            <a href="/dashboard" className="cr-back-btn">
+            <Link href="/dashboard" className="cr-back-btn">
               ← Back
-            </a>
+            </Link>
             <div className="cr-company-badge">
               <div className="cr-company-initial">
                 {report.company.name.charAt(0).toUpperCase()}
@@ -57,11 +58,11 @@ export default function ReportLayoutClient({ report }: { report: any }) {
                   disabled={pdfPage <= 1}
                   onClick={() => setPdfPage(p => Math.max(1, p - 1))}
                 >← Prev</button>
-                <span className="cr-pdf-page-info">Page {pdfPage} of {TOTAL_PAGES}</span>
+                <span className="cr-pdf-page-info">Page {pdfPage}</span>
                 <button
                   className="cr-pdf-nav-btn"
-                  disabled={pdfPage >= TOTAL_PAGES}
-                  onClick={() => setPdfPage(p => Math.min(TOTAL_PAGES, p + 1))}
+                  disabled={false}
+                  onClick={() => setPdfPage(p => p + 1)}
                 >Next →</button>
               </div>
               <div className="cr-pdf-zoom">

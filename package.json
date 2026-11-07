@@ -3,11 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\" \"cd ml && .\\venv\\Scripts\\uvicorn app:app --port 8001\"",
+    "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "node --test tests/core.test.mjs tests/pipeline.test.mjs tests/delivery.test.mjs tests/followups.test.mjs tests/staging-safety.test.mjs",
+    "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "typecheck": "next typegen && tsc --noEmit --incremental false",
+    "dev:web": "next dev",
+    "test:ml": "node scripts/ml.mjs test",
+    "test:artifacts": "node --test tests/artifact-flow.test.mjs",
+    "dev:ml": "node scripts/ml.mjs serve",
+    "staging:init": "node scripts/staging-init.mjs",
+    "staging:up": "docker compose --env-file .env.staging -f compose.staging.yml up -d --wait db redis",
+    "staging:down": "docker compose --env-file .env.staging -f compose.staging.yml down",
+    "staging:migrate": "node --env-file=.env.staging scripts/staging-migrate.mjs",
+    "test:staging": "node scripts/staging-test.mjs",
+    "test:migrations": "node --env-file=.env.staging tests/staging-migrations.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.79",

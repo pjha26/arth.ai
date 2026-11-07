@@ -1,8 +1,9 @@
 "use client";
 
+import type { ReportView } from "@/lib/ui-types";
 import { UIMessage, DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -21,9 +22,9 @@ function TypingIndicator() {
   );
 }
 
-function MessageBubble({ msg }: { msg: any }) {
+function MessageBubble({ msg }: { msg: UIMessage & { createdAt?: Date } }) {
   const isUser = msg.role === "user";
-  const textContent = msg.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '';
+  const textContent = msg.parts?.filter((p) => p.type === 'text').map((p) => p.text).join('') || '';
   
   return (
     <div className={`cr-msg-row cr-msg-row--${isUser ? "user" : "ai"}`}>
@@ -46,36 +47,27 @@ function MessageBubble({ msg }: { msg: any }) {
   );
 }
 
-const MODELS = [
-  { id: "gemini-1.5-flash", label: "1.5 Flash", badge: "Stable" },
-  { id: "gemini-2.0-flash", label: "2.0 Flash", badge: "Fast" },
-  { id: "gemini-2.5-flash", label: "2.5 Flash", badge: "Latest" },
-  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", badge: "Groq (Free)" },
-];
+const MODELS = [{ id: "google", label: "Gemini", badge: "Configured model" }, { id: "groq", label: "Groq", badge: "Configured model" }];
 
 // Create transport OUTSIDE the component to avoid re-creation on every render
 function createTransport(reportId: string) {
   return new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` });
 }
 
-export default function ReportChatUI({ report, onClose }: { report: any, onClose?: () => void }) {
+export default function ReportChatUI({ report, onClose }: { report: ReportView, onClose?: () => void }) {
   const { id: reportId } = report;
   const companyName = report.company?.name || "the company";
 
-  // Stable transport ref — created once per reportId
-  const transportRef = useRef<DefaultChatTransport<UIMessage>>(null);
-  if (!transportRef.current) {
-    transportRef.current = createTransport(reportId);
-  }
+  const transport = useMemo(() => createTransport(reportId), [reportId]);
 
   const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState("gemini-1.5-flash");
+  const [selectedModel, setSelectedModel] = useState("google");
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     id: `report-chat-${reportId}`,
-    transport: transportRef.current,
+    transport,
     onError: (err) => {
       console.error("[ReportChatUI] useChat error:", err);
       setChatError(err.message || "Something went wrong");
@@ -104,10 +96,10 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
 
   const score = report.score || null;
   const industry = report.company?.industry || "Software";
-  const topSignal = "Automation Potential 8/10";
+  const topSignal = report.insights?.auditScores?.automationPotential != null ? `Automation Potential ${report.insights.auditScores.automationPotential}/10` : "Not assessed";
 
   const PILLS = [
-    { icon: "📊", label: `Overall Score: ${score ? `${score}/10` : "N/A"}` },
+    { icon: "📊", label: `Overall Score: ${score ? `${score}/100` : "N/A"}` },
     { icon: "🏭", label: `Industry: ${industry}` },
     { icon: "⚡", label: `Top Signal: ${topSignal}` },
   ];
@@ -138,12 +130,14 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
     }
   }
 
-  // Persist messages to localStorage
+  // Load the same durable history used by the prospect report.
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(`chat_${reportId}`, JSON.stringify(messages));
-    }
-  }, [messages, reportId]);
+    const controller = new AbortController();
+    fetch(`/api/reports/${reportId}/chat`, { signal: controller.signal }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setMessages(data); }).catch(() => {});
+    return () => controller.abort();
+  }, [reportId, setMessages]);
+
+
 
   // Auto-scroll
   useEffect(() => {
@@ -163,7 +157,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
           <div className="cr-chat-subtitle" style={{ margin: 0 }}>
-            Ask anything about {companyName}'s intelligence
+            Ask anything about {companyName}&apos;s intelligence
           </div>
           <div style={{ position: 'relative' }}>
             <button
@@ -234,7 +228,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
           <div className="cr-empty-state">
             <div className="cr-empty-icon">✦</div>
             <div className="cr-empty-heading">
-              I've analyzed {companyName}'s report
+              I&apos;ve analyzed {companyName}&apos;s report
             </div>
             <div className="cr-empty-sub">
               Ask me anything about their intelligence, market position, or AI opportunities.
@@ -312,7 +306,7 @@ export default function ReportChatUI({ report, onClose }: { report: any, onClose
         </div>
         <div className="cr-input-meta">
           <span>🔒</span>
-          <span>Based on this report's intelligence data</span>
+          <span>Based on this report&apos;s intelligence data</span>
           {input.length > 400 && (
             <span className={`cr-char-count${input.length > 480 ? " warn" : ""}`}>
               {input.length}/{MAX_CHARS}

@@ -87,7 +87,7 @@ function SuccessContent() {
 
         // If overall job is done or failed, mark all core stages complete
         if (status === "done") {
-          setCompletedStages(["enrich", "ai_report", "pdf", "email"]);
+          setCompletedStages(doneKeys.filter(key => key !== "email" || ["accepted", "delivered"].includes(data.lead.deliveryStatus)));
           setActiveStage(null);
           setPdfReady(true);
         }
@@ -200,7 +200,7 @@ function SuccessContent() {
                 Compiling intelligence for {company}.
               </h1>
               <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                Your personalized audit will arrive at <strong style={{ color: "var(--text-primary)" }}>{email}</strong> in around 3 minutes.
+                Your report is being prepared for <strong style={{ color: "var(--text-primary)" }}>{email}</strong> You can track generation and email acceptance below.
               </p>
             </>
           )}
