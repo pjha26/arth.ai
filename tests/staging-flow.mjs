@@ -40,6 +40,12 @@ async function submit(index) {
 }
 
 try {
+  const companyPage = await call('/fictional-company');
+  assert.equal(companyPage.status, 200);
+  const companyHtml = await companyPage.text();
+  assert.ok(companyHtml.includes('has not verified the company identity'));
+  assert.ok(!companyHtml.includes('https://fictional-company.com'));
+  pass('Company request page does not invent identity, website, or research claims');
   // Reset only limiter counters in the guarded staging Redis, never queues or production state.
   for (const pattern of ['limit:*', 'budget:*']) {
     let cursor = '0';

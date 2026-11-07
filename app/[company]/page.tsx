@@ -1,10 +1,10 @@
 import { buildCompanyProfile } from "@/lib/companyProfile";
 import Link from "next/link";
-import Image from "next/image";
+import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
 // Force dynamic rendering so cache is busted
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-static';
 
 interface Props {
   params: Promise<{ company: string }>;
@@ -13,16 +13,18 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
   const slug = resolvedParams.company.toLowerCase();
-  const name = slug.charAt(0).toUpperCase() + slug.slice(1);
+  if (!/^[a-z0-9-]{2,60}$/i.test(slug)) notFound();
+  const name = slug.replaceAll('-', ' ');
   return {
-    title: `${name} × arth.ai — Personalized Inbound Intelligence`,
-    description: `See how arth.ai delivers instant, personalized AI audit reports for ${name}'s inbound leads.`,
+    title: `${name} × arth.ai — Company Report Request`,
+    description: `Request source-backed company research for ${name}. Enter the official website before research begins.`,
   };
 }
 
 export default async function CompanyPage({ params }: Props) {
   const resolvedParams = await params;
   const slug = resolvedParams.company.toLowerCase();
+  if (!/^[a-z0-9-]{2,60}$/i.test(slug)) notFound();
   const profile = await buildCompanyProfile(slug);
 
   return (
@@ -52,16 +54,6 @@ export default async function CompanyPage({ params }: Props) {
 
           {/* Company logo + name */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", marginBottom: "2rem" }}>
-            {profile.logo && (
-              <Image
-                src={profile.logo}
-                alt={`${profile.name} logo`}
-                width={32}
-                height={32}
-                style={{ borderRadius: 8, objectFit: "contain" }}
-                onError={() => {}}
-              />
-            )}
             <span style={{
               fontFamily: "var(--font-heading)", fontSize: "0.78rem", fontWeight: 600,
               padding: "0.3rem 0.8rem", borderRadius: "100px",
@@ -82,9 +74,9 @@ export default async function CompanyPage({ params }: Props) {
             {profile.headline}
           </h1>
 
-          {/* Description removed to keep it generic */}
+          <p style={{ color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "1.5rem" }}>{profile.description}</p>
 
-          <Link href={`/form?company=${encodeURIComponent(profile.name)}&website=https://${profile.domain}`} style={{
+          <Link href={`/form?company=${encodeURIComponent(profile.name)}`} style={{
             display: "inline-flex", alignItems: "center", gap: "0.4rem",
             padding: "0.85rem 2rem", borderRadius: "100px",
             background: "#C58B45", color: "white",
@@ -92,11 +84,11 @@ export default async function CompanyPage({ params }: Props) {
             textDecoration: "none", letterSpacing: "-0.01em",
             boxShadow: "0 4px 20px rgba(197,139,69,0.25)",
           }}>
-            Get your free AI Audit →
+            Request your report →
           </Link>
 
           <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "var(--text-placeholder)", marginTop: "0.85rem" }}>
-            Delivered to your inbox in 3 minutes · No account needed
+            Delivery depends on research and provider availability · No account needed
           </p>
         </div>
       </section>
@@ -107,10 +99,10 @@ export default async function CompanyPage({ params }: Props) {
       <section style={{ padding: "6rem 2rem" }}>
         <div style={{ maxWidth: "620px", margin: "0 auto" }}>
           <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#C58B45", marginBottom: "1.25rem" }}>
-            The Challenge
+            Your Context
           </p>
           <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.2, marginBottom: "2rem" }}>
-            What your inbound team<br />deals with every week.
+            Questions for your<br />research request.
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
             {profile.painPoints.map((p, i) => (
@@ -160,7 +152,7 @@ export default async function CompanyPage({ params }: Props) {
           <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.8, marginBottom: "2.25rem" }}>
             {profile.ctaLine}
           </p>
-          <Link href={`/form?company=${encodeURIComponent(profile.name)}&website=https://${profile.domain}`} style={{
+          <Link href={`/form?company=${encodeURIComponent(profile.name)}`} style={{
             display: "inline-flex", alignItems: "center", gap: "0.4rem",
             padding: "0.85rem 2rem", borderRadius: "100px",
             background: "var(--text-primary)", color: "white",
