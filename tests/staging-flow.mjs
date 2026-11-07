@@ -12,6 +12,7 @@ import { assertStaging } from './fixtures/staging-safety.mjs';
 
 assertStaging();
 const base = 'http://127.0.0.1:3101';
+const artifactDir = process.env.RUNNER_TEMP || tmpdir();
 const prisma = new PrismaClient();
 const redis = new IORedis(process.env.UPSTASH_REDIS_URL, { maxRetriesPerRequest: 1 });
 const followupsQueue = new Queue('followups', { connection: redis });
@@ -178,7 +179,7 @@ try {
       await new Promise(resolve => setTimeout(resolve, 3500));
       assert.equal(polls, snapshot, 'Accepted email must stop report polling');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-      await page.screenshot({ path: path.join(tmpdir(), `arth-completion-${name}.png`), fullPage: true });
+      await page.screenshot({ path: path.join(artifactDir, `arth-completion-${name}.png`), fullPage: true });
     }
     await page.goto(`${base}/success?jobId=${second.id}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.body.innerText.includes('Private report access is unavailable or expired'), { timeout: 60000 });
@@ -194,7 +195,7 @@ try {
       await page.waitForFunction(() => document.querySelectorAll('[data-report-id]').length === 1, { timeout: 10000 });
       await page.waitForFunction(id => !!document.querySelector(`[data-report-id="${id}"]`), { timeout: 10000 }, processing.id);
       assert.equal(await page.$eval(`[data-report-id="${processing.id}"]`, element => element.textContent.toLowerCase().includes('processing')), true);
-      await page.screenshot({ path: path.join(tmpdir(), 'arth-crm-processing-desktop.png'), fullPage: true });
+      await page.screenshot({ path: path.join(artifactDir, 'arth-crm-processing-desktop.png'), fullPage: true });
       pass('CRM Processing filter includes actively running research');
     } finally { await prisma.report.delete({ where: { id: processing.id } }); }
     assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
