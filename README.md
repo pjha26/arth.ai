@@ -2,7 +2,7 @@
 
 ArthAI researches a prospect's public company website, builds a source-backed report for their persona and stated challenge, and provides private PDF delivery and report chat. The CRM keeps research assessments, buying-intent estimates, delivery status, and staff-confirmed sales outcomes separate.
 
-This repository contains implementation work that still needs database migration and staging integration validation. An existing deployed site does not automatically include these local changes.
+The implementation has unit checks and a CI workflow using isolated PostgreSQL/Redis and simulated research/email providers. Production migration, real provider delivery, report-quality evaluation, and release validation remain outstanding. An existing deployed site does not automatically include changes on a review branch.
 
 ## Main workflow
 
