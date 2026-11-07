@@ -4,14 +4,15 @@ import ReactMarkdown from "react-markdown";
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LeadChatUI({ reportId, companyName }: { reportId: string, companyName: string }) {
   const [input, setInput] = useState("");
+  const transport = useMemo(() => new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` }), [reportId]);
 
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` }),
+    transport,
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';

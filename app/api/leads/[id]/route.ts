@@ -15,7 +15,7 @@ export async function GET(
       include: {
         company: true,
         stages: {
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: "desc" }, take: 100,
         },
       },
     });
@@ -32,7 +32,7 @@ export async function GET(
     const mappedLead = {
       ...report,
       errorMessage: access?.staff ? report.errorMessage : report.errorMessage ? "Report needs review or a retry by the team." : null,
-      stages: report.stages.map(stage => ({ ...stage, message: access?.staff ? stage.message : null })),
+      stages: report.stages.reverse().map(stage => ({ ...stage, message: access?.staff ? stage.message : null })),
       companyName: report.company.name,
       industry: report.company.industry,
       companySize: report.company.size,

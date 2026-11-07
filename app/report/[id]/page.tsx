@@ -31,7 +31,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
   const initialData = {
     reportId: report.id,
     companyName: companyName,
-    executiveSummary: report.aiSummary || "Your intelligence report has been generated.",
+    executiveSummary: report.aiSummary || (report.status === 'done' ? 'Your report is available for review.' : report.status === 'failed' ? 'Your request needs a review by the team.' : 'Your research request is still processing.'),
     pdfUrl: `/api/leads/${report.id}/download`,
     status: report.status
   };
@@ -50,7 +50,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
           <span className="font-['Newsreader',_serif] text-2xl font-bold tracking-tight text-[#1b1b1b]">ArthAI</span>
         </Link>
         <div className="flex items-center gap-4">
-          {report.status === "done" && (
+          {report.artifactStatus === 'ready' && report.pdfUrl && (
             <a 
               href={initialData.pdfUrl}
               download

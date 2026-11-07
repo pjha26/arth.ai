@@ -83,3 +83,10 @@ jobs:
             .data/staging/recovery-check.json
             .data/staging/load-check.json
           if-no-files-found: ignore
+      - name: Save completion UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: completion-ui
+          path: ${{ runner.temp }}/arth-completion-*.png
+          if-no-files-found: ignore
