@@ -81,4 +81,5 @@ jobs:
             .data/staging/flow-check.json
             .data/staging/migration-check.json
             .data/staging/recovery-check.json
+            .data/staging/load-check.json
           if-no-files-found: ignore

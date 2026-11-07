@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { processReport } from '../worker/services/pipeline.js';
@@ -15,7 +16,12 @@ process.env.AUTH_SECRET = 'artifact-test-only-secret-with-32-characters';
 process.env.NEXT_PUBLIC_APP_URL = 'https://example.invalid';
 const { saveReportPdf, readReportPdf } = await import('../shared/storage.js');
 
-test('real PDF and private storage survive worker retry before captured delivery', { timeout: 60000 }, async () => {
+test('real PDF and private storage survive worker retry before captured delivery', { timeout: 60000 }, async t => {
+  let privateRequests = 0;
+  const server = createServer((request, response) => { privateRequests++; response.end('Private network resource'); });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const privateLogo = `http://127.0.0.1:${server.address().port}/logo`;
   const id = randomUUID(), leadId = randomUUID(), companyId = randomUUID();
   const lead = { id: leadId, fullName: 'Artifact Test', email: 'qa@example.invalid', website: 'https://example.invalid', companyName: 'Artifact Fixture', industry: 'Software', companySize: 'Unknown', personaType: 'cto', challengeTags: [], painPoints: 'Manual invoice review', outreachConsent: false };
   const source = { id: 's1', title: 'Controlled product evidence', url: lead.website, excerpt: 'This synthetic company provides invoice tracking software. No measured savings are stated.', retrievedAt: new Date().toISOString(), publishedAt: null };
@@ -47,7 +53,7 @@ test('real PDF and private storage survive worker retry before captured delivery
     $transaction: async fn => fn(prisma),
   };
   const job = { id: `${id}-1`, attemptsMade: 0, opts: { attempts: 3 }, data: { reportId: id, jobId: id, companyId, leadId, submittedAt: new Date().toISOString(), leadInput: lead } };
-  const services = { prisma, enrich: async () => ({ sources: [source], logo: null }),
+  const services = { prisma, enrich: async () => ({ sources: [source], logo: privateLogo }),
     generateAiReport: async () => { researchCalls++; return analysis; },
     generatePDF: async (...args) => { pdfCalls++; return generatePDF(...args); },
     saveReportPdf, storeReportIntelligence: async () => {} };
@@ -59,6 +65,7 @@ test('real PDF and private storage survive worker retry before captured delivery
   assert.equal(row.pdfUrl, `local:${id}`);
   const pdf = await readReportPdf(row.pdfUrl);
   assert.equal(pdf.subarray(0, 5).toString(), '%PDF-'); assert.ok(pdf.length > 1000);
+  assert.equal(privateRequests, 0, 'PDF browser must not fetch private network subresources');
   const delivery = { prisma, readReportPdf,
     sendEmail: async (recipient, attachment, report, reportId) => {
       captured++; assert.deepEqual(attachment, pdf);

@@ -10,6 +10,8 @@ const fixtureText = 'Staging Research Company builds accounting software for sma
 const source = 'https://www.iana.org';
 const originalAdapter = axios.getAdapter(axios.defaults.adapter);
 axios.defaults.adapter = async config => {
+  if (new URL(config.url).origin === source && process.env.ARTHAI_SCENARIO === 'private-redirect') return { status: 302, statusText: 'Found', headers: { location: 'http://127.0.0.1/private' }, config, data: '' };
+  if (new URL(config.url).origin === source && process.env.ARTHAI_SCENARIO === 'insufficient') return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config, data: '<main>Not enough evidence.</main>' };
   if (new URL(config.url).origin === source) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
     data: `<html><title>Staging Research Company</title><main><h1>Accounting tools</h1><p>${fixtureText}</p></main></html>` };
   if (new URL(config.url).hostname !== '127.0.0.1') throw new Error('External Axios request blocked by staging fixtures');
@@ -44,6 +46,7 @@ globalThis.fetch = async (input, init) => {
   }
   if (url.hostname === '127.0.0.1') return originalFetch(request);
   if (url.hostname === 'generativelanguage.googleapis.com') {
+    if (process.env.ARTHAI_SCENARIO === 'quota') return json({ error: { code: 429, message: 'Controlled quota exhaustion', status: 'RESOURCE_EXHAUSTED' } }, 429);
     const body = await request.json();
     if (url.pathname.endsWith(':embedContent')) return json({ embedding: { values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) } });
     const system = body.systemInstruction?.parts?.map(p => p.text || '').join('') || '';
@@ -58,7 +61,10 @@ globalThis.fetch = async (input, init) => {
       return json(generation({ findings: [{ text: 'The source describes accounting software.', sourceId: data.sources[0].id, quote: data.sources[0].excerpt.slice(0, 95) }], missing: ['Independent funding and growth evidence'] }));
     }
     if (system.startsWith('You write evidence-backed company research.')) { await log({ provider: 'google-fixture', action: 'writer' }); return json(generation(report(data))); }
-    if (system.startsWith('Independently audit every section')) { await log({ provider: 'google-fixture', action: 'review' }); return json(generation({ approved: true, reason: 'Controlled integration fixture; semantic accuracy is not being evaluated.' })); }
+    if (system.startsWith('Independently audit every section')) {
+      if (process.env.ARTHAI_SCENARIO === 'review-outage') return json({ error: { code: 503, message: 'Controlled verifier outage', status: 'UNAVAILABLE' } }, 503);
+      await log({ provider: 'google-fixture', action: 'review' }); return json(generation({ approved: true, reason: 'Controlled integration fixture; semantic accuracy is not being evaluated.' }));
+    }
     throw new Error('Unrecognized model operation in staging fixture');
   }
   if (url.hostname === 'api.resend.com' && url.pathname === '/emails') {

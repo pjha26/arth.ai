@@ -37,7 +37,7 @@ await reconcilePendingReports({ prisma, leadsQueue: queue });
 const worker = new Worker('leads', async job => {
   await processReport(job, { prisma, enrich: (lead, companyId, fresh) => enrichCompany(lead, companyId, fresh, { prisma, enrich }), generateAiReport, generatePDF, saveReportPdf, storeReportIntelligence });
   await deliverReport(job.data.reportId, { prisma, readReportPdf, sendEmail, appUrl, sendSlackNotification: async () => {} });
-}, { connection, concurrency: 1, lockDuration: 2000, stalledInterval: 1000 });
+}, { connection, concurrency: 2, lockDuration: 2000, stalledInterval: 1000 });
 worker.on('error', error => console.error(error.message));
 worker.on('failed', (job, error) => console.error('Recovery job failed', job?.id, error.message));
 process.on('SIGTERM', async () => { await worker.close(); await queue.close(); await connection.quit(); await prisma.$disconnect(); process.exit(0); });
