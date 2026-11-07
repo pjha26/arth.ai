@@ -35,6 +35,8 @@ Separate inbound requests may reuse public website excerpts from a completed, re
 
 - Web: `npm run dev:web`, or production `npm run build` followed by `npm start`.
 - Worker: `npm --prefix worker start` (bootstrap loads root `.env.local` before provider modules).
+
+Set `NODE_ENV=production` on the deployed worker host. Before consuming jobs, startup rejects missing database/Redis/signing/research settings, and production additionally requires HTTPS app links, Redis TLS, private Drive settings, and an email sender. It does not silently spend research calls before discovering missing production storage or sender configuration.
 - Development: `npm run dev` starts web and worker. The experimental scorer is optional and runs separately with `npm run dev:ml`; it remains disabled unless `ENABLE_INTENT_SCORING=true`. Use a private scorer service URL in production.
 - Local checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, and `npm run test:ml` with the ML virtual environment installed.
 - Native artifact check: `npm run test:artifacts` runs the actual Chromium PDF generator and private local storage, injects a failure after the PDF checkpoint, then verifies resume and one captured email. Its database and providers are test doubles; it needs no Docker or live credentials. The PDF and result are saved under `.data/artifact-check/`. This does not replace real database, Redis, provider, or process-kill staging tests.

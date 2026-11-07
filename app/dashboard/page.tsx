@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from 'next/navigation';
+import { isResearchActive } from '@/shared/status.js';
 import Link from "next/link";
 import type { CRMReport, Analytics } from "@/lib/ui-types";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -223,6 +225,7 @@ const StatusPill = ({ status }: { status: string }) => {
   };
 
 function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads: React.Dispatch<React.SetStateAction<CRMReport[]>>; loading: boolean }) {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -233,7 +236,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
   const filtered = useMemo(() => {
     const result = leads.filter((l) => {
       const matchSearch = l.companyName.toLowerCase().includes(search.toLowerCase()) || l.email.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "All" || l.status === statusFilter;
+      const matchStatus = statusFilter === "All" || (statusFilter === 'pending' ? isResearchActive(l.status) : l.status === statusFilter);
       return matchSearch && matchStatus;
     });
 
@@ -351,6 +354,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
             {filtered.map((lead) => (
               <motion.div 
                 key={lead.id} 
+                data-report-id={lead.id}
                 variants={itemAnim}
                 className={`arth-lead-row ${selectedLeadId === lead.id ? 'active' : ''} ${viewMode === 'grid' ? 'is-card' : ''} ${lead.intentProbability != null && lead.intentProbability > 0.75 ? 'hot-signal' : ''}`}
                 onClick={() => setSelectedLeadId(lead.id)}
@@ -370,7 +374,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                   <div className="arth-tag-persona">{lead.personaType || 'General'}</div>
                   <StatusPill status={lead.status} />
                   {lead.intentProbability != null && lead.intentProbability > 0.75 && (
-                    <div className="arth-tag-persona" style={{ background: '#FFF1EC', color: '#E85D04', border: '1px solid #FFD3C4' }}>🔥 HOT</div>
+                    <div className="arth-tag-persona" style={{ background: '#FFF1EC', color: '#E85D04', border: '1px solid #FFD3C4' }}>Experimental intent</div>
                   )}
                   {lead.company?.signals?.[0]?.severity === "high" && (
                     <div className="arth-tag-persona" style={{ background: '#FCE7F3', color: '#BE185D', border: '1px solid #FBCFE8' }}>🔥 NEW SIGNAL</div>
@@ -431,9 +435,9 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                   <div style={{ marginTop: 8 }}>
                     <StatusPill status={selectedLead.status} /><span className="arth-label">Evidence: {selectedLead.verificationStatus} · PDF: {selectedLead.artifactStatus} · Email: {selectedLead.deliveryStatus}</span>
                   </div>
-                  {selectedLead.status === 'pending' && (
+                  {isResearchActive(selectedLead.status) && (
                     <div className="arth-progress-track">
-                      <motion.div className="arth-progress-fill" initial={{ width: "10%" }} animate={{ width: "75%" }} transition={{ duration: 10, ease: "linear" }} />
+                      <motion.div className="arth-progress-fill" style={{ width: '100%' }} animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }} />
                     </div>
                   )}
                 </div>
@@ -565,7 +569,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
 
                     <div className="arth-panel-actions" style={{ display: 'flex', gap: 12, marginTop: 'auto' }}>
                       <Link href={`/dashboard/reports/${selectedLead.id}`} className="arth-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: 12, borderRadius: 8, textDecoration: 'none' }}>View Report & Chat</Link>
-                      <button className="arth-btn-secondary" onClick={async () => { const response = await fetch(`/api/reports/${selectedLead.id}/reaudit`, { method: 'POST' }); const result = await response.json(); if (response.ok) window.location.assign(`/dashboard/reports/${result.jobId}`); else window.alert(result.message || 'Unable to start audit'); }} style={{ width: '100%', padding: 12, borderRadius: 8, marginTop: 8 }}>Re-Audit Company</button>
+                      <button className="arth-btn-secondary" onClick={async () => { const response = await fetch(`/api/reports/${selectedLead.id}/reaudit`, { method: 'POST' }); const result = await response.json(); if (response.ok) router.push(`/dashboard/reports/${result.jobId}`); else window.alert(result.message || 'Unable to start audit'); }} style={{ width: '100%', padding: 12, borderRadius: 8, marginTop: 8 }}>Re-Audit Company</button>
                     </div>
                   </>
                 )}
@@ -601,6 +605,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
 // ── MAIN DASHBOARD ─────────────────────────────────────────────
 
 export default function Dashboard() {
+  const router = useRouter();
   const [active, setActive] = useState("analytics");
   const [loaded, setLoaded] = useState(false);
 
@@ -616,7 +621,7 @@ export default function Dashboard() {
         fetch(`/api/leads?page=${page}`),
         fetch("/api/analytics")
       ]);
-      if (leadsRes.status === 401 || analyticsRes.status === 401) { window.location.assign("/login"); return; }
+      if (leadsRes.status === 401 || analyticsRes.status === 401) { router.replace('/login'); return; }
       const leadsData = await leadsRes.json();
       const analyticsData = await analyticsRes.json();
       
@@ -626,7 +631,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Error fetching dashboard data", err);
     }
-  }, [page]);
+  }, [page, router]);
 
   useEffect(() => {
     const t = setTimeout(() => { void fetchDashboardData(); setLoaded(true); }, 0);
@@ -637,7 +642,7 @@ export default function Dashboard() {
   }, [fetchDashboardData]);
 
   useEffect(() => {
-    const hasPending = leads.some(l => l.status === "pending");
+    const hasPending = leads.some(l => isResearchActive(l.status));
     const intervalTime = hasPending ? 5000 : 15000;
     const interval = setInterval(fetchDashboardData, intervalTime);
     return () => clearInterval(interval);
@@ -650,7 +655,7 @@ export default function Dashboard() {
     const failed = analytics?.overview?.failed || 0;
     const avgScore = analytics?.overview?.avgReportScore || 0;
     return { totalLeads, generated, avgScore, failed };
-  }, [leads, analytics]);
+  }, [analytics]);
 
   const industries = analytics?.industryBreakdown || [];
 

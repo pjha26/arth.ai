@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { configurationChecks } from '../shared/readiness.js';
+import { configurationChecks, assertWorkerConfiguration } from '../shared/readiness.js';
 
 const configured = { AUTH_SECRET: 'a'.repeat(32), STAFF_PASSWORD: 'p'.repeat(16), NEXT_PUBLIC_APP_URL: 'https://example.com', DATABASE_URL: 'postgresql://user:pass@db.example.com/app', DIRECT_URL: 'postgresql://user:pass@db.example.com/app', UPSTASH_REDIS_URL: 'rediss://redis.example.com', UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test', GEMINI_API_KEY: 'test', REPORT_STORAGE: 'drive', GOOGLE_SERVICE_ACCOUNT_EMAIL: 'test@example.invalid', GOOGLE_PRIVATE_KEY: 'test', GOOGLE_DRIVE_FOLDER_ID: 'test', RESEND_API_KEY: 'test', RESEND_WEBHOOK_SECRET: 'test', EMAIL_FROM: 'test@example.invalid' };
 test('release config checks distinguish missing configuration without exposing values', () => {
@@ -9,4 +9,11 @@ test('release config checks distinguish missing configuration without exposing v
   const weak = configurationChecks({ ...configured, AUTH_SECRET: 'short', NEXT_PUBLIC_APP_URL: 'http://example.com', UPSTASH_REDIS_URL: 'redis://redis.example.com' });
   for (const name of ['signing-secret', 'canonical-https-origin', 'worker-redis-tls']) assert.equal(weak.find(check => check.name === name).status, 'fail');
   assert.ok(!JSON.stringify(configurationChecks(configured)).includes(configured.AUTH_SECRET));
+});
+
+test('workers reject missing services before paid processing and enforce production transport/storage', () => {
+  assert.doesNotThrow(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'production' }));
+  assert.throws(() => assertWorkerConfiguration({}), /Worker configuration incomplete/);
+  assert.throws(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'production', REPORT_STORAGE: 'local' }), /private-drive-config/);
+  assert.doesNotThrow(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'development', REPORT_STORAGE: 'local', UPSTASH_REDIS_URL: 'redis://127.0.0.1:56379' }));
 });

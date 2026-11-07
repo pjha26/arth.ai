@@ -12,8 +12,10 @@ export async function GET(
     const denied = await guard(request, id); if (denied) return denied;
     const report = await prisma.report.findUnique({
       where: { id },
-      include: {
-        company: true,
+      select: {
+        id: true, leadId: true, status: true, errorMessage: true, verificationStatus: true, artifactStatus: true, deliveryStatus: true,
+        logo: true, description: true, aiSummary: true, createdAt: true,
+        company: { select: { name: true, industry: true, size: true } },
         stages: {
           orderBy: { createdAt: "desc" }, take: 100,
         },
@@ -38,7 +40,7 @@ export async function GET(
       companySize: report.company.size,
     };
 
-    return NextResponse.json({ success: true, lead: mappedLead });
+    return NextResponse.json({ success: true, lead: mappedLead }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error("[arth.ai] Error fetching report:", error);
     return NextResponse.json(

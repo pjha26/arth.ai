@@ -76,6 +76,11 @@ try {
   }, 'Report or local email acceptance did not complete');
   assert.equal(report.verificationStatus, 'reviewed'); assert.equal(report.artifactStatus, 'ready');
   assert.ok(report.sources.length); assert.ok(report.insights.claims.length); pass('Real worker stores reviewed report, sources, and private PDF');
+  const statusView = await call(`/api/leads/${first.id}`, { jar: first.jar });
+  const statusRecord = (await statusView.json()).lead;
+  assert.equal(statusView.headers.get('cache-control'), 'no-store');
+  assert.ok(!('insights' in statusRecord)); assert.ok(!('providerMessageId' in statusRecord)); assert.ok(!('deliveryError' in statusRecord));
+  assert.ok(statusRecord.stages.length <= 100); pass('Status polling is bounded and excludes provider identifiers and full report payloads');
   const downloaded = await call(`/api/leads/${first.id}/download`, { jar: first.jar });
   assert.equal(downloaded.status, 200); const bytes = Buffer.from(await downloaded.arrayBuffer());
   assert.equal(bytes.subarray(0, 4).toString(), '%PDF');
@@ -162,6 +167,20 @@ try {
     }
     await page.goto(`${base}/success?jobId=${second.id}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.body.innerText.includes('Private report access is unavailable or expired'), { timeout: 60000 });
+    const processing = await prisma.report.create({ data: { companyId: report.companyId, leadId: report.leadId, status: 'processing' } });
+    try {
+      await context.setCookie(...staff.split('; ').map(part => { const split = part.indexOf('='); return { name: part.slice(0, split), value: part.slice(split + 1), domain: '127.0.0.1', path: '/' }; }));
+      await page.setViewport({ width: 1365, height: 900 });
+      await page.goto(`${base}/dashboard`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some(button => button.innerText.includes('Leads & Reports')), { timeout: 60000 });
+      await page.evaluate(() => Array.from(document.querySelectorAll('button')).find(button => button.innerText.includes('Leads & Reports')).click());
+      await page.waitForSelector(`[data-report-id="${processing.id}"]`, { timeout: 60000 });
+      await page.select('select.arth-toolbar-select', 'pending');
+      await page.waitForFunction(id => !!document.querySelector(`[data-report-id="${id}"]`), { timeout: 10000 }, processing.id);
+      assert.equal(await page.$eval(`[data-report-id="${processing.id}"]`, element => element.innerText.includes('Processing')), true);
+      await page.screenshot({ path: path.join(tmpdir(), 'arth-crm-processing-desktop.png'), fullPage: true });
+      pass('CRM Processing filter includes actively running research');
+    } finally { await prisma.report.delete({ where: { id: processing.id } }); }
     assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
     pass('Desktop/mobile completion UI distinguishes acceptance, stops terminal polling, and handles denied access');
   } finally { await browser.close(); }

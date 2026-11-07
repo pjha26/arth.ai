@@ -1,5 +1,7 @@
+export const isResearchActive = status => ['pending', 'processing'].includes(status);
+
 export function shouldPollReport(status, deliveryStatus) {
-  return ['pending', 'processing'].includes(status) || status === 'done' && ['pending', 'sending'].includes(deliveryStatus);
+  return isResearchActive(status) || status === 'done' && ['pending', 'sending'].includes(deliveryStatus);
 }
 
 export function deliveryCopy(status) {

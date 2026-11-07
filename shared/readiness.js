@@ -18,3 +18,16 @@ export function configurationChecks(env) {
   check('email-and-signed-webhook', !!env.RESEND_API_KEY && !!env.RESEND_WEBHOOK_SECRET && !!env.EMAIL_FROM);
   return checks;
 }
+
+export function assertWorkerConfiguration(env) {
+  const required = ['DATABASE_URL', 'DIRECT_URL', 'UPSTASH_REDIS_URL'];
+  const errors = required.filter(name => !env[name]);
+  if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32) errors.push('AUTH_SECRET');
+  if (!env.GEMINI_API_KEY && !env.GOOGLE_GENERATIVE_AI_API_KEY) errors.push('research-provider-key');
+  if (env.NODE_ENV === 'production') {
+    const names = ['canonical-https-origin', 'worker-redis-tls', 'private-drive-config'];
+    errors.push(...configurationChecks(env).filter(check => names.includes(check.name) && check.status !== 'pass').map(check => check.name));
+    if (!env.RESEND_API_KEY || !env.EMAIL_FROM) errors.push('email-sender-config');
+  }
+  if (errors.length) throw new Error(`Worker configuration incomplete: ${errors.join(', ')}`);
+}

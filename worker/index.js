@@ -3,6 +3,7 @@ import IORedis from 'ioredis';
 import { prisma } from '../shared/db.js';
 import { reconcilePendingReports } from './services/reconcileReports.js';
 import { appUrl } from '../shared/access.js';
+import { assertWorkerConfiguration } from '../shared/readiness.js';
 import { enrich } from './services/enrichment.js';
 import { enrichCompany } from './services/researchCache.js';
 import { generateAiReport } from './services/aiReport.js';
@@ -17,8 +18,7 @@ import { processFollowUp, reconcileFollowUps } from './services/followupWorker.j
 import { processDiscoverySearch } from './services/discovery.js';
 import { checkCompanySignals } from './services/signals.js';
 
-for (const name of ['DATABASE_URL', 'UPSTASH_REDIS_URL', 'AUTH_SECRET']) if (!process.env[name]) throw new Error(`${name} is required`);
-if (process.env.AUTH_SECRET.length < 32) throw new Error('AUTH_SECRET must contain at least 32 characters');
+assertWorkerConfiguration(process.env);
 const connection = new IORedis(process.env.UPSTASH_REDIS_URL, { maxRetriesPerRequest: null, connectTimeout: 5000 });
 const defaults = { attempts: 3, backoff: { type: 'exponential', delay: 10000 }, removeOnComplete: 500, removeOnFail: 500 };
 const leadsQueue = new Queue('leads', { connection, defaultJobOptions: defaults });
