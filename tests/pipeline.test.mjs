@@ -9,7 +9,7 @@ function fixture() {
   const prisma = {
     report: { findUnique: async () => ({ ...state }), update: async ({ data }) => Object.assign(state, data) },
     reportSource: { deleteMany: async () => {}, createMany: async () => {} },
-    pipelineStage: { create: async ({ data }) => { const stage = { id: String(stages.length), ...data }; stages.push(stage); return stage; }, update: async ({ where, data }) => Object.assign(stages[Number(where.id)], data) },
+    pipelineStage: { create: async ({ data }) => { const stage = { id: String(stages.length), ...data }; stages.push(stage); return stage; }, update: async ({ where, data }) => Object.assign(stages[Number(where.id)], data), updateMany: async ({ data }) => { for (const stage of stages.filter(s => s.status === 'running')) Object.assign(stage, data); } },
     $transaction: async fn => fn(prisma),
   };
   const job = { id: `${id}-1`, attemptsMade: 0, opts: { attempts: 3 }, data: { leadId: id, reportId: id, companyId: id, jobId: id, submittedAt: new Date().toISOString(), leadInput: { id, fullName: null, email: null, website: 'https://example.com', companyName: 'Example', industry: 'SaaS', companySize: 'Unknown', personaType: 'cto', challengeTags: [], painPoints: 'Manual work' } } };
@@ -58,9 +58,10 @@ test('a job ID for another report is ignored even when its attempt number matche
 
 test('restart after a saved PDF reuses both analysis and artifact checkpoints', async () => {
   const f = fixture();
+  f.stages.push({ id: '0', stage: 'pdf', status: 'running' });
   Object.assign(f.state, { status: 'processing', verificationStatus: 'reviewed', artifactStatus: 'ready', pdfUrl: 'drive:existing', insights: { executiveSummary: 'Saved analysis' } });
   f.services.enrich = f.services.generateAiReport = f.services.generatePDF = f.services.saveReportPdf = async () => { throw new Error('Checkpoint repeated'); };
   await processReport(f.job, f.services);
   assert.equal(f.state.status, 'done'); assert.equal(f.state.pdfUrl, 'drive:existing');
-  assert.equal(f.stages.length, 0); assert.equal(f.generationCalls(), 0);
+  assert.equal(f.stages.length, 1); assert.equal(f.stages[0].status, 'failed'); assert.match(f.stages[0].message, /interrupted/); assert.equal(f.generationCalls(), 0);
 });

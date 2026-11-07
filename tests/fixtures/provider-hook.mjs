@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mkdir, appendFile, readFile } from 'node:fs/promises';
+import { mkdir, appendFile, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { assertStaging } from './staging-safety.mjs';
@@ -66,11 +66,16 @@ globalThis.fetch = async (input, init) => {
     const recipients = Array.isArray(email.to) ? email.to : [email.to];
     if (recipients.some(address => !String(address).endsWith('@example.invalid'))) throw new Error('Staging only accepts synthetic example.invalid recipients');
     const key = request.headers.get('idempotency-key');
+    await log({ provider: 'resend-attempt', key });
     let events = []; try { events = (await readFile(path.join(directory, 'provider-events.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse); } catch { /* First fixture email. */ }
     const existing = events.find(e => e.provider === 'resend-fixture' && e.key === key);
     if (existing) return json({ id: existing.id });
     const id = randomUUID();
     await log({ provider: 'resend-fixture', action: 'accepted-locally', id, key, to: recipients, html: email.html, attachments: email.attachments?.length || 0 });
+    if (process.env.ARTHAI_CRASH_BOUNDARY === 'provider' && key === `report-${process.env.ARTHAI_CRASH_REPORT_ID}`) {
+      await writeFile(path.join(directory, `crash-${process.env.ARTHAI_CRASH_REPORT_ID}.json`), JSON.stringify({ boundary: 'provider' }));
+      await new Promise(() => {});
+    }
     return json({ id });
   }
   throw new Error(`External fetch blocked by staging fixtures: ${url.hostname}`);

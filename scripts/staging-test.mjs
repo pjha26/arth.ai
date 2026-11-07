@@ -63,13 +63,17 @@ try {
   await ready(58079, bridge);
   const web = start('web', ['scripts/staging-web.mjs']);
   await ready(3101, web);
-  start('worker', ['--import', hook, 'worker/bootstrap.js']);
+  const worker = start('worker', ['--import', hook, 'worker/bootstrap.js']);
   await run('flow', ['tests/staging-flow.mjs']);
+  if (worker.exitCode !== null || worker.signalCode !== null) throw new Error('Main worker exited before recovery checks');
+  const stopped = new Promise(resolve => worker.once('exit', resolve));
+  worker.kill('SIGTERM'); await stopped;
+  await run('recovery', ['tests/staging-recovery.mjs']);
   const summary = JSON.parse(await readFile('.data/staging/flow-check.json', 'utf8'));
   console.log(`Staging passed: ${summary.checks.length} workflow checks. No real email or paid AI calls.`);
 } catch (error) {
   console.error(error.message);
-  for (const name of ['migrations', 'deploy', 'web', 'worker', 'flow']) {
+  for (const name of ['migrations', 'deploy', 'web', 'worker', 'flow', 'recovery']) {
     let content;
     try { content = await readFile(`.data/staging/${name}.log`, 'utf8'); } catch { continue; }
     for (const [key, value] of Object.entries(env)) if (/SECRET|PASSWORD|TOKEN|KEY|DATABASE_URL|DIRECT_URL/.test(key) && value) content = content.replaceAll(value, '[redacted]');

@@ -104,7 +104,8 @@ try {
     return task.status === 'accepted';
   }, 'Recovered follow-up did not complete');
   const capturedEvents = (await readFile('.data/staging/provider-events.jsonl', 'utf8')).trim().split('\n').map(JSON.parse);
-  assert.equal(capturedEvents.filter(event => event.key === `followup-${first.id}-1`).length, 1); pass('Persisted follow-up recovers after queue failure and sends once through the real worker');
+  assert.equal(capturedEvents.filter(event => event.provider === 'resend-fixture' && event.key === `followup-${first.id}-1`).length, 1);
+  assert.equal(capturedEvents.filter(event => event.provider === 'resend-attempt' && event.key === `followup-${first.id}-1`).length, 1); pass('Persisted follow-up recovers after queue failure and sends once through the real worker');
   await prisma.lead.update({ where: { id: report.leadId }, data: { unsubscribed: true } });
   await prisma.followUp.update({ where: { id: tasks[1].id }, data: { dueAt: new Date(Date.now() - 1000) } });
   await reconcileFollowUps({ prisma, followupsQueue });

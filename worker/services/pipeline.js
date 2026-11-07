@@ -9,6 +9,7 @@ export async function processReport(job, services) {
   let row = await prisma.report.findUnique({ where: { id: reportId } });
   if (!row || row.status === 'done' || job.id !== `${reportId}-${row.generationAttempt}`) return;
   if (row.leadId !== data.leadId || row.companyId !== data.companyId) throw new Error('Queued job does not match the stored report owner');
+  if (row.status === 'processing') await prisma.pipelineStage.updateMany({ where: { reportId, status: 'running' }, data: { status: 'failed', message: 'Worker interrupted; resuming from saved checkpoints.' } });
   await prisma.report.update({ where: { id: reportId }, data: { status: 'processing', errorMessage: null } });
   async function stage(name, task) {
     const entry = await prisma.pipelineStage.create({ data: { reportId, stage: name, status: 'running' } });

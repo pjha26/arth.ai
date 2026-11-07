@@ -1,7 +1,7 @@
 import { Worker, Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '../shared/db.js';
-import { makeReportJob } from '../shared/jobs.js';
+import { reconcilePendingReports } from './services/reconcileReports.js';
 import { appUrl } from '../shared/access.js';
 import { enrich } from './services/enrichment.js';
 import { enrichCompany } from './services/researchCache.js';
@@ -10,7 +10,7 @@ import { generatePDF } from './services/pdfGenerator.js';
 import { saveReportPdf, readReportPdf } from '../shared/storage.js';
 import { storeReportIntelligence } from './services/vectorStore.js';
 import { processReport } from './services/pipeline.js';
-import { deliverReport, queuePendingDelivery } from './services/delivery.js';
+import { deliverReport, queuePendingDelivery, recoverInterruptedDeliveries } from './services/delivery.js';
 import { sendEmail, sendFollowUpEmail } from './services/emailService.js';
 import { sendSlackNotification } from './services/slack.js';
 import { processFollowUp, reconcileFollowUps } from './services/followupWorker.js';
@@ -42,16 +42,12 @@ async function reconcile() {
   if (reconciling) return; reconciling = true;
   try {
     await reconcileFollowUps({ prisma, followupsQueue });
-    const pending = await prisma.report.findMany({ where: { status: 'pending', leadId: { not: null } }, include: { lead: true, company: true }, take: 50, orderBy: { createdAt: 'asc' } });
-    for (const report of pending) {
-      await leadsQueue.add('process-report', makeReportJob(report, report.lead, report.company), { jobId: `${report.id}-${report.generationAttempt}` });
-      await prisma.report.update({ where: { id: report.id }, data: { dispatchedAt: new Date() } });
-    }
+    await reconcilePendingReports({ prisma, leadsQueue });
     const searches = await prisma.discoverySearch.findMany({ where: { status: 'pending' }, take: 10 });
     for (const search of searches) await leadsQueue.add('discover-companies', { ...search, searchId: search.id }, { jobId: `discovery-${search.id}` });
     const ready = await prisma.report.findMany({ where: { status: 'done', deliveryStatus: 'pending', leadId: { not: null } }, take: 50 });
     for (const report of ready) await queuePendingDelivery(report.id, leadsQueue);
-    await prisma.report.updateMany({ where: { deliveryStatus: 'sending', deliveryStartedAt: { lt: new Date(Date.now() - 10 * 60000) } }, data: { deliveryStatus: 'uncertain', deliveryError: 'Worker interrupted during email dispatch; inspect provider before retrying.' } });
+    await recoverInterruptedDeliveries(prisma);
   } finally { reconciling = false; }
 }
 const timer = setInterval(() => void reconcile().catch(error => console.error('Reconciliation failed', error.message)), 60000);

@@ -5,6 +5,10 @@ export async function queuePendingDelivery(reportId, queue) {
   return queue.add('deliver-report', { reportId }, { jobId, removeOnFail: true });
 }
 
+export async function recoverInterruptedDeliveries(prisma) {
+  await prisma.report.updateMany({ where: { deliveryStatus: 'sending', deliveryStartedAt: { lt: new Date(Date.now() - 10 * 60000) } }, data: { deliveryStatus: 'uncertain', deliveryError: 'Worker interrupted during email dispatch; inspect provider before retrying.' } });
+}
+
 export async function deliverReport(reportId, services) {
   const { prisma, readReportPdf, sendEmail, sendSlackNotification, appUrl } = services;
   const report = await prisma.report.findUnique({ where: { id: reportId }, include: { lead: true, company: true } });
