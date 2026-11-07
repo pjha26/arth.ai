@@ -13,7 +13,7 @@ export interface ReportView {
 export interface CRMReport extends ReportView {
   companyName: string; email: string; fullName: string; painPoints: string; website: string;
   industry: string | null; companySize: string | null; createdAt: string;
-  intentProbability: number | null; verificationStatus: string; artifactStatus: string; deliveryStatus: string;
+  intentProbability: number | null; intentStatus: string; verificationStatus: string; artifactStatus: string; deliveryStatus: string;
   salesStatus: string;
 }
 export interface Analytics {

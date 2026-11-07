@@ -5,7 +5,8 @@ import { after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { accessFor, guard } from '@/lib/auth';
 import { limitRequest } from '@/lib/rateLimit';
-import { chatSchema, latestText, uiMessage, validProbability, waitForFirstText } from '@/shared/chat.js';
+import { chatSchema, latestText, uiMessage, waitForFirstText } from '@/shared/chat.js';
+import { storeIntentScore, markIntentUnavailable } from '@/shared/intent.js';
 import { ML_SERVICE_URL, APP_URL } from '@/lib/config';
 import { sendSlackNotification } from '@/lib/slack';
 
@@ -39,27 +40,22 @@ export async function POST(request: Request, { params }: Context) {
   if (!report || !access.staff && report.leadId !== access.leadId) return new Response('Not found', { status: 404 });
   if (report.status !== 'done' || !report.chatEnabled) return Response.json({ error: 'Report is not ready for chat' }, { status: 409 });
   const history = await prisma.chatMessage.findMany({ where: { reportId: id, actor }, orderBy: { createdAt: 'desc' }, take: 6 });
-  await prisma.chatMessage.create({ data: { reportId: id, actor, role: 'user', content: userText } });
+  const message = await prisma.chatMessage.create({ data: { reportId: id, actor, role: 'user', content: userText } });
   if (!access.staff) after(async () => {
     await prisma.reportEvent.create({ data: { reportId: id, actor, type: 'chat' } });
     if (process.env.ENABLE_INTENT_SCORING !== 'true' || !report.leadId) return;
     try {
-      const scoringStartedAt = new Date();
       const messageIndex = await prisma.chatMessage.count({ where: { reportId: id, actor, role: 'user' } });
       const response = await fetch(`${ML_SERVICE_URL}/score`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(3000),
         body: JSON.stringify({ message: userText, session_context: { messageIndex, minutesSinceDelivery: report.generatedAt ? (Date.now() - report.generatedAt.getTime()) / 60000 : 0 } }) });
       if (!response.ok) throw new Error('Scorer unavailable');
       const result = await response.json();
-      if (!validProbability(result.intent_probability)) throw new Error('Invalid scoring response');
-      const crossing = await prisma.$transaction(async tx => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${report.leadId!}))`;
-        const current = await tx.lead.findUnique({ where: { id: report.leadId! } });
-        if (!current || current.intentScoredAt && current.intentScoredAt >= scoringStartedAt) return false;
-        await tx.lead.update({ where: { id: current.id }, data: { intentProbability: result.intent_probability, intentModel: result.model_version || 'experimental', intentScoredAt: scoringStartedAt } });
-        return result.intent_probability > 0.75 && (current.intentProbability == null || current.intentProbability <= 0.75);
-      });
+      const crossing = await storeIntentScore(prisma, report.leadId, id, message.createdAt, result);
       if (crossing) await sendSlackNotification(`Experimental intent signal for ${report.company.name}: ${(result.intent_probability * 100).toFixed(0)}%. Review before outreach: ${APP_URL}/dashboard/reports/${id}`);
-    } catch { console.warn('Intent scoring unavailable; no score was invented.'); }
+    } catch {
+      await markIntentUnavailable(prisma, report.leadId, message.createdAt);
+      console.warn('Intent scoring unavailable; no score was invented.');
+    }
   });
   let rag = '';
   try {

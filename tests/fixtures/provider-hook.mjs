@@ -37,6 +37,11 @@ async function log(data) { await mkdir(directory, { recursive: true }); await ap
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const request = new Request(input, init), url = new URL(request.url);
+  if (url.hostname === '127.0.0.1' && url.port === '58001' && url.pathname === '/score') {
+    const body = await request.json();
+    if (body.message.includes('scoring outage')) return json({ error: 'Controlled scorer outage' }, 503);
+    return json({ intent_probability: body.message.includes('pricing') ? 0.9 : 0.2, model_version: 'fixture-model', experimental: true });
+  }
   if (url.hostname === '127.0.0.1') return originalFetch(request);
   if (url.hostname === 'generativelanguage.googleapis.com') {
     const body = await request.json();

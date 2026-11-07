@@ -69,7 +69,9 @@ export async function GET(request: Request) {
     industry: report.company.industry, companySize: report.company.size,
     salesStatus: lead?.salesStatus || "new",
     email: lead?.email || '', fullName: lead?.fullName || '', painPoints: lead?.painPoints || '',
-    intentProbability: lead?.intentProbability ?? null, hasPdf: report.artifactStatus === 'ready',
+    intentProbability: process.env.ENABLE_INTENT_SCORING === 'true' && lead?.intentStatus === 'scored' ? lead.intentProbability : null,
+    intentStatus: process.env.ENABLE_INTENT_SCORING === 'true' ? lead?.intentStatus || 'unknown' : 'disabled',
+    intentModel: lead?.intentModel, intentScoredAt: lead?.intentScoredAt, hasPdf: report.artifactStatus === 'ready',
   }));
   return Response.json({ success: true, leads, page, total, pages: Math.ceil(total / take) }, { headers: { 'Cache-Control': 'no-store' } });
 }

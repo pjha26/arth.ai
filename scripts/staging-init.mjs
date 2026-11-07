@@ -17,7 +17,7 @@ const values = {
   EMAIL_FROM: 'ArthAI Staging <reports@example.invalid>', EMAIL_REPLY_TO: 'qa@example.invalid',
   GOOGLE_SERVICE_ACCOUNT_EMAIL: '', GOOGLE_PRIVATE_KEY: '', GOOGLE_DRIVE_FOLDER_ID: '', GOOGLE_PLACES_API_KEY: '',
   SLACK_WEBHOOK_URL: '', CRM_WEBHOOK_URL: '', GOOGLE_SHEETS_ID: '',
-  REPORT_STORAGE: 'local', ENABLE_INTENT_SCORING: 'false', ENABLE_VISUAL_ANALYSIS: 'false',
+  REPORT_STORAGE: 'local', ENABLE_INTENT_SCORING: 'true', ENABLE_VISUAL_ANALYSIS: 'false',
   ML_SERVICE_URL: 'http://127.0.0.1:58001',
 };
 try {

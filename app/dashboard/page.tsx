@@ -476,7 +476,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                         </div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-heading)' }}>
-                            {selectedLead.intentProbability != null && selectedLead.intentProbability > 0.75 ? 'High Intent Signal 🔥' : 'Experimental intent estimate'}
+                            {selectedLead.intentStatus === 'disabled' ? 'Scoring disabled' : selectedLead.intentStatus === 'unavailable' ? 'Scorer unavailable' : selectedLead.intentProbability != null && selectedLead.intentProbability > 0.75 ? 'Experimental high-intent signal' : 'Experimental intent estimate'}
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>
                             Readiness and buying intent are separate assessments. Intent scoring is experimental.

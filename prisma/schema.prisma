@@ -59,6 +59,8 @@ model Lead {
   legacyIntentProbability Float?
   intentModel       String?
   intentScoredAt    DateTime?
+  intentStatus      String @default("unknown")
+  intentAlertedAt   DateTime?
   unsubscribed      Boolean  @default(false)
   lastFollowUpSentAt DateTime?
   followUpStage     Int      @default(0)
