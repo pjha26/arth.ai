@@ -1,0 +1,1 @@
+ALTER TABLE "Report" ADD COLUMN "freshResearch" BOOLEAN NOT NULL DEFAULT false;

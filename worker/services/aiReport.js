@@ -58,5 +58,5 @@ ${persona[lead.personaType] || persona.general} Return no market signals unless 
       visualIntelligence = result.object;
     } catch (error) { console.warn('Optional visual assessment unavailable:', error.message); }
   }
-  return { ...draft, ...(visualIntelligence ? { visualIntelligence, visualAnalysisLimit: 'Static snapshot with JavaScript and remote assets disabled; not a live UX or conversion measurement.' } : {}), sources: enriched.sources, verificationStatus: 'reviewed', verificationNote: 'AI-reviewed against cited website excerpts. Website claims are self-reported; recommendations and readiness scores are assessments.' };
+  return { ...draft, ...(visualIntelligence ? { visualIntelligence, visualAnalysisLimit: 'Static snapshot with JavaScript and remote assets disabled; not a live UX or conversion measurement.' } : {}), sources: enriched.sources, verificationStatus: 'reviewed', verificationNote: 'AI-reviewed against cited website excerpts. Website claims are self-reported; recommendations and readiness scores are assessments.' + (enriched.researchCacheHit ? ' Public excerpts retrieved within six hours were reused; see source retrieval dates.' : '') };
 }

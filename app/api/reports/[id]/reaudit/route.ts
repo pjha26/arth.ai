@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const report = await prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${original.leadId!}))`;
     const existing = await tx.report.findFirst({ where: { leadId: original.leadId, status: { in: ['pending','processing'] } } });
-    return existing || tx.report.create({ data: { companyId: original.companyId, leadId: original.leadId, personaType: original.personaType.toLowerCase(), deliveryStatus: 'skipped' } });
+    return existing || tx.report.create({ data: { companyId: original.companyId, leadId: original.leadId, personaType: original.personaType.toLowerCase(), freshResearch: true, deliveryStatus: 'skipped' } });
   });
   await dispatchReport(report.id).catch(() => console.warn('Re-audit saved for dispatch reconciliation', report.id));
   return Response.json({ success: true, jobId: report.id }, { status: 202 });

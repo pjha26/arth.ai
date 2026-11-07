@@ -29,6 +29,8 @@ Chromium needs its normal sandbox support. Install its OS dependencies and run t
 
 The dispatch reconciler recovers newly saved pending reports every minute. Stable job IDs include the report attempt. Generation retries reuse reviewed analysis and an existing PDF checkpoint. Failed generations can be retried by staff. Missing evidence stays an explicit failure, not a template report.
 
+Separate inbound requests may reuse public website excerpts from a completed, reviewed report for the same company for at most six hours. Every excerpt must match the website host, retain its original retrieval/publication dates, and pass freshness/size checks. Prospect context, recommendations, conversations, and delivery are never shared. The report labels reused excerpts. Staff re-audits and monitoring-triggered reports set `freshResearch` and bypass this cache; apply the additive research-freshness migration before deploying the updated worker.
+
 ## Run and check
 
 - Web: `npm run dev:web`, or production `npm run build` followed by `npm start`.

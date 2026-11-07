@@ -4,6 +4,7 @@ import { prisma } from '../shared/db.js';
 import { makeReportJob } from '../shared/jobs.js';
 import { appUrl } from '../shared/access.js';
 import { enrich } from './services/enrichment.js';
+import { enrichCompany } from './services/researchCache.js';
 import { generateAiReport } from './services/aiReport.js';
 import { generatePDF } from './services/pdfGenerator.js';
 import { saveReportPdf, readReportPdf } from '../shared/storage.js';
@@ -32,7 +33,7 @@ const deliver = reportId => deliverReport(reportId, deliveryServices);
 const worker = new Worker('leads', async job => {
   if (job.name === 'discover-companies') return processDiscoverySearch(job.data.searchId, job.data);
   if (job.name === 'deliver-report') return deliver(job.data.reportId);
-  await processReport(job, { prisma, enrich, generateAiReport, generatePDF, saveReportPdf, storeReportIntelligence });
+  await processReport(job, { prisma, enrich: (lead, companyId, freshResearch) => enrichCompany(lead, companyId, freshResearch, { prisma, enrich }), generateAiReport, generatePDF, saveReportPdf, storeReportIntelligence });
   await deliver(job.data.reportId);
 }, { connection, concurrency: 2 });
 
@@ -68,7 +69,7 @@ const monitorWorker = new Worker('monitoring', async job => {
     if (exists) return;
     await tx.signal.create({ data: { id: signal.id, companyId: company.id, type: signal.type, severity: signal.severity, data: { message: signal.message, sourceUrl: signal.url } } });
     const active = await tx.report.findFirst({ where: { companyId: company.id, status: { in: ['pending', 'processing'] } } });
-    if (!active) await tx.report.create({ data: { companyId: company.id, leadId: previous.leadId, personaType: previous.personaType, deliveryStatus: previous.lead.outreachConsent ? 'pending' : 'skipped' } });
+    if (!active) await tx.report.create({ data: { companyId: company.id, leadId: previous.leadId, personaType: previous.personaType, freshResearch: true, deliveryStatus: previous.lead.outreachConsent ? 'pending' : 'skipped' } });
   });
 }, { connection, concurrency: 1, limiter: { max: 10, duration: 3600000 } });
 const followupsWorker = new Worker('followups', job => processFollowUp(job, { prisma, sendFollowUpEmail }), { connection, concurrency: 1 });

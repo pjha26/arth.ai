@@ -87,6 +87,7 @@ model Report {
   providerMessageId String?
   deliveryStartedAt DateTime?
   generationAttempt Int @default(1)
+  freshResearch Boolean @default(false)
   errorMessage  String?
   dispatchedAt DateTime?
   

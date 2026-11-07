@@ -25,7 +25,7 @@ export async function processReport(job, services) {
     let insights = row.insights;
     let enriched;
     if (!insights || row.verificationStatus !== 'reviewed') {
-      enriched = await stage('enrich', () => enrich(lead));
+      enriched = await stage('enrich', () => enrich(lead, data.companyId, row.freshResearch));
       insights = await stage('ai_report', () => generateAiReport(lead, enriched, reportId, data.companyId));
       // Sources and the reviewed report form a single recoverable checkpoint.
       await prisma.$transaction(async tx => {
