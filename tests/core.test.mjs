@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { signAccess, verifyAccess, reportLink } from '../shared/access.js';
+import { signAccess, verifyAccess, reportLink, sameOrigin } from '../shared/access.js';
 import { isPublicAddress, publicUrl, assertPublicUrl } from '../shared/network.js';
 import { makeReportJob, reportChunks } from '../shared/jobs.js';
 import { validateEvidence } from '../shared/report.js';
@@ -12,6 +12,15 @@ import { streamText } from 'ai';
 process.env.AUTH_SECRET = 'unit-test-secret-with-at-least-32-characters';
 process.env.NEXT_PUBLIC_APP_URL = 'https://example.com';
 const id = '00000000-0000-4000-8000-000000000001';
+
+test('origin checks use the configured public origin behind an internal server URL', () => {
+  const request = origin => new Request('http://internal-server:3101/api/auth/login', { headers: origin ? { Origin: origin, Host: 'evil.example', 'X-Forwarded-Host': 'evil.example' } : {} });
+  assert.equal(sameOrigin(request('https://example.com')), true);
+  for (const origin of ['https://evil.example', 'http://example.com', 'http://internal-server:3101', 'null', '']) assert.equal(sameOrigin(request(origin)), false);
+  const original = process.env.NEXT_PUBLIC_APP_URL;
+  try { process.env.NEXT_PUBLIC_APP_URL = 'invalid-url'; assert.equal(sameOrigin(request('https://example.com')), false); }
+  finally { process.env.NEXT_PUBLIC_APP_URL = original; }
+});
 
 test('access tokens are scoped, signed, expire, and fail closed without configuration', () => {
   const token = signAccess('report', id, 'lead');

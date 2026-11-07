@@ -46,6 +46,7 @@ try {
   const login = await fetch(base + '/api/auth/login', { method: 'POST', redirect: 'manual', headers: { Origin: base },
     body: new URLSearchParams({ password: process.env.STAFF_PASSWORD }), signal: AbortSignal.timeout(60000) });
   assert.equal(login.status, 303, `Login failed: ${await login.clone().text()}`);
+  assert.equal(login.headers.get('location'), `${base}/dashboard`);
   const staff = cookie(login); assert.ok(staff.includes('arth_staff=')); pass('Staff login with real Redis-backed limits');
   const first = await submit(1);
   const repeated = await call('/api/leads', { method: 'POST', body: first.body, headers: { 'Idempotency-Key': first.key } });
@@ -71,6 +72,10 @@ try {
   const mail = outbox.filter(event => event.provider === 'resend-fixture' && event.key === `report-${first.id}`);
   assert.equal(mail.length, 1); assert.equal(mail[0].attachments, 1); assert.ok(!mail[0].html.includes('/undefined'));
   assert.ok(mail[0].html.includes(`/api/reports/${first.id}/access?token=`)); pass('One locally captured email has a valid report link and attachment');
+  const accessUrl = mail[0].html.match(/href="([^"]+\/api\/reports\/[^"]+\/access\?token=[^"]+)"/)[1];
+  const access = await fetch(accessUrl, { redirect: 'manual' });
+  assert.equal(access.status, 303); assert.equal(access.headers.get('location'), `${base}/report/${first.id}`);
+  assert.ok(cookie(access).includes(`arth_report_${first.id}=`)); pass('Email access link exchanges its token and redirects to the public origin');
   assert.equal((await redis.keys(`bull:followups:*${first.id}*`)).length, 0); pass('No follow-up scheduled without consent');
   assert.equal(await prisma.followUp.count({ where: { reportId: first.id } }), 0); pass('No durable follow-up tasks created without consent');
   const sendChat = async jar => {

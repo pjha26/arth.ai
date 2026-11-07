@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { STAFF_COOKIE, reportCookie, verifyAccess } from '@/shared/access.js';
+import { STAFF_COOKIE, reportCookie, verifyAccess, sameOrigin } from '@/shared/access.js';
 
 export async function accessFor(reportId?: string) {
   const jar = await cookies();
@@ -9,9 +9,7 @@ export async function accessFor(reportId?: string) {
   return access ? { staff: false, leadId: access.leadId as string } : null;
 }
 
-export function sameOrigin(request: Request) {
-  return request.headers.get('origin') === new URL(request.url).origin;
-}
+export { sameOrigin };
 
 export async function guard(request: Request, reportId?: string) {
   const access = await accessFor(reportId);

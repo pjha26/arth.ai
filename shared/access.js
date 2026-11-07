@@ -42,6 +42,11 @@ export function appUrl() {
   return url.origin;
 }
 
+export function sameOrigin(request) {
+  try { return request.headers.get('origin') === appUrl(); }
+  catch { return false; }
+}
+
 export function reportLink(reportId, leadId) {
   return `${appUrl()}/api/reports/${encodeURIComponent(reportId)}/access?token=${encodeURIComponent(signAccess('report', reportId, leadId))}`;
 }
