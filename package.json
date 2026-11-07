@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "test": "node --test tests/core.test.mjs tests/pipeline.test.mjs tests/delivery.test.mjs tests/followups.test.mjs tests/staging-safety.test.mjs tests/research-cache.test.mjs tests/intent.test.mjs tests/operations.test.mjs tests/readiness.test.mjs tests/status.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/pipeline.test.mjs tests/delivery.test.mjs tests/followups.test.mjs tests/staging-safety.test.mjs tests/research-cache.test.mjs tests/intent.test.mjs tests/operations.test.mjs tests/readiness.test.mjs tests/status.test.mjs tests/delivery-events.test.mjs",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "typecheck": "next typegen && tsc --noEmit --incremental false",

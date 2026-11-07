@@ -56,6 +56,7 @@ test('consent, unsubscribe, missing recipients, and unsuccessful initial deliver
     f => { f.task.report.lead = null; },
     f => { f.task.report.deliveryStatus = 'bounced'; },
     f => { f.task.report.status = 'failed'; },
+    f => { f.task.report.followUps = [{ id: 'bounced-task' }]; },
   ];
   for (const change of changes) {
     const f = fixture(); change(f);

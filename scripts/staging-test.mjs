@@ -77,6 +77,7 @@ try {
     let content;
     try { content = await readFile(`.data/staging/${name}.log`, 'utf8'); } catch { continue; }
     for (const [key, value] of Object.entries(env)) if (/SECRET|PASSWORD|TOKEN|KEY|DATABASE_URL|DIRECT_URL/.test(key) && value) content = content.replaceAll(value, '[redacted]');
+    content = content.replace(/([?&]token=)[^\s&]+/g, '$1[redacted]');
     console.error(`${name}:\n${content.split('\n').slice(-30).join('\n')}`);
   }
   process.exitCode = 1;

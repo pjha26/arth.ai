@@ -113,6 +113,7 @@ model Report {
   modelCalls    ModelCall[]
   @@index([status, dispatchedAt])
   @@index([leadId, createdAt])
+  @@index([providerMessageId])
 }
 
 model FollowUp {
@@ -121,13 +122,14 @@ model FollowUp {
   report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
   stage Int
   dueAt DateTime
-  status String @default("pending") // pending | sending | accepted | skipped | uncertain
+  status String @default("pending") // pending | sending | accepted | delivered | bounced | failed | complained | skipped | uncertain
   startedAt DateTime?
   providerMessageId String?
   errorMessage String?
   @@unique([reportId, stage])
   @@index([status, dueAt])
   @@index([status, startedAt])
+  @@index([providerMessageId])
 }
 
 model ModelCall {

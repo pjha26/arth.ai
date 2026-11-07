@@ -9,12 +9,12 @@ export async function reconcileFollowUps({ prisma, followupsQueue }) {
 export async function processFollowUp(job, { prisma, sendFollowUpEmail }) {
   // Legacy queue payloads have no durable task and must not trigger untracked outreach.
   if (!job.data.taskId) return;
-  const task = await prisma.followUp.findUnique({ where: { id: job.data.taskId }, include: { report: { include: { lead: true, company: true } } } });
+  const task = await prisma.followUp.findUnique({ where: { id: job.data.taskId }, include: { report: { include: { lead: true, company: true, followUps: { where: { status: { in: ['bounced', 'failed', 'complained'] } }, select: { id: true }, take: 1 } } } } });
   if (!task || task.status !== 'pending' || task.dueAt > new Date()) return;
   const report = task.report, lead = report?.lead;
   if (![1, 2, 3].includes(task.stage)) throw new Error('Invalid follow-up stage');
   const expired = task.dueAt.getTime() < Date.now() - 86400000;
-  if (expired || !lead?.email || lead.unsubscribed || !lead.outreachConsent || report.status !== 'done' || !['accepted', 'delivered'].includes(report.deliveryStatus)) {
+  if (expired || !lead?.email || lead.unsubscribed || !lead.outreachConsent || report.followUps?.length || report.status !== 'done' || !['accepted', 'delivered'].includes(report.deliveryStatus)) {
     await prisma.followUp.updateMany({ where: { id: task.id, status: 'pending' }, data: { status: 'skipped', errorMessage: expired ? 'Follow-up expired; do not send overdue messages in a burst.' : 'Recipient or report is no longer eligible for follow-up.' } });
     return;
   }

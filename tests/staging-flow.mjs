@@ -23,6 +23,12 @@ async function call(path, { method = 'GET', jar = '', body, headers = {} } = {})
     Origin: base, ...(jar ? { Cookie: jar } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers,
   }, body: body ? JSON.stringify(body) : undefined });
 }
+async function webhook(type, emailId) {
+  const payload = JSON.stringify({ type, created_at: new Date().toISOString(), data: { email_id: emailId } });
+  const eventId = `msg_${randomUUID()}`, timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = createHmac('sha256', Buffer.from(process.env.RESEND_WEBHOOK_SECRET.slice(6), 'base64')).update(`${eventId}.${timestamp}.${payload}`).digest('base64');
+  return fetch(base + '/api/webhooks/resend', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json', 'svix-id': eventId, 'svix-timestamp': timestamp, 'svix-signature': `v1,${signature}` } });
+}
 async function until(check, message, seconds = 180) {
   const deadline = Date.now() + seconds * 1000;
   while (Date.now() < deadline) {
@@ -114,11 +120,20 @@ try {
   const capturedEvents = (await readFile('.data/staging/provider-events.jsonl', 'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(capturedEvents.filter(event => event.provider === 'resend-fixture' && event.key === `followup-${first.id}-1`).length, 1);
   assert.equal(capturedEvents.filter(event => event.provider === 'resend-attempt' && event.key === `followup-${first.id}-1`).length, 1); pass('Persisted follow-up recovers after queue failure and sends once through the real worker');
-  await prisma.lead.update({ where: { id: report.leadId }, data: { unsubscribed: true } });
+  const acceptedTask = await prisma.followUp.findUnique({ where: { id: tasks[0].id } });
+  assert.equal((await webhook('email.bounced', acceptedTask.providerMessageId)).status, 200);
+  assert.equal((await prisma.followUp.findUnique({ where: { id: tasks[0].id } })).status, 'bounced');
+  assert.equal((await prisma.report.findUnique({ where: { id: first.id } })).deliveryStatus, 'accepted');
   await prisma.followUp.update({ where: { id: tasks[1].id }, data: { dueAt: new Date(Date.now() - 1000) } });
   await reconcileFollowUps({ prisma, followupsQueue });
   await until(async () => (await prisma.followUp.findUnique({ where: { id: tasks[1].id } })).status === 'skipped', 'Unsubscribe did not stop a scheduled follow-up');
-  pass('Unsubscribe stops a previously saved follow-up at send time');
+  pass('Follow-up bounce is recorded separately and stops later tasks');
+  assert.equal((await webhook('email.complained', acceptedTask.providerMessageId)).status, 200);
+  assert.equal((await prisma.lead.findUnique({ where: { id: report.leadId } })).unsubscribed, true);
+  await prisma.followUp.update({ where: { id: tasks[2].id }, data: { dueAt: new Date(Date.now() - 1000) } });
+  await reconcileFollowUps({ prisma, followupsQueue });
+  await until(async () => (await prisma.followUp.findUnique({ where: { id: tasks[2].id } })).status === 'skipped', 'Complaint did not stop the saved follow-up');
+  pass('Complaint unsubscribes the correct lead and stops scheduled outreach');
   const sendChat = async (jar, text = 'What should I prioritize first?') => {
     const response = await call(`/api/reports/${first.id}/chat`, { method: 'POST', jar,
       body: { messages: [{ role: 'user', parts: [{ type: 'text', text }] }] } });
@@ -176,8 +191,9 @@ try {
       await page.evaluate(() => Array.from(document.querySelectorAll('button')).find(button => button.innerText.includes('Leads & Reports')).click());
       await page.waitForSelector(`[data-report-id="${processing.id}"]`, { timeout: 60000 });
       await page.select('select.arth-toolbar-select', 'pending');
+      await page.waitForFunction(() => document.querySelectorAll('[data-report-id]').length === 1, { timeout: 10000 });
       await page.waitForFunction(id => !!document.querySelector(`[data-report-id="${id}"]`), { timeout: 10000 }, processing.id);
-      assert.equal(await page.$eval(`[data-report-id="${processing.id}"]`, element => element.innerText.includes('Processing')), true);
+      assert.equal(await page.$eval(`[data-report-id="${processing.id}"]`, element => element.textContent.toLowerCase().includes('processing')), true);
       await page.screenshot({ path: path.join(tmpdir(), 'arth-crm-processing-desktop.png'), fullPage: true });
       pass('CRM Processing filter includes actively running research');
     } finally { await prisma.report.delete({ where: { id: processing.id } }); }
@@ -186,10 +202,8 @@ try {
   } finally { await browser.close(); }
   const outcome = await call(`/api/leads/${first.id}`, { method: 'PATCH', jar: staff, body: { salesStatus: 'converted' } });
   assert.equal(outcome.status, 200); assert.equal((await prisma.lead.findUnique({ where: { id: report.leadId } })).salesStatus, 'converted'); pass('Staff-confirmed sales outcome persists');
-  const payload = JSON.stringify({ type: 'email.delivered', created_at: new Date().toISOString(), data: { email_id: mail[0].id } });
-  const eventId = `msg_${randomUUID()}`, timestamp = String(Math.floor(Date.now() / 1000));
-  const signature = createHmac('sha256', Buffer.from(process.env.RESEND_WEBHOOK_SECRET.slice(6), 'base64')).update(`${eventId}.${timestamp}.${payload}`).digest('base64');
-  const delivered = await fetch(base + '/api/webhooks/resend', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json', 'svix-id': eventId, 'svix-timestamp': timestamp, 'svix-signature': `v1,${signature}` } });
+  const payload = JSON.stringify({ type: 'email.delivered', data: { email_id: mail[0].id } });
+  const delivered = await webhook('email.delivered', mail[0].id);
   assert.equal(delivered.status, 200); assert.equal((await prisma.report.findUnique({ where: { id: first.id } })).deliveryStatus, 'delivered'); pass('Signed delivery webhook updates acceptance separately');
   const badWebhook = await fetch(base + '/api/webhooks/resend', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' } });
   assert.equal(badWebhook.status, 400); pass('Unsigned delivery webhook rejected');
