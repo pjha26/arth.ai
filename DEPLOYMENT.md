@@ -79,6 +79,8 @@ Discovery uses actual Google Places business records and their website/address f
 
 ## Staging release checklist
 
+Run `npm run release:check` for a secret-free configuration checklist, or `npm run release:check:live` for read-only database migration-history, Redis PING, Drive folder/permission, model-metadata, and sender-domain checks. The latter does not migrate data, upload files, generate model output, or send email. Results stay in ignored `.data/release-check.json`. Metadata failures are unverified, not invented success; restricted provider keys can require manual checks. This command never approves production release: backup/schema-copy verification, designated-recipient delivery/storage tests, independent evaluation, and agreed real-provider workload measurements remain manual gates.
+
 Use designated test recipients and controlled company sites. First check staff login/logout and anonymous rejection of CRM, deletion, retry, PDF, stream, and chat routes. Check that a prospect link cannot access another report and that expired links fail.
 
 Submit a controlled company with a known challenge and persona. Verify stored original excerpts, source references, report uncertainty, working private PDF, email acceptance/webhook status, chat history, and prospect-only event attribution. Repeat with an unavailable website, insufficient evidence, a Redis outage, provider quota errors, worker interruption, and a storage outage. Check recovery without duplicate generation or outreach.
@@ -86,6 +88,8 @@ Submit a controlled company with a known challenge and persona. Verify stored or
 The analytics window is 30 days in UTC. PDF-download conversion means engagement, not a sale. Staff activity is excluded. Research scores are AI assessments, not measured performance. Intent probabilities are experimental, separate from readiness, and unavailable if the scorer fails. Establish an independently labelled evaluation set before enabling sales alerts in production.
 
 Intent results are ordered by the persisted message timestamp, so delayed results and failure callbacks cannot replace a newer estimate. An unavailable scorer clears the current estimate and records `unavailable`; disabled scoring is displayed separately. Threshold crossings above 0.75 create a durable `intent-alert` event at most once per lead per 24 hours. Slack remains a best-effort notification of that recorded event. Staging enables only a deterministic scorer fixture to test attribution, alert deduplication, and outages; this does not enable the experimental model in production.
+
+Experimental fitting is explicit: `python ml/train.py --data LABELLED.csv --provenance "Collection and labelling method"`. It no longer generates labels with a paid model or overwrites the checked-in model. Output goes to ignored `.data/ml-experiments/`, with provenance/hash and clearly labelled internal-split diagnostics. Internal validation is not independent evaluation. A custom model is optional; keep scoring off until independently held-out performance and calibration justify using it over the keyword baseline.
 
 Before public release, measure queue completion time, failure rate, crawl/model cost per report, and behavior under the intended launch workload. Default limits are deliberately conservative (100 new reports/day globally; 3/hour per trusted IP or shared fallback). Adjust them from measured cost and capacity. Run a browser/device review and staging integration checks; unit tests alone do not establish production readiness.
 

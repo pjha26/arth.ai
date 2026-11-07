@@ -1,94 +1,49 @@
-import os
+"""Train an experimental model from explicitly supplied labelled data; never generates labels."""
+import argparse
+import hashlib
 import json
+from pathlib import Path
 import joblib
 import pandas as pd
-import numpy as np
-from dotenv import load_dotenv
-import google.generativeai as genai
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-
-load_dotenv(dotenv_path='../.env.local')
-
-def get_gemini_data():
-    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    
-    prompt = """
-    Generate a JSON array of 60 B2B SaaS prospect messages in a chat interface.
-    30 MUST BE HIGH INTENT (label: 1): asking about pricing, integration, onboarding, competitor vs, team size.
-    30 MUST BE LOW INTENT (label: 0): casual curiosity, one-word replies, off-topic.
-    Return ONLY a valid JSON array of objects with exactly two keys: 'message' (string) and 'label' (int 0 or 1).
-    Do not wrap in markdown or backticks.
-    """
-    
-    print("Generating data from Gemini...")
-    response = model.generate_content(prompt)
-    try:
-        text = response.text.strip()
-        if text.startswith('```json'):
-            text = text[7:]
-        elif text.startswith('```'):
-            text = text[3:]
-        if text.endswith('```'):
-            text = text[:-3]
-            
-        data = json.loads(text.strip())
-        df = pd.DataFrame(data)
-        return df
-    except Exception as e:
-        print("Failed to parse Gemini output", e)
-        print("Raw output:", response.text)
-        return pd.DataFrame(columns=["message", "label"])
-
+from evaluate import validate_dataset, metrics
 from features import extract_features
 
-def build_features_df(df):
-    features_list = []
-    np.random.seed(42)
-    for i, row in df.iterrows():
-        # High intent typically occurs later or earlier, just add noise for robustness
-        session_context = {
-            "messageIndex": np.random.randint(0, 10),
-            "minutesSinceDelivery": np.random.uniform(0, 100)
-        }
-        features = extract_features(row['message'], session_context)
-        features_list.append(features)
-        
-    X = pd.DataFrame(features_list)
-    y = df['label'].astype(int)
-    return X, y
 
-def train():
-    data_file = 'data.csv'
-    if not os.path.exists(data_file):
-        df = get_gemini_data()
-        if len(df) > 0:
-            df.to_csv(data_file, index=False)
-            print(f"Saved {len(df)} samples to {data_file}")
-        else:
-            print("No data generated.")
-            return
-    else:
-        df = pd.read_csv(data_file)
-        print(f"Loaded {len(df)} samples from {data_file}")
+DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / ".data" / "ml-experiments" / "model.pkl"
 
-    print("Extracting features...")
-    X, y = build_features_df(df)
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    print("Training Logistic Regression model...")
-    model = LogisticRegression(max_iter=1000)
-    model.fit(X_train, y_train)
-    
-    preds = model.predict(X_test)
-    acc = accuracy_score(y_test, preds)
-    print(f"Model accuracy on test set: {acc:.2f}")
-    
-    joblib.dump(model, 'model.pkl')
-    print("Model serialized to model.pkl")
+
+def train(data, output, provenance):
+    validate_dataset(data)
+    if data.label.value_counts().min() < 5:
+        raise ValueError("At least five examples per class are required even for experimental fitting")
+    if output.resolve() == Path(__file__).with_name("model.pkl").resolve():
+        raise ValueError("Do not overwrite the checked-in model before independent evaluation")
+    features = pd.DataFrame([extract_features(message) for message in data.message])
+    x_train, x_test, y_train, y_test = train_test_split(features, data.label, test_size=0.2, random_state=42, stratify=data.label)
+    model = LogisticRegression(max_iter=1000, random_state=42)
+    model.fit(x_train, y_train)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, output)
+    summary = {"samples": len(data), "provenance": provenance, "model_sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+        "internal_holdout": metrics(y_test, model.predict_proba(x_test)[:, 1]),
+        "note": "Internal split only. Run independent held-out evaluation against the keyword baseline before considering deployment. Intent scoring remains experimental."}
+    output.with_suffix(".metadata.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return summary
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data", required=True, type=Path)
+    parser.add_argument("--provenance", required=True)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    summary = train(pd.read_csv(args.data), args.output, args.provenance)
+    summary["dataset_sha256"] = hashlib.sha256(args.data.read_bytes()).hexdigest()
+    args.output.with_suffix(".metadata.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    print(json.dumps(summary, indent=2))
+
 
 if __name__ == "__main__":
-    train()
+    main()
