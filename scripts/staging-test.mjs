@@ -13,7 +13,7 @@ const children = [], streams = [];
 const hook = pathToFileURL(path.resolve('tests/fixtures/provider-hook.mjs')).href;
 await mkdir('.data/staging', { recursive: true });
 // Invalidate an old passing summary before attempting a fresh run.
-await rm('.data/staging/flow-check.json', { force: true });
+for (const name of ['flow-check', 'migration-check', 'recovery-check', 'load-check']) await rm(`.data/staging/${name}.json`, { force: true });
 
 function start(name, args, childEnv = env) {
   const log = createWriteStream(`.data/staging/${name}.log`);
