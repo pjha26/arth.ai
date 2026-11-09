@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { randomUUID, createHmac } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
 import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
 import { reconcileFollowUps } from '../worker/services/followupWorker.js';
+import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../shared/report.js';
+import { reportQualityReviewSchema } from '../shared/report-quality.js';
 import puppeteer from 'puppeteer';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -275,6 +277,37 @@ try {
         await prisma.chatMessage.delete({ where: { id: sampledMessage.id } });
       }
     }
+    const qualityPath = `/dashboard/reports/${first.id}/quality`;
+    assert.equal((await call(qualityPath, { jar: first.jar })).status, 307);
+    await page.goto(`${base}${qualityPath}`, { waitUntil: 'domcontentloaded' });
+    assert.ok(await page.evaluate(() => document.body.textContent.includes('Saved source excerpts')));
+    assert.ok(await page.evaluate(() => document.body.textContent.includes('Accounting software')));
+    await context.setDownloadBehavior({ policy: 'allow', downloadPath: artifactDir });
+    const reviewFile = path.join(artifactDir, `report-quality-${first.id}-${report.generationAttempt}.json`);
+    try {
+      await page.select('select[name="expected"]', 'generated');
+      for (const name of ['citations', 'uncertainty', 'usefulness']) await page.select(`select[name="${name}"]`, '2');
+      await page.select('select[name="criticalClaim"]', 'no');
+      await page.type('textarea[name="notes"]', 'Compared the material claims with the staged source excerpt.');
+      await page.click('button[type="submit"]:has(+ [role="status"])');
+      const review = await until(async () => {
+        try { return reportQualityReviewSchema.parse(JSON.parse(await readFile(reviewFile, 'utf8'))); }
+        catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+      }, 'Browser did not download the report quality review', 20);
+      assert.equal(review.reportId, first.id);
+      assert.equal(review.generationAttempt, report.generationAttempt);
+      assert.equal(review.actual, 'generated');
+      assert.deepEqual(review.ratings, { citations: 2, uncertainty: 2, usefulness: 2, criticalClaim: false });
+    } finally { await unlink(reviewFile).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
+    const sparse = await prisma.report.create({ data: {
+      companyId: report.companyId, leadId: report.leadId, status: 'failed', errorMessage: INSUFFICIENT_RESEARCH_EVIDENCE,
+    } });
+    try {
+      const response = await call(`/dashboard/reports/${sparse.id}/quality`, { jar: staff });
+      assert.equal(response.status, 200);
+      assert.match(await response.text(), /Insufficient evidence/);
+    } finally { await prisma.report.delete({ where: { id: sparse.id } }); }
+    pass('Staff reviews report evidence, downloads benchmark input, and can review an insufficient-evidence outcome');
     assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
     pass('Desktop/mobile completion UI distinguishes acceptance, stops terminal polling, and handles denied access');
   } finally { await browser.close(); }

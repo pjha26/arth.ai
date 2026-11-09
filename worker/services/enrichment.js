@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { createHash } from 'node:crypto';
 import { fetchPublicPage, publicUrl } from '../../shared/network.js';
+import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../../shared/report.js';
 
 export function normalizeUrl(input) {
   const url = publicUrl(input.startsWith('http') ? input : `https://${input}`);
@@ -37,7 +38,7 @@ export async function enrich(lead) {
   }).slice(0, 3);
   const extra = await Promise.allSettled(urls.map(scrapeWebsite));
   const pages = [first, ...extra.filter(r => r.status === 'fulfilled').map(r => r.value)].filter(p => p.markdown.length >= 80);
-  if (!pages.length || pages.reduce((n, p) => n + p.markdown.length, 0) < 250) throw new Error('Insufficient public website evidence to produce a report');
+  if (!pages.length || pages.reduce((n, p) => n + p.markdown.length, 0) < 250) throw new Error(INSUFFICIENT_RESEARCH_EVIDENCE);
   const sources = pages.map(p => ({ id: createHash('sha256').update(p.url).digest('hex').slice(0, 12), url: p.url,
     title: p.title || lead.companyName, excerpt: p.markdown.slice(0, 8000), retrievedAt: new Date().toISOString(), publishedAt: null }));
   return { rootDomain, companyName: lead.companyName, industry: lead.industry, employeeRange: lead.companySize,

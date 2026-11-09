@@ -436,6 +436,9 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                   <div style={{ marginTop: 8 }}>
                     <StatusPill status={selectedLead.status} /><span className="arth-label">Evidence: {selectedLead.verificationStatus} · PDF: {selectedLead.artifactStatus} · Email: {selectedLead.deliveryStatus}</span>
                   </div>
+                  {selectedLead.leadSource === 'manual' && (selectedLead.status === 'failed' || selectedLead.status === 'done' && selectedLead.verificationStatus === 'reviewed') && (
+                    <Link href={`/dashboard/reports/${selectedLead.id}/quality`} prefetch={false} className="underline">Review research quality</Link>
+                  )}
                   {isResearchActive(selectedLead.status) && (
                     <div className="arth-progress-track">
                       <motion.div className="arth-progress-fill" style={{ width: '100%' }} animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }} />

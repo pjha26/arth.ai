@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const INSUFFICIENT_RESEARCH_EVIDENCE = 'Insufficient public website evidence to produce a report';
+
 export const sourceSchema = z.object({ id: z.string(), url: z.string().url(), title: z.string(), excerpt: z.string().min(1), retrievedAt: z.string().datetime(), publishedAt: z.string().datetime().nullable() });
 const insight = { confidence: z.number().min(0).max(1), evidence: z.array(z.string()), category: z.enum(['verified', 'inferred', 'speculative']) };
 export const reportSchema = z.object({

@@ -68,6 +68,7 @@ export async function GET(request: Request) {
     ...report, companyName: report.company.name, website: report.company.domain,
     industry: report.company.industry, companySize: report.company.size,
     salesStatus: lead?.salesStatus || "new",
+    leadSource: lead?.source ?? null,
     email: lead?.email || '', fullName: lead?.fullName || '', painPoints: lead?.painPoints || '',
     intentProbability: process.env.ENABLE_INTENT_SCORING === 'true' && lead?.intentStatus === 'scored' ? lead.intentProbability : null,
     intentStatus: process.env.ENABLE_INTENT_SCORING === 'true' ? lead?.intentStatus || 'unknown' : 'disabled',

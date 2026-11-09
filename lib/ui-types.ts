@@ -15,6 +15,7 @@ export interface CRMReport extends ReportView {
   industry: string | null; companySize: string | null; createdAt: string;
   intentProbability: number | null; intentStatus: string; verificationStatus: string; artifactStatus: string; deliveryStatus: string;
   salesStatus: string;
+  leadSource: string | null;
 }
 type QualificationCounts = { total: number; qualified: number; rejected: number };
 
