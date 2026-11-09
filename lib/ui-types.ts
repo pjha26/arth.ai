@@ -16,9 +16,12 @@ export interface CRMReport extends ReportView {
   intentProbability: number | null; intentStatus: string; verificationStatus: string; artifactStatus: string; deliveryStatus: string;
   salesStatus: string;
 }
+type QualificationCounts = { total: number; qualified: number; rejected: number };
+
 export interface Analytics {
   qualification: { alerts: number; qualified: number; rejected: number };
-  sampleQualification: { total: number; qualified: number; rejected: number };
+  sampleQualification: QualificationCounts;
+  qualificationByModel: { model: string | null; alerts: QualificationCounts; samples: QualificationCounts }[];
   overview: { totalLeads: number; generated: number; failed: number; avgReportScore: number | null; mostCommonIndustry: string; topPersona: string; peakSubmissionDay: string };
   industryBreakdown: { name: string; count: number }[];
   personaPerformance: { persona: string; count: number; avgScore: number | null; conversionRate: string }[];

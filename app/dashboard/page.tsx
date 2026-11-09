@@ -960,6 +960,26 @@ export default function Dashboard() {
                 </section>
               )}
 
+              {!!analytics?.qualificationByModel?.length && (
+                <section className="arth-card" style={{ marginBottom: 24 }}>
+                  <h2 className="arth-section-title">Staff reviews by model version</h2>
+                  <p className="arth-page-sub">Last 30 days · Qualified, reviewed, and total counts for each group</p>
+                  <div className="overflow-x-auto">
+                    <table className="mt-3 w-full text-left text-sm">
+                      <thead><tr><th scope="col">Model version</th><th scope="col">Hot-lead alerts</th><th scope="col">Below-threshold samples</th></tr></thead>
+                      <tbody>{analytics.qualificationByModel.map(({ model, alerts, samples }) => (
+                        <tr key={model == null ? 'legacy' : `model:${model}`}>
+                          <th scope="row" className="py-2 pr-4 break-all">{model ?? 'Unknown version'}</th>
+                          {[alerts, samples].map((counts, index) => (
+                            <td key={index} className="py-2 pr-4">{counts.qualified} qualified · {counts.qualified + counts.rejected} of {counts.total} reviewed</td>
+                          ))}
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
               {/* Industry + Persona */}
               <div className="arth-grid-2" style={{ marginBottom: 24 }}>
                 <div className="arth-section" style={{ animation: "fadeSlideUp 0.5s ease both", animationDelay: "200ms" }}>

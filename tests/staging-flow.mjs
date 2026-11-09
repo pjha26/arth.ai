@@ -265,6 +265,9 @@ try {
         const afterSample = (await (await call('/api/analytics', { jar: staff })).json()).data;
         assert.deepEqual(afterSample.qualification, beforeSample.qualification);
         assert.deepEqual(afterSample.sampleQualification, { ...beforeSample.sampleQualification, qualified: beforeSample.sampleQualification.qualified + 1 });
+        assert.deepEqual(afterSample.qualificationByModel.find(group => group.model === 'sample-fixture'), {
+          model: 'sample-fixture', alerts: { total: 0, qualified: 0, rejected: 0 }, samples: { total: 1, qualified: 1, rejected: 0 },
+        });
         assert.equal((await prisma.reportEvent.findUniqueOrThrow({ where: { id: sample.id } })).slackStatus, null);
         pass('Staff reviews the exact sampled prospect message and sample results stay separate from hot-lead metrics');
       } finally {
