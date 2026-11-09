@@ -25,6 +25,6 @@ export interface Analytics {
 }
 export interface DiscoveryRecord {
   id: string; industry: string; region: string; status: string; createdAt: string;
-  companies?: { id: string; name: string; domain: string | null; source: string; confidenceTier: string; status: string; fitScore: number | null; fitReasons: string[] | null }[];
+  companies?: { id: string; companyId: string | null; name: string; domain: string | null; source: string; confidenceTier: string; status: string; fitScore: number | null; fitReasons: string[] | null }[];
 }
 export interface PreviewData { companyName: string; domain: string; industry: string; insights: string[]; sourceUrl: string }

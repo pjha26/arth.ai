@@ -280,6 +280,44 @@ try {
   const afterDiscovery = (await (await call('/api/analytics', { jar: staff })).json()).data;
   assert.equal(afterDiscovery.overview.totalLeads, analyticsData.overview.totalLeads);
   pass('Staff discovery researches a matched company without outreach or adding it to inbound analytics');
+  const shortlistUrl = '/api/discovery?shortlist=1';
+  const shortlistUpdate = { companyId: matched.companyId, candidateId: matched.id, shortlisted: true };
+  const updateShortlist = (jar, body) => call('/api/discovery', { method: 'PATCH', jar, body });
+  const readShortlist = async () => {
+    const response = await call(shortlistUrl, { jar: staff });
+    assert.equal(response.status, 200);
+    return (await response.json()).data;
+  };
+  assert.equal((await call(shortlistUrl, { jar: first.jar })).status, 401);
+  assert.equal((await updateShortlist(first.jar, shortlistUpdate)).status, 401);
+  assert.equal((await updateShortlist(staff, { ...shortlistUpdate, candidateId: filtered.id })).status, 404);
+  const removeUpdate = { companyId: matched.companyId, shortlisted: false };
+  assert.equal((await updateShortlist(staff, removeUpdate)).status, 200);
+  const shortlistBrowser = await puppeteer.launch({ headless: true });
+  try {
+    const context = shortlistBrowser.defaultBrowserContext();
+    await context.setCookie(...staff.split('; ').map(part => { const split = part.indexOf('='); return { name: part.slice(0, split), value: part.slice(split + 1), domain: '127.0.0.1', path: '/' }; }));
+    const page = await shortlistBrowser.newPage();
+    await page.goto(`${base}/dashboard/discover`, { waitUntil: 'domcontentloaded' });
+    const searchButton = `[data-search-id="${searchId}"]`;
+    await page.waitForSelector(searchButton, { timeout: 60000 });
+    await page.click(searchButton);
+    const addButton = 'button[aria-label="Shortlist Fixture Ledger"]:enabled';
+    await page.waitForSelector(addButton);
+    await page.click(addButton);
+    const removeButton = 'button[aria-label="Remove Fixture Ledger from shortlist"]:enabled';
+    await page.waitForSelector(removeButton);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector(removeButton);
+  } finally { await shortlistBrowser.close(); }
+  const saved = await prisma.company.findUniqueOrThrow({ where: { id: matched.companyId }, select: { shortlistedAt: true } });
+  assert.ok(saved.shortlistedAt);
+  assert.equal((await updateShortlist(staff, shortlistUpdate)).status, 200);
+  assert.deepEqual(await prisma.company.findUniqueOrThrow({ where: { id: matched.companyId }, select: { shortlistedAt: true } }), saved);
+  assert.deepEqual((await readShortlist()).filter(company => company.id === matched.companyId), [{ id: matched.companyId, name: matched.name, domain: matched.domain }]);
+  assert.equal((await updateShortlist(staff, removeUpdate)).status, 200);
+  assert.equal((await readShortlist()).some(company => company.id === matched.companyId), false);
+  pass('Staff shortlist persists eligible companies once and supports removal');
   const result = { passed: true, checkedAt: new Date().toISOString(), providers: 'simulated; no real email or paid AI calls', reportId: first.id, browserQa: { tool: 'existing Puppeteer', fallback: 'Browser plugin and Playwright unavailable', viewports: ['1365x900', '390x844'] }, checks };
   await writeFile('.data/staging/flow-check.json', JSON.stringify(result, null, 2));
   console.log(`Staging flow passed: ${checks.length} checks.`);

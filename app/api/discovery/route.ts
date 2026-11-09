@@ -13,6 +13,32 @@ const DiscoverySchema = z.object({
   signal: z.string().max(100).optional().nullable(),
 });
 
+const ShortlistSchema = z.discriminatedUnion('shortlisted', [
+  z.object({ companyId: z.string().uuid(), candidateId: z.string().cuid(), shortlisted: z.literal(true) }),
+  z.object({ companyId: z.string().uuid(), shortlisted: z.literal(false) }),
+]);
+
+export async function PATCH(request: Request) {
+  const denied = await guard(request); if (denied) return denied;
+  const input = ShortlistSchema.safeParse(await request.json().catch(() => null));
+  if (!input.success) return NextResponse.json({ success: false, message: 'Invalid shortlist update' }, { status: 400 });
+
+  const { companyId, shortlisted } = input.data;
+  if (input.data.shortlisted) {
+    const candidate = await prisma.discoveredCompany.findFirst({
+      where: { id: input.data.candidateId, companyId, status: { in: ['queued', 'researched'] }, search: { status: 'completed' } },
+      select: { id: true },
+    });
+    if (!candidate) return NextResponse.json({ success: false, message: 'Select an eligible discovery result' }, { status: 404 });
+  }
+
+  await prisma.company.updateMany({
+    where: { id: companyId, shortlistedAt: shortlisted ? null : { not: null } },
+    data: { shortlistedAt: shortlisted ? new Date() : null },
+  });
+  return NextResponse.json({ success: true });
+}
+
 export async function POST(request: Request) {
   const denied = await guard(request); if (denied) return denied;
   try {
@@ -72,6 +98,14 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const searchId = url.searchParams.get("searchId");
+
+    if (url.searchParams.get('shortlist') === '1') {
+      const companies = await prisma.company.findMany({
+        where: { shortlistedAt: { not: null } }, orderBy: [{ shortlistedAt: 'desc' }, { id: 'asc' }],
+        select: { id: true, name: true, domain: true },
+      });
+      return NextResponse.json({ success: true, data: companies }, { headers: { 'Cache-Control': 'no-store' } });
+    }
 
     if (searchId) {
       const search = await prisma.discoverySearch.findUnique({

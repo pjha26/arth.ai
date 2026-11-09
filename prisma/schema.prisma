@@ -25,6 +25,7 @@ model Company {
   fundingStage    String?
   lastAuditedAt   DateTime?
   auditCount      Int         @default(0)
+  shortlistedAt   DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   

@@ -51,6 +51,9 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [sizeMin, setSizeMin] = useState("");
   const [sizeMax, setSizeMax] = useState("");
+  const [shortlist, setShortlist] = useState<{ id: string; name: string; domain: string }[] | null>(null);
+  const [shortlistSaving, setShortlistSaving] = useState(false);
+  const [shortlistFeedback, setShortlistFeedback] = useState('');
 
   // Form State
   const [industry, setIndustry] = useState("");
@@ -69,6 +72,34 @@ export default function DiscoverPage() {
     }
   };
 
+  async function fetchShortlist() {
+    try {
+      const response = await fetch('/api/discovery?shortlist=1');
+      if (!response.ok) throw new Error('Unable to load shortlist');
+      const result = await response.json();
+      setShortlist(result.data);
+    } catch {
+      setShortlistFeedback('Unable to load the shortlist. Refresh to try again.');
+    }
+  }
+
+  async function changeShortlist(companyId: string, candidateId?: string) {
+    setShortlistSaving(true);
+    setShortlistFeedback('');
+    try {
+      const response = await fetch('/api/discovery', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId, candidateId, shortlisted: candidateId !== undefined }),
+      });
+      if (!response.ok) throw new Error('Unable to save shortlist');
+      await fetchShortlist();
+    } catch {
+      setShortlistFeedback('Unable to update the shortlist. Try again.');
+    } finally {
+      setShortlistSaving(false);
+    }
+  }
+
   const fetchActiveSearch = async (id: string) => {
     try {
       const res = await fetch(`/api/discovery?searchId=${id}`);
@@ -82,7 +113,7 @@ export default function DiscoverPage() {
   };
 
   useEffect(() => {
-    const initial = setTimeout(() => void fetchSearches(), 0);
+    const initial = setTimeout(() => { void fetchSearches(); void fetchShortlist(); }, 0);
     return () => clearTimeout(initial);
   }, []);
 
@@ -123,6 +154,8 @@ export default function DiscoverPage() {
     }
   };
 
+  const shortlistedCompanyIds = new Set(shortlist?.map(company => company.id));
+
   return (
     <div className="arth-layout">
       <Sidebar active="discover"  />
@@ -157,17 +190,29 @@ export default function DiscoverPage() {
             </form>
           </div>
 
+          <details className="arth-card" open>
+            <summary>Staff shortlist{shortlist && ` (${shortlist.length})`}</summary>
+            {shortlist?.length === 0 && <p className="arth-page-sub">Shortlist a matched company to review it later.</p>}
+            {shortlist && shortlist.length > 0 && <ul style={{ display: 'grid', gap: 8, marginTop: 8, maxHeight: 220, overflowY: 'auto' }}>
+              {shortlist.map(company => <li key={company.id} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+                <a href={`https://${company.domain}`} target="_blank" rel="noreferrer">{company.name}</a>
+                <button type="button" className="arth-btn-secondary" aria-label={`Remove ${company.name} from shortlist`} disabled={shortlistSaving} onClick={() => void changeShortlist(company.id)}>Remove</button>
+              </li>)}
+            </ul>}
+            <p role="status">{shortlistFeedback}</p>
+          </details>
+
           <div className="arth-card" style={{ flex: 1, overflowY: 'auto' }}>
              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Recent Searches</h3>
              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                {searches.map(s => (
-                 <div key={s.id} onClick={() => setActiveSearchId(s.id)} style={{ padding: 12, border: '1px solid var(--c-border)', borderRadius: 8, cursor: 'pointer', background: activeSearchId === s.id ? 'var(--c-accent-light)' : 'transparent', transition: 'background 0.2s' }}>
-                   <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-heading)' }}>{s.industry} in {s.region}</div>
-                   <div style={{ fontSize: 11, color: 'var(--c-muted)', display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                 <button type="button" key={s.id} data-search-id={s.id} onClick={() => setActiveSearchId(s.id)} style={{ textAlign: 'left', padding: 12, border: '1px solid var(--c-border)', borderRadius: 8, cursor: 'pointer', background: activeSearchId === s.id ? 'var(--c-accent-light)' : 'transparent', transition: 'background 0.2s' }}>
+                   <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--c-heading)' }}>{s.industry} in {s.region}</span>
+                   <span style={{ fontSize: 11, color: 'var(--c-muted)', display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
                      <span>{formatDistanceToNow(new Date(s.createdAt))} ago</span>
                      <span style={{ color: s.status === 'completed' ? 'var(--c-success)' : 'var(--c-accent)' }}>{s.status}</span>
-                   </div>
-                 </div>
+                   </span>
+                 </button>
                ))}
              </div>
           </div>
@@ -228,8 +273,14 @@ export default function DiscoverPage() {
                        </div>
                        
                        {company.status === 'researched' || company.status === 'queued' ? (
-                         <div style={{ marginLeft: 16 }}>
-                           <Link href="/dashboard" className="arth-icon-btn"><span className="material-symbols-outlined">analytics</span></Link>
+                         <div style={{ marginLeft: 16, display: 'grid', gap: 6 }}>
+                           <Link href="/dashboard" className="arth-icon-btn" aria-label="View reports"><span className="material-symbols-outlined">analytics</span></Link>
+                           {company.companyId && <button type="button" className="arth-btn-secondary"
+                             aria-label={`Shortlist ${company.name}`}
+                             disabled={!shortlist || shortlistSaving || shortlistedCompanyIds.has(company.companyId)}
+                             onClick={() => { if (company.companyId) void changeShortlist(company.companyId, company.id); }}>
+                             {shortlistedCompanyIds.has(company.companyId) ? 'Shortlisted' : 'Shortlist'}
+                           </button>}
                          </div>
                        ) : <div style={{ width: 44, marginLeft: 16 }} />}
                      </div>
