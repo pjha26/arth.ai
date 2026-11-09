@@ -14,6 +14,7 @@ import { processReport } from './services/pipeline.js';
 import { deliverReport, queuePendingDelivery, recoverInterruptedDeliveries } from './services/delivery.js';
 import { sendEmail, sendFollowUpEmail } from './services/emailService.js';
 import { sendSlackNotification } from './services/slack.js';
+import { reconcileIntentSlack } from './services/intentSlack.js';
 import { processFollowUp, reconcileFollowUps } from './services/followupWorker.js';
 import { processDiscoverySearch } from './services/discovery.js';
 import { checkCompanySignals } from './services/signals.js';
@@ -48,6 +49,7 @@ async function reconcile() {
     const ready = await prisma.report.findMany({ where: { status: 'done', deliveryStatus: 'pending', leadId: { not: null } }, take: 50 });
     for (const report of ready) await queuePendingDelivery(report.id, leadsQueue);
     await recoverInterruptedDeliveries(prisma);
+    await reconcileIntentSlack(prisma);
   } finally { reconciling = false; }
 }
 const timer = setInterval(() => void reconcile().catch(error => console.error('Reconciliation failed', error.message)), 60000);

@@ -8,8 +8,7 @@ import { limitRequest } from '@/lib/rateLimit';
 import { chatSchema, latestText, uiMessage, waitForFirstText } from '@/shared/chat.js';
 import { storeIntentScore, markIntentUnavailable } from '@/shared/intent.js';
 import { measureModelCall, recordModelUsage } from '@/shared/usage.js';
-import { ML_SERVICE_URL, APP_URL } from '@/lib/config';
-import { sendSlackNotification } from '@/lib/slack';
+import { ML_SERVICE_URL } from '@/lib/config';
 
 export const maxDuration = 120;
 type Context = { params: Promise<{ id: string }> };
@@ -51,8 +50,7 @@ export async function POST(request: Request, { params }: Context) {
         body: JSON.stringify({ message: userText, session_context: { messageIndex, minutesSinceDelivery: report.generatedAt ? (Date.now() - report.generatedAt.getTime()) / 60000 : 0 } }) });
       if (!response.ok) throw new Error('Scorer unavailable');
       const result = await response.json();
-      const crossing = await storeIntentScore(prisma, report.leadId, id, message.createdAt, result);
-      if (crossing) await sendSlackNotification(`Experimental intent signal for ${report.company.name}: ${(result.intent_probability * 100).toFixed(0)}%. Review before outreach: ${APP_URL}/dashboard/reports/${id}`);
+      await storeIntentScore(prisma, report.leadId, id, message.createdAt, result);
     } catch {
       await markIntentUnavailable(prisma, report.leadId, message.createdAt);
       console.warn('Intent scoring unavailable; no score was invented.');

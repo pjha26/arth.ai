@@ -63,7 +63,7 @@ try {
   await ready(58079, bridge);
   const web = start('web', ['scripts/staging-web.mjs']);
   await ready(3101, web);
-  const worker = start('worker', ['--import', hook, 'worker/bootstrap.js']);
+  const worker = start('worker', ['--import', hook, 'worker/bootstrap.js'], { ...env, SLACK_WEBHOOK_URL: 'http://127.0.0.1:58001/slack' });
   await run('flow', ['tests/staging-flow.mjs']);
   if (worker.exitCode !== null || worker.signalCode !== null) throw new Error('Main worker exited before recovery checks');
   const stopped = new Promise(resolve => worker.once('exit', resolve));

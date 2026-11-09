@@ -168,8 +168,14 @@ model ReportEvent {
   type String
   actor String
   createdAt DateTime @default(now())
+  slackStatus String?
+  slackScore Float?
+  slackDueAt DateTime? // Next attempt when pending, claim expiry when sending
+  slackAttempts Int @default(0)
+  slackError String?
   @@index([reportId, type])
   @@index([createdAt, type])
+  @@index([slackStatus, slackDueAt])
 }
 
 model ChatMessage {

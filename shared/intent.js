@@ -10,7 +10,9 @@ export async function storeIntentScore(prisma, leadId, reportId, messageAt, resu
     const crossing = result.intent_probability > 0.75 && (current.intentProbability == null || current.intentProbability <= 0.75);
     const alert = crossing && (!current.intentAlertedAt || now - current.intentAlertedAt >= 86400000);
     await tx.lead.update({ where: { id: leadId }, data: { intentProbability: result.intent_probability, intentModel: result.model_version, intentScoredAt: messageAt, intentStatus: 'scored', ...(alert ? { intentAlertedAt: now } : {}) } });
-    if (alert) await tx.reportEvent.create({ data: { reportId, actor: leadId, type: 'intent-alert' } });
+    if (alert) await tx.reportEvent.create({ data: {
+      reportId, actor: leadId, type: 'intent-alert', slackStatus: 'pending', slackScore: result.intent_probability, slackDueAt: now,
+    } });
     return alert;
   });
 }

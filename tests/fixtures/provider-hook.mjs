@@ -44,6 +44,11 @@ globalThis.fetch = async (input, init) => {
     if (body.message.includes('scoring outage')) return json({ error: 'Controlled scorer outage' }, 503);
     return json({ intent_probability: body.message.includes('pricing') ? 0.9 : 0.2, model_version: 'fixture-model', experimental: true });
   }
+  if (url.hostname === '127.0.0.1' && url.port === '58001' && url.pathname === '/slack') {
+    const { text } = await request.json();
+    await log({ provider: 'slack-fixture', text });
+    return new Response('ok');
+  }
   if (url.hostname === '127.0.0.1') return originalFetch(request);
   if (url.hostname === 'generativelanguage.googleapis.com') {
     if (process.env.ARTHAI_SCENARIO === 'quota') return json({ error: { code: 429, message: 'Controlled quota exhaustion', status: 'RESOURCE_EXHAUSTED' } }, 429);

@@ -156,6 +156,12 @@ try {
     await sendChat(first.jar, 'What is the pricing for my team?');
     await until(async () => (await prisma.lead.findUnique({ where: { id: report.leadId } })).intentProbability === 0.9, 'Second high intent not recorded');
     assert.equal(await prisma.reportEvent.count({ where: { reportId: first.id, type: 'intent-alert' } }), 1); pass('Prospect-only intent alerts are recorded once across repeated crossings');
+    await until(async () => await prisma.reportEvent.count({ where: { reportId: first.id, type: 'intent-alert', slackStatus: 'sent' } }) === 1, 'Worker did not confirm Slack delivery');
+    const events = (await readFile('.data/staging/provider-events.jsonl', 'utf8')).trim().split('\n').map(JSON.parse);
+    const alerts = events.filter(event => event.provider === 'slack-fixture' && event.text.startsWith('Experimental intent signal') && event.text.endsWith(`/dashboard/reports/${first.id}`));
+    assert.equal(alerts.length, 1);
+    assert.ok(alerts[0].text.includes(`90%. Review before outreach: ${base}/dashboard/reports/${first.id}`));
+    pass('Worker delivers one hot-lead alert to the Slack fixture with the staff report link');
     await sendChat(first.jar, 'Check scoring outage');
     await until(async () => (await prisma.lead.findUnique({ where: { id: report.leadId } })).intentStatus === 'unavailable', 'Scorer outage was hidden');
     assert.equal((await prisma.lead.findUnique({ where: { id: report.leadId } })).intentProbability, null); pass('Scorer outage records unavailable rather than retaining a current positive estimate');
