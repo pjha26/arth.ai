@@ -10,11 +10,23 @@ const fixtureText = 'Staging Research Company builds accounting software for sma
 const source = 'https://www.iana.org';
 const originalAdapter = axios.getAdapter(axios.defaults.adapter);
 axios.defaults.adapter = async config => {
-  if (new URL(config.url).origin === source && process.env.ARTHAI_SCENARIO === 'private-redirect') return { status: 302, statusText: 'Found', headers: { location: 'http://127.0.0.1/private' }, config, data: '' };
-  if (new URL(config.url).origin === source && process.env.ARTHAI_SCENARIO === 'insufficient') return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config, data: '<main>Not enough evidence.</main>' };
-  if (new URL(config.url).origin === source) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
+  const url = new URL(config.url);
+  if (url.href === 'https://places.googleapis.com/v1/places:searchText' && config.headers.get('X-Goog-Api-Key') === 'staging-places-fixture-key') {
+    if (JSON.parse(config.data).textQuery !== 'accounting software companies in Fixture City') throw new Error('Unexpected staging discovery query');
+    return { status: 200, statusText: 'OK', headers: {}, config, data: { places: [
+      { displayName: { text: 'Fixture Ledger' }, websiteUri: 'https://example.com', formattedAddress: 'Fixture City' },
+      { displayName: { text: 'Fixture Books' }, websiteUri: 'https://example.org', formattedAddress: 'Other City' },
+      { displayName: { text: 'No Website Fixture' }, formattedAddress: 'Fixture City' },
+    ] } };
+  }
+  const discoveryName = { 'example.com': 'Fixture Ledger', 'example.org': 'Fixture Books' }[url.hostname];
+  if (discoveryName) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
+    data: `<html><title>${discoveryName}</title><main><h1>${discoveryName}</h1><p>${fixtureText}</p></main></html>` };
+  if (url.origin === source && process.env.ARTHAI_SCENARIO === 'private-redirect') return { status: 302, statusText: 'Found', headers: { location: 'http://127.0.0.1/private' }, config, data: '' };
+  if (url.origin === source && process.env.ARTHAI_SCENARIO === 'insufficient') return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config, data: '<main>Not enough evidence.</main>' };
+  if (url.origin === source) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
     data: `<html><title>Staging Research Company</title><main><h1>Accounting tools</h1><p>${fixtureText}</p></main></html>` };
-  if (new URL(config.url).hostname !== '127.0.0.1') throw new Error('External Axios request blocked by staging fixtures');
+  if (url.hostname !== '127.0.0.1') throw new Error('External Axios request blocked by staging fixtures');
   return originalAdapter(config);
 };
 const json = (data, status = 200) => Response.json(data, { status });

@@ -250,6 +250,36 @@ try {
   assert.ok(measured.recordedModelCalls >= 5); assert.ok(measured.recordedInputTokens > 0);
   assert.equal(measured.cost.estimatedTotalUSD, null); assert.ok(measured.cost.unknownCostCalls > 0);
   assert.ok(measured.completionTimeMs.p50 > 0); pass('Staff operations show recorded model usage and measured timing without inventing prices');
+  const discoveryInput = { industry: 'accounting software', region: 'Fixture City' };
+  assert.equal((await call('/api/discovery', { method: 'POST', jar: first.jar, body: discoveryInput })).status, 401);
+  const discovery = await call('/api/discovery', { method: 'POST', jar: staff, body: discoveryInput });
+  assert.equal(discovery.status, 202);
+  const { searchId } = await discovery.json();
+  const search = await until(async () => {
+    const response = await call(`/api/discovery?searchId=${searchId}`, { jar: staff });
+    assert.equal(response.status, 200);
+    const { data } = await response.json();
+    assert.notEqual(data.status, 'failed', 'Worker failed to process discovery fixture');
+    return data.status === 'completed' && data;
+  }, 'Staff discovery search did not finish');
+  assert.deepEqual(search.companies.map(company => company.domain).sort(), ['example.com', 'example.org']);
+  const matched = search.companies.find(company => company.domain === 'example.com');
+  const filtered = search.companies.find(company => company.domain === 'example.org');
+  assert.ok(matched.companyId);
+  assert.equal(filtered.status, 'filtered_out');
+  assert.equal(filtered.companyId, null);
+  const discoveredReport = await until(() => prisma.report.findFirst({
+    where: { companyId: matched.companyId, status: 'done', lead: { source: 'auto_discovered' } }, include: { lead: true },
+  }), 'Discovered company did not get an internal report');
+  assert.equal(discoveredReport.lead.email, null);
+  assert.equal(discoveredReport.lead.outreachConsent, false);
+  assert.equal(discoveredReport.deliveryStatus, 'skipped');
+  assert.equal(await prisma.followUp.count({ where: { reportId: discoveredReport.id } }), 0);
+  const providerEvents = (await readFile('.data/staging/provider-events.jsonl', 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(providerEvents.some(event => event.provider === 'resend-attempt' && event.key === `report-${discoveredReport.id}`), false);
+  const afterDiscovery = (await (await call('/api/analytics', { jar: staff })).json()).data;
+  assert.equal(afterDiscovery.overview.totalLeads, analyticsData.overview.totalLeads);
+  pass('Staff discovery researches a matched company without outreach or adding it to inbound analytics');
   const result = { passed: true, checkedAt: new Date().toISOString(), providers: 'simulated; no real email or paid AI calls', reportId: first.id, browserQa: { tool: 'existing Puppeteer', fallback: 'Browser plugin and Playwright unavailable', viewports: ['1365x900', '390x844'] }, checks };
   await writeFile('.data/staging/flow-check.json', JSON.stringify(result, null, 2));
   console.log(`Staging flow passed: ${checks.length} checks.`);
