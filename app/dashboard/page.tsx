@@ -176,6 +176,7 @@ function Sidebar({ active, setActive, lastSyncedTime }: { active: string; setAct
             <span>{n.icon}</span><span>{n.label}</span>
           </button>
         ))}
+        <Link href="/dashboard/needs-review" className="arth-nav-item" prefetch={false}>Needs Review</Link>
       </nav>
       <div style={{ marginTop: "auto" }}>
         <div style={{ padding: "0 12px", marginBottom: 12 }}>

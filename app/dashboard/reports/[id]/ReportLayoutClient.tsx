@@ -47,6 +47,7 @@ function QualificationReview({ reportId, alert }: { reportId: string; alert: Rev
         </select></label>
         <label>Reason <input name="reason" defaultValue={alert.qualificationReason ?? ''} maxLength={500} required disabled={saving} /></label>
         <button type="submit" className="cr-btn-outline" disabled={saving}>{saving ? 'Saving…' : 'Save qualification'}</button>
+        <Link href="/dashboard/needs-review" prefetch={false} className="cr-btn-outline">Needs Review</Link>
       </form>
       <p role="status">{feedback}</p>
     </details>

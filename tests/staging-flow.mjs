@@ -216,12 +216,28 @@ try {
       assert.equal((await review(first.id, staff, { ...qualification, reason: ' ' })).status, 400);
       const before = (await (await call('/api/analytics', { jar: staff })).json()).data.qualification;
       const qualificationPage = `${base}/dashboard/reports/${first.id}?alert=${intentAlert.id}`;
-      await page.goto(qualificationPage, { waitUntil: 'domcontentloaded' });
+      const queueUrl = '/dashboard/needs-review';
+      assert.equal((await call(queueUrl, { jar: first.jar })).status, 307);
+      const secondReport = await prisma.report.findUniqueOrThrow({ where: { id: second.id }, select: { leadId: true } });
+      const missedAlert = await prisma.reportEvent.create({ data: {
+        reportId: second.id, actor: secondReport.leadId, type: 'intent-alert', slackStatus: 'failed', slackScore: 0.85,
+      } });
+      const alertLink = `a[href="/dashboard/reports/${first.id}?alert=${intentAlert.id}"]`;
+      try {
+        await page.click(`a[href="${queueUrl}"]`);
+        await page.waitForSelector(`a[href="/dashboard/reports/${second.id}?alert=${missedAlert.id}"]`, { timeout: 60000 });
+        await page.click(alertLink);
+        await page.waitForSelector('.cr-qualification select');
+      } finally { await prisma.reportEvent.delete({ where: { id: missedAlert.id } }); }
+      assert.equal(page.url(), qualificationPage);
       await page.select('.cr-qualification select', 'qualified');
       await page.type('.cr-qualification input', reason);
       await page.click('.cr-qualification button');
       await page.waitForFunction(() => document.querySelector('.cr-qualification [role="status"]')?.textContent === 'Qualification saved.', { timeout: 30000 });
-      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.click(`.cr-qualification a[href="${queueUrl}"]`);
+      await page.waitForFunction((queuePath, selector) => location.pathname === queuePath && document.querySelector('h1')?.textContent === 'Needs Review' && !document.querySelector(selector), { timeout: 30000 }, queueUrl, alertLink);
+      pass('Staff opens exact alerts from the review queue, including missed Slack alerts, and reviewed alerts leave it');
+      await page.goto(qualificationPage, { waitUntil: 'domcontentloaded' });
       assert.equal(await page.$eval('.cr-qualification input', input => input.value), reason);
       assert.equal(await page.$eval('.cr-qualification select', select => select.value), 'qualified');
       assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: report.leadId } })).salesStatus, 'new');
