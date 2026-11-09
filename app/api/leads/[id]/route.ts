@@ -63,7 +63,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ('qualification' in input.data) {
     const { alertId, decision, reason } = input.data.qualification;
     const updated = await prisma.reportEvent.updateMany({
-      where: { id: alertId, reportId: id, type: 'intent-alert', report: { leadId: { not: null } } },
+      where: { id: alertId, reportId: id, type: { in: ['intent-alert', 'intent-sample'] }, report: { leadId: { not: null } } },
       data: { qualificationDecision: decision, qualificationReason: reason },
     });
     if (!updated.count) return Response.json({ message: 'Intent alert not found for this report' }, { status: 404 });

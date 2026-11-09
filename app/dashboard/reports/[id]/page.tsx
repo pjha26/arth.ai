@@ -11,14 +11,19 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
   const report = await prisma.report.findUnique({
     where: { id },
     include: { company: true, events: {
-      where: { type: 'intent-alert', ...(typeof alert === 'string' ? { id: alert } : {}) },
+      where: { type: { in: ['intent-alert', 'intent-sample'] }, ...(typeof alert === 'string' ? { id: alert } : {}) },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1,
-      select: { id: true, slackScore: true, qualificationDecision: true, qualificationReason: true },
+      select: { id: true, type: true, intentScore: true, intentModel: true, intentMessageId: true, qualificationDecision: true, qualificationReason: true },
     } },
   });
 
   if (!report) return notFound();
 
   const { events, ...view } = report;
-  return <ReportLayoutClient report={view as unknown as ReportView} alert={report.leadId ? events[0] : undefined} />;
+  const review = report.leadId ? events[0] : undefined;
+  const message = review?.type === 'intent-sample' && review.intentMessageId && report.leadId ? await prisma.chatMessage.findFirst({
+    where: { id: review.intentMessageId, reportId: report.id, actor: report.leadId, role: 'user' },
+    select: { content: true },
+  }) : null;
+  return <ReportLayoutClient report={view as unknown as ReportView} alert={review && { ...review, message: message?.content ?? null }} />;
 }

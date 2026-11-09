@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { storeIntentScore, markIntentUnavailable } from '../shared/intent.js';
 import { reconcileIntentSlack } from '../worker/services/intentSlack.js';
 
-function fixture() {
-  const row = { id: 'lead', intentProbability: null, intentScoredAt: null, intentAlertedAt: null }, events = [];
+function fixture(id = 'lead') {
+  const row = { id, source: 'manual', intentProbability: null, intentScoredAt: null, intentAlertedAt: null, intentSampledAt: null }, events = [];
   const prisma = { $executeRaw: async () => {}, reportEvent: { create: async ({ data }) => events.push(data) }, lead: {
-    findUnique: async () => ({ ...row }), update: async ({ data }) => Object.assign(row, data),
+    findUnique: async () => ({ ...row }),
     updateMany: async ({ where, data }) => {
       if (row.intentScoredAt && !(row.intentScoredAt < where.OR[1].intentScoredAt.lt)) return { count: 0 };
       Object.assign(row, data); return { count: 1 };
@@ -16,28 +16,29 @@ function fixture() {
   return { row, events, prisma };
 }
 const result = probability => ({ intent_probability: probability, model_version: 'test-model', experimental: true });
+const message = (date, id = 'message') => ({ id, createdAt: new Date(date) });
 
 test('newer messages win over late model results and late failure callbacks', async () => {
   const f = fixture(), older = new Date('2026-01-01'), newer = new Date('2026-01-02');
-  await storeIntentScore(f.prisma, 'lead', 'report', newer, result(0.2));
-  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', older, result(0.95)), false);
+  await storeIntentScore(f.prisma, 'lead', 'report', message(newer), result(0.2));
+  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', message(older), result(0.95)), false);
   await markIntentUnavailable(f.prisma, 'lead', older);
   assert.equal(f.row.intentProbability, 0.2); assert.equal(f.events.length, 0);
 });
 
 test('meaningful threshold crossings are durably recorded and deduplicated for a day', async () => {
   const f = fixture();
-  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', new Date('2026-01-01'), result(0.9)), true);
-  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', new Date('2026-01-02'), result(0.1)), false);
-  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', new Date('2026-01-03'), result(0.9)), false);
+  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', message('2026-01-01'), result(0.9)), true);
+  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', message('2026-01-02'), result(0.1)), false);
+  assert.equal(await storeIntentScore(f.prisma, 'lead', 'report', message('2026-01-03'), result(0.9)), false);
   assert.equal(f.events.length, 1); assert.equal(f.events[0].actor, 'lead');
-  assert.equal(f.events[0].slackStatus, 'pending'); assert.equal(f.events[0].slackScore, 0.9);
+  assert.equal(f.events[0].slackStatus, 'pending'); assert.equal(f.events[0].intentScore, 0.9);
   assert.equal(f.row.intentStatus, 'scored'); assert.equal(f.row.intentModel, 'test-model');
 });
 
 test('an unavailable scorer clears the current estimate without erasing alert deduplication', async () => {
   const f = fixture();
-  await storeIntentScore(f.prisma, 'lead', 'report', new Date('2026-01-01'), result(0.9));
+  await storeIntentScore(f.prisma, 'lead', 'report', message('2026-01-01'), result(0.9));
   await markIntentUnavailable(f.prisma, 'lead', new Date('2026-01-02'));
   assert.equal(f.row.intentProbability, null); assert.equal(f.row.intentStatus, 'unavailable');
   assert.equal(f.row.intentModel, null); assert.ok(f.row.intentAlertedAt);
@@ -45,13 +46,36 @@ test('an unavailable scorer clears the current estimate without erasing alert de
 
 test('invalid probability or missing model version cannot create a score', async () => {
   const f = fixture();
-  for (const invalid of [result(NaN), result(2), { intent_probability: 0.9 }]) await assert.rejects(storeIntentScore(f.prisma, 'lead', 'report', new Date(), invalid), /Invalid scoring/);
+  for (const invalid of [result(NaN), result(2), { intent_probability: 0.9 }]) await assert.rejects(storeIntentScore(f.prisma, 'lead', 'report', message(new Date()), invalid), /Invalid scoring/);
   assert.equal(f.row.intentProbability, null); assert.equal(f.events.length, 0);
+});
+
+test('sampled inbound leads keep one below-threshold review with the original score and message', async () => {
+  const f = fixture('lead-9');
+  await storeIntentScore(f.prisma, f.row.id, 'report', message('2026-01-01', 'sampled-message'), result(0.75));
+  await storeIntentScore(f.prisma, f.row.id, 'another-report', message('2026-01-02'), result(0.2));
+  assert.deepEqual(f.events, [{ reportId: 'report', actor: f.row.id, type: 'intent-sample', intentScore: 0.75, intentModel: 'test-model', intentMessageId: 'sampled-message' }]);
+  assert.ok(f.row.intentSampledAt);
+  assert.equal(f.row.intentAlertedAt, null);
+  assert.equal(await storeIntentScore(f.prisma, f.row.id, 'another-report', message('2026-01-03'), result(0.9)), true);
+  assert.deepEqual(f.events.map(event => event.type), ['intent-sample', 'intent-alert']);
+});
+
+test('below-threshold reviews exclude outbound leads and leads already flagged', async () => {
+  const outbound = fixture('lead-9');
+  outbound.row.source = 'auto_discovered';
+  await storeIntentScore(outbound.prisma, outbound.row.id, 'report', message('2026-01-01'), result(0.5));
+  assert.deepEqual(outbound.events, []);
+
+  const flagged = fixture('lead-9');
+  await storeIntentScore(flagged.prisma, flagged.row.id, 'report', message('2026-01-01'), result(0.9));
+  await storeIntentScore(flagged.prisma, flagged.row.id, 'report', message('2026-01-02'), result(0.5));
+  assert.deepEqual(flagged.events.map(event => event.type), ['intent-alert']);
 });
 
 async function slackFixture(t, send) {
   const f = fixture();
-  await storeIntentScore(f.prisma, 'lead', 'report', new Date(), result(0.9));
+  await storeIntentScore(f.prisma, 'lead', 'report', message(new Date()), result(0.9));
   const alert = Object.assign(f.events[0], { id: 'event', slackAttempts: 0, report: { company: { name: 'Test <!channel> & Co' } } });
   const matches = where => alert.slackStatus === where.slackStatus
     && (!where.slackDueAt || alert.slackDueAt && alert.slackDueAt <= where.slackDueAt.lte)

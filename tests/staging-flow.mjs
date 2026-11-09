@@ -220,7 +220,7 @@ try {
       assert.equal((await call(queueUrl, { jar: first.jar })).status, 307);
       const secondReport = await prisma.report.findUniqueOrThrow({ where: { id: second.id }, select: { leadId: true } });
       const missedAlert = await prisma.reportEvent.create({ data: {
-        reportId: second.id, actor: secondReport.leadId, type: 'intent-alert', slackStatus: 'failed', slackScore: 0.85,
+        reportId: second.id, actor: secondReport.leadId, type: 'intent-alert', slackStatus: 'failed', intentScore: 0.85,
       } });
       const alertLink = `a[href="/dashboard/reports/${first.id}?alert=${intentAlert.id}"]`;
       try {
@@ -244,6 +244,33 @@ try {
       const after = (await (await call('/api/analytics', { jar: staff })).json()).data.qualification;
       assert.deepEqual(after, { ...before, qualified: before.qualified + 1 });
       pass('Staff qualifies the exact Slack alert in the browser while prospect access and sales status stay separate');
+
+      const sampledMessage = await prisma.chatMessage.create({ data: {
+        reportId: second.id, actor: secondReport.leadId, role: 'user', content: 'Can the suggested pilot support our current workload?',
+      } });
+      const sample = await prisma.reportEvent.create({ data: {
+        reportId: second.id, actor: secondReport.leadId, type: 'intent-sample', intentScore: 0.2, intentModel: 'sample-fixture', intentMessageId: sampledMessage.id,
+      } });
+      try {
+        const samplePath = `/dashboard/reports/${second.id}?alert=${sample.id}`;
+        assert.equal((await call(samplePath, { jar: second.jar })).status, 307);
+        const beforeSample = (await (await call('/api/analytics', { jar: staff })).json()).data;
+        await page.goto(`${base}${queueUrl}`, { waitUntil: 'domcontentloaded' });
+        const sampleLink = `a[href="${samplePath}"]`;
+        assert.match(await page.$eval(sampleLink, link => link.textContent), /Review sample/);
+        await page.click(sampleLink);
+        await page.waitForSelector('[aria-label="Scored prospect message"]');
+        assert.equal(await page.$eval('[aria-label="Scored prospect message"]', quote => quote.textContent), sampledMessage.content);
+        assert.equal((await review(second.id, staff, { alertId: sample.id, decision: 'qualified', reason })).status, 200);
+        const afterSample = (await (await call('/api/analytics', { jar: staff })).json()).data;
+        assert.deepEqual(afterSample.qualification, beforeSample.qualification);
+        assert.deepEqual(afterSample.sampleQualification, { ...beforeSample.sampleQualification, qualified: beforeSample.sampleQualification.qualified + 1 });
+        assert.equal((await prisma.reportEvent.findUniqueOrThrow({ where: { id: sample.id } })).slackStatus, null);
+        pass('Staff reviews the exact sampled prospect message and sample results stay separate from hot-lead metrics');
+      } finally {
+        await prisma.reportEvent.delete({ where: { id: sample.id } });
+        await prisma.chatMessage.delete({ where: { id: sampledMessage.id } });
+      }
     }
     assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
     pass('Desktop/mobile completion UI distinguishes acceptance, stops terminal polling, and handles denied access');

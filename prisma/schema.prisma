@@ -62,6 +62,7 @@ model Lead {
   intentScoredAt    DateTime?
   intentStatus      String @default("unknown")
   intentAlertedAt   DateTime?
+  intentSampledAt   DateTime?
   unsubscribed      Boolean  @default(false)
   lastFollowUpSentAt DateTime?
   followUpStage     Int      @default(0)
@@ -170,7 +171,9 @@ model ReportEvent {
   actor String
   createdAt DateTime @default(now())
   slackStatus String?
-  slackScore Float?
+  intentScore Float? @map("slackScore")
+  intentModel String?
+  intentMessageId String?
   slackDueAt DateTime? // Next attempt when pending, claim expiry when sending
   slackAttempts Int @default(0)
   slackError String?

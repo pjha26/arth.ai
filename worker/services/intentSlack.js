@@ -10,11 +10,11 @@ export async function reconcileIntentSlack(prisma) {
   const ready = { slackStatus: 'pending', slackDueAt: { lte: now } };
   const alerts = await prisma.reportEvent.findMany({
     where: ready, orderBy: { slackDueAt: 'asc' }, take: 10,
-    select: { id: true, reportId: true, slackScore: true, slackAttempts: true, report: { select: { company: { select: { name: true } } } } },
+    select: { id: true, reportId: true, intentScore: true, slackAttempts: true, report: { select: { company: { select: { name: true } } } } },
   });
   for (const alert of alerts) {
     const company = alert.report.company.name.replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character]);
-    const message = `Experimental intent signal for ${company}: ${(alert.slackScore * 100).toFixed(0)}%. Review before outreach: ${appUrl()}/dashboard/reports/${alert.reportId}?alert=${alert.id}`;
+    const message = `Experimental intent signal for ${company}: ${(alert.intentScore * 100).toFixed(0)}%. Review before outreach: ${appUrl()}/dashboard/reports/${alert.reportId}?alert=${alert.id}`;
     const claimed = await prisma.reportEvent.updateMany({
       where: { id: alert.id, ...ready, slackAttempts: alert.slackAttempts },
       data: { slackStatus: 'sending', slackDueAt: new Date(Date.now() + 10 * 60000), slackAttempts: { increment: 1 } },

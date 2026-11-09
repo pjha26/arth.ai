@@ -124,6 +124,7 @@
 .cr-qualification label:has(input) { flex: 1 1 180px; }
 .cr-qualification input, .cr-qualification select { padding: 6px 8px; color: var(--cr-text); background: var(--cr-surface); border: 1px solid var(--cr-border-strong); border-radius: 6px; min-width: 0; }
 .cr-qualification p:not(:empty) { margin-top: 6px; }
+.cr-qualification-message { margin-top: 6px; max-height: 6rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ── Main body ── */
 .cr-body {

@@ -683,6 +683,7 @@ export default function Dashboard() {
   const peakDay = analytics?.overview?.peakSubmissionDay || "N/A";
   const qualification = analytics?.qualification;
   const reviewedAlerts = (qualification?.qualified ?? 0) + (qualification?.rejected ?? 0);
+  const sampleQualification = analytics?.sampleQualification;
 
   const sparkBlue = analytics?.sparks?.leads || [];
   const sparkGreen = analytics?.sparks?.generated || [];
@@ -948,6 +949,14 @@ export default function Dashboard() {
                   <p className="arth-page-sub">Last 30 days · {reviewedAlerts} of {qualification.alerts} alerts reviewed</p>
                   <p>{qualification.qualified} qualified · {qualification.rejected} rejected</p>
                   <p>{reviewedAlerts ? `${Math.round(100 * qualification.qualified / reviewedAlerts)}% of reviewed alerts qualified` : 'No reviewed alerts yet'}</p>
+                </section>
+              )}
+
+              {sampleQualification && (
+                <section className="arth-card" style={{ marginBottom: 24 }}>
+                  <h2 className="arth-section-title">Below-threshold chat sample</h2>
+                  <p className="arth-page-sub">Last 30 days · {sampleQualification.qualified + sampleQualification.rejected} of {sampleQualification.total} samples reviewed</p>
+                  <p>{sampleQualification.qualified} qualified · {sampleQualification.rejected} rejected</p>
                 </section>
               )}
 

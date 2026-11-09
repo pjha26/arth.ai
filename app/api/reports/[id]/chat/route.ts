@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: Context) {
         body: JSON.stringify({ message: userText, session_context: { messageIndex, minutesSinceDelivery: report.generatedAt ? (Date.now() - report.generatedAt.getTime()) / 60000 : 0 } }) });
       if (!response.ok) throw new Error('Scorer unavailable');
       const result = await response.json();
-      await storeIntentScore(prisma, report.leadId, id, message.createdAt, result);
+      await storeIntentScore(prisma, report.leadId, id, message, result);
     } catch {
       await markIntentUnavailable(prisma, report.leadId, message.createdAt);
       console.warn('Intent scoring unavailable; no score was invented.');

@@ -14,14 +14,14 @@ export default async function NeedsReviewPage({ searchParams }: { searchParams: 
   const [date, id] = cursor.success ? cursor.data : [];
   const alerts = await prisma.reportEvent.findMany({
     where: {
-      type: 'intent-alert',
+      type: { in: ['intent-alert', 'intent-sample'] },
       qualificationDecision: null,
       report: { lead: { source: 'manual' } },
       ...(date && id ? { OR: [{ createdAt: { gt: new Date(date) } }, { createdAt: new Date(date), id: { gt: id } }] } : {}),
     },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: pageSize + 1,
-    select: { id: true, reportId: true, createdAt: true, slackScore: true, report: { select: { company: { select: { name: true } } } } },
+    select: { id: true, reportId: true, createdAt: true, type: true, intentScore: true, report: { select: { company: { select: { name: true } } } } },
   });
   const page = alerts.slice(0, pageSize);
   const lastAlert = page.at(-1);
@@ -33,7 +33,7 @@ export default async function NeedsReviewPage({ searchParams }: { searchParams: 
     <main className="mx-auto max-w-3xl px-6 py-12">
       <Link href="/dashboard" className="underline">Back to CRM</Link>
       <h1 className="mt-5 text-3xl font-semibold">Needs Review</h1>
-      <p className="mt-2">Review inbound intent alerts and record a qualification decision. Oldest alerts appear first.</p>
+      <p className="mt-2">Review hot-lead alerts and sampled chats. Oldest items appear first.</p>
       {page.length ? (
         <ul className="mt-6 divide-y divide-current/20 rounded-lg border border-current/20 px-4">
           {page.map(alert => (
@@ -41,21 +41,21 @@ export default async function NeedsReviewPage({ searchParams }: { searchParams: 
               <div>
                 <h2 className="font-semibold">{alert.report.company.name}</h2>
                 <p className="text-sm">
-                  <time dateTime={alert.createdAt.toISOString()}>{dateFormat.format(alert.createdAt)} UTC</time>
-                  {alert.slackScore != null && ` · ${Math.round(alert.slackScore * 100)}% experimental intent`}
+                  {alert.type === 'intent-sample' ? 'Below-threshold sample' : 'Hot-lead alert'} · <time dateTime={alert.createdAt.toISOString()}>{dateFormat.format(alert.createdAt)} UTC</time>
+                  {alert.intentScore != null && ` · ${Math.round(alert.intentScore * 100)}% experimental intent`}
                 </p>
               </div>
               <Link href={`/dashboard/reports/${alert.reportId}?alert=${alert.id}`} prefetch={false} className="underline">
-                Review alert<span className="sr-only"> for {alert.report.company.name}</span>
+                {alert.type === 'intent-sample' ? 'Review sample' : 'Review alert'}<span className="sr-only"> for {alert.report.company.name}</span>
               </Link>
             </li>
           ))}
         </ul>
-      ) : <p className="mt-6">{cursor.success ? 'No more alerts on this page.' : 'No inbound alerts are waiting for review.'}</p>}
+      ) : <p className="mt-6">{cursor.success ? 'No more items on this page.' : 'No inbound items are waiting for review.'}</p>}
       {(cursor.success || next) && (
         <nav className="mt-6 flex gap-6" aria-label="Review queue pages">
-          {cursor.success && <Link href="/dashboard/needs-review" className="underline">Oldest alerts</Link>}
-          {next && <Link href={`/dashboard/needs-review?${next}`} className="underline">More alerts</Link>}
+          {cursor.success && <Link href="/dashboard/needs-review" className="underline">Oldest items</Link>}
+          {next && <Link href={`/dashboard/needs-review?${next}`} className="underline">More items</Link>}
         </nav>
       )}
     </main>

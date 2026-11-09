@@ -6,7 +6,10 @@ import { useState, type FormEvent } from "react";
 import ReportChatUI from "./ReportChatUI";
 import "./report-chat.css";
 
-type ReviewableAlert = { id: string; slackScore: number | null; qualificationDecision: string | null; qualificationReason: string | null };
+type ReviewableAlert = {
+  id: string; type: string; intentScore: number | null; intentModel: string | null; message: string | null;
+  qualificationDecision: string | null; qualificationReason: string | null;
+};
 
 function QualificationReview({ reportId, alert }: { reportId: string; alert: ReviewableAlert }) {
   const [savedDecision, setSavedDecision] = useState(alert.qualificationDecision);
@@ -38,7 +41,9 @@ function QualificationReview({ reportId, alert }: { reportId: string; alert: Rev
 
   return (
     <details className="cr-qualification" open={!alert.qualificationDecision}>
-      <summary>Lead qualification · {savedDecision ?? 'Awaiting review'}{alert.slackScore == null ? '' : ` · ${Math.round(alert.slackScore * 100)}% experimental intent`}</summary>
+      <summary>{alert.type === 'intent-sample' ? 'Below-threshold sample' : 'Lead qualification'} · {savedDecision ?? 'Awaiting review'}{alert.intentScore == null ? '' : ` · ${Math.round(alert.intentScore * 100)}% experimental intent`}</summary>
+      {alert.intentModel && <p>Model {alert.intentModel}</p>}
+      {alert.message && <blockquote className="cr-qualification-message" aria-label="Scored prospect message">{alert.message}</blockquote>}
       <form onSubmit={save}>
         <label>Decision <select name="decision" defaultValue={alert.qualificationDecision ?? ''} required disabled={saving}>
           <option value="" disabled>Select a decision</option>
