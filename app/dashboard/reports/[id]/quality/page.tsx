@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaff } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { INSUFFICIENT_RESEARCH_EVIDENCE } from '@/shared/report.js';
+import { INSUFFICIENT_RESEARCH_EVIDENCE, reportSchema } from '@/shared/report.js';
 import ReviewForm from './ReviewForm';
 
 export default async function ReportQualityPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +21,8 @@ export default async function ReportQualityPage({ params }: { params: Promise<{ 
     : report.errorMessage === INSUFFICIENT_RESEARCH_EVIDENCE ? 'insufficient-evidence' : 'failed';
   const reportContent = report.insights && typeof report.insights === 'object' && !Array.isArray(report.insights)
     ? Object.fromEntries(Object.entries(report.insights).filter(([key]) => key !== 'sources')) : report.insights;
+  const parsedReport = reportSchema.safeParse(report.insights);
+  const listedClaims = parsedReport.success ? parsedReport.data.claims : [];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -53,7 +55,7 @@ export default async function ReportQualityPage({ params }: { params: Promise<{ 
           </section>
         </>
       )}
-      <ReviewForm reportId={id} generationAttempt={report.generationAttempt} actual={actual} />
+      <ReviewForm reportId={id} generationAttempt={report.generationAttempt} actual={actual} listedClaims={listedClaims} />
     </main>
   );
 }

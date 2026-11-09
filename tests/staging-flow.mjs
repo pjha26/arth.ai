@@ -287,7 +287,11 @@ try {
     try {
       await page.select('select[name="expected"]', 'generated');
       for (const name of ['citations', 'uncertainty', 'usefulness']) await page.select(`select[name="${name}"]`, '2');
-      await page.select('select[name="criticalClaim"]', 'no');
+      await page.select('select[name="listed-0-verdict"]', 'supported');
+      await page.select('select[name="listed-0-citation"]', 'company');
+      await page.click('button[name="addClaim"]');
+      await page.type('textarea[name="added-0-text"]', 'The company employs 500 people.');
+      await page.select('select[name="added-0-verdict"]', 'unsupported');
       await page.type('textarea[name="notes"]', 'Compared the material claims with the staged source excerpt.');
       await page.click('button[type="submit"]:has(+ [role="status"])');
       const review = await until(async () => {
@@ -297,7 +301,12 @@ try {
       assert.equal(review.reportId, first.id);
       assert.equal(review.generationAttempt, report.generationAttempt);
       assert.equal(review.actual, 'generated');
-      assert.deepEqual(review.ratings, { citations: 2, uncertainty: 2, usefulness: 2, criticalClaim: false });
+      assert.equal(review.version, 2);
+      assert.deepEqual(review.ratings, { citations: 2, uncertainty: 2, usefulness: 2 });
+      assert.deepEqual(review.claims, [
+        { text: report.insights.claims[0].text, verdict: 'supported', citation: 'company' },
+        { text: 'The company employs 500 people.', verdict: 'unsupported', citation: 'none' },
+      ]);
     } finally { await unlink(reviewFile).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
     const sparse = await prisma.report.create({ data: {
       companyId: report.companyId, leadId: report.leadId, status: 'failed', errorMessage: INSUFFICIENT_RESEARCH_EVIDENCE,
@@ -307,7 +316,7 @@ try {
       assert.equal(response.status, 200);
       assert.match(await response.text(), /Insufficient evidence/);
     } finally { await prisma.report.delete({ where: { id: sparse.id } }); }
-    pass('Staff reviews report evidence, downloads benchmark input, and can review an insufficient-evidence outcome');
+    pass('Staff reviews listed and uncited claims, downloads benchmark input, and can review an insufficient-evidence outcome');
     assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
     pass('Desktop/mobile completion UI distinguishes acceptance, stops terminal polling, and handles denied access');
   } finally { await browser.close(); }
