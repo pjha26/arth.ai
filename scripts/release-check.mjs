@@ -2,7 +2,7 @@ import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
-import { configurationChecks } from '../shared/readiness.js';
+import { configurationChecks, hotLeadConfigurationChecks, intentScorerHealthy } from '../shared/readiness.js';
 import { reportDrive } from '../shared/storage.js';
 
 let files = {};
@@ -13,10 +13,17 @@ for (const name of ['.env', '.env.local']) {
 const env = { ...files, ...process.env };
 Object.assign(process.env, env);
 const live = process.argv.includes('--live');
+const hotLeads = process.argv.includes('--hot-leads');
 const checks = configurationChecks(env);
+if (hotLeads) checks.push(...hotLeadConfigurationChecks(env));
 const configurationReady = checks.every(check => check.status === 'pass');
 const note = (name, status, message) => checks.push({ name, status, note: message });
 if (live) {
+  if (hotLeads) {
+    const configured = checks.some(check => check.name === 'intent-scorer-url' && check.status === 'pass');
+    const healthy = configured && await intentScorerHealthy(env.ML_SERVICE_URL);
+    note('intent-scorer-health', healthy ? 'pass' : 'unverified', 'GET /health checks whether the scorer has a model loaded. No scoring request or Slack message was sent.');
+  }
   let prisma;
   try {
     const url = new URL(env.DATABASE_URL);
@@ -68,8 +75,8 @@ if (live) {
 }
 const result = { checkedAt: new Date().toISOString(), mode: live ? 'read-only-service-checks' : 'configuration-only', checks,
   configurationReady, checksPassed: checks.every(check => check.status === 'pass'), productionReleaseApproved: false,
-  manualReleaseGates: ['Back up and validate a copy of the actual database', 'Designated-recipient live report, private storage, and delivery test', 'Independent labelled model/report-quality evaluation', 'Agreed real-provider workload and cost measurement'] };
+  manualReleaseGates: ['Back up and validate a copy of the actual database', 'Designated-recipient live report, private storage, and delivery test', ...(hotLeads ? ['Controlled prospect chat, test Slack channel delivery, and staff qualification'] : []), 'Independent labelled model/report-quality evaluation', 'Agreed real-provider workload and cost measurement'] };
 await mkdir('.data', { recursive: true }); await writeFile('.data/release-check.json', JSON.stringify(result, null, 2));
 for (const check of checks) console.log(`${check.status.toUpperCase()} ${check.name}`);
-console.log('Saved private .data/release-check.json. No production approval, migrations, email, or model generation performed.');
+console.log('Saved private .data/release-check.json. No migrations, email, Slack posts, or model generation performed.');
 if (!result.checksPassed) process.exitCode = 1;

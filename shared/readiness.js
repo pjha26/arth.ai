@@ -19,6 +19,32 @@ export function configurationChecks(env) {
   return checks;
 }
 
+export function hotLeadConfigurationChecks(env) {
+  const check = (name, valid) => ({ name, status: valid ? 'pass' : 'fail' });
+  function serviceUrl(value, protocols) {
+    try {
+      const url = new URL(value);
+      return protocols.includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash ? url : null;
+    } catch { return null; }
+  }
+  const scorer = serviceUrl(env.ML_SERVICE_URL, ['http:', 'https:']);
+  const webhook = serviceUrl(env.SLACK_WEBHOOK_URL, ['https:']);
+  return [
+    check('intent-scoring-enabled', env.ENABLE_INTENT_SCORING === 'true'),
+    check('intent-scorer-url', !!scorer && !env.ML_SERVICE_URL.endsWith('/')),
+    check('slack-webhook-config', !!webhook && webhook.pathname !== '/'),
+  ];
+}
+
+export async function intentScorerHealthy(url) {
+  try {
+    const response = await fetch(`${url}/health`, { redirect: 'error', signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.status === 'ok' && typeof data.model_version === 'string' && !!data.model_version.trim() && data.experimental === true;
+  } catch { return false; }
+}
+
 export function assertWorkerConfiguration(env) {
   const required = ['DATABASE_URL', 'DIRECT_URL', 'UPSTASH_REDIS_URL'];
   const errors = required.filter(name => !env[name]);
