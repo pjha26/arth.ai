@@ -117,6 +117,14 @@
 }
 .cr-btn-gold:hover { opacity: .9; transform: translateY(-1px); }
 
+.cr-qualification { padding: 10px 20px; border-bottom: 1px solid var(--cr-border); background: var(--cr-surface); font-size: 13px; }
+.cr-qualification summary { cursor: pointer; font-weight: 500; }
+.cr-qualification form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 8px; }
+.cr-qualification label { display: grid; gap: 4px; }
+.cr-qualification label:has(input) { flex: 1 1 180px; }
+.cr-qualification input, .cr-qualification select { padding: 6px 8px; color: var(--cr-text); background: var(--cr-surface); border: 1px solid var(--cr-border-strong); border-radius: 6px; min-width: 0; }
+.cr-qualification p:not(:empty) { margin-top: 6px; }
+
 /* ── Main body ── */
 .cr-body {
   display: flex;

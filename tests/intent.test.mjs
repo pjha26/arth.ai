@@ -82,7 +82,7 @@ test('concurrent workers post a saved crossing once with the original score and 
   const [url, request] = f.webhook.mock.calls[0].arguments;
   assert.equal(url, 'https://slack.example.invalid/hook');
   assert.equal(request.method, 'POST');
-  assert.equal(JSON.parse(request.body).text, 'Experimental intent signal for Test &lt;!channel&gt; &amp; Co: 90%. Review before outreach: https://crm.example.invalid/dashboard/reports/report');
+  assert.equal(JSON.parse(request.body).text, 'Experimental intent signal for Test &lt;!channel&gt; &amp; Co: 90%. Review before outreach: https://crm.example.invalid/dashboard/reports/report?alert=event');
   assert.equal(f.alert.slackStatus, 'sent');
   assert.equal(f.row.intentStatus, 'unavailable');
 });

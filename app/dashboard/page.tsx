@@ -680,6 +680,8 @@ export default function Dashboard() {
   const topIndustry = analytics?.overview?.mostCommonIndustry || "N/A";
   const topPersona = analytics?.overview?.topPersona || "General";
   const peakDay = analytics?.overview?.peakSubmissionDay || "N/A";
+  const qualification = analytics?.qualification;
+  const reviewedAlerts = (qualification?.qualified ?? 0) + (qualification?.rejected ?? 0);
 
   const sparkBlue = analytics?.sparks?.leads || [];
   const sparkGreen = analytics?.sparks?.generated || [];
@@ -938,6 +940,15 @@ export default function Dashboard() {
                 <StripItem icon="👤" label="Top Persona"        value={topPersona}  delay={160} />
                 <StripItem icon="📅" label="Peak Submission Day" value={peakDay}    delay={220} />
               </div>
+
+              {qualification && (
+                <section className="arth-card" style={{ marginBottom: 24 }}>
+                  <h2 className="arth-section-title">Inbound alert qualification</h2>
+                  <p className="arth-page-sub">Last 30 days · {reviewedAlerts} of {qualification.alerts} alerts reviewed</p>
+                  <p>{qualification.qualified} qualified · {qualification.rejected} rejected</p>
+                  <p>{reviewedAlerts ? `${Math.round(100 * qualification.qualified / reviewedAlerts)}% of reviewed alerts qualified` : 'No reviewed alerts yet'}</p>
+                </section>
+              )}
 
               {/* Industry + Persona */}
               <div className="arth-grid-2" style={{ marginBottom: 24 }}>

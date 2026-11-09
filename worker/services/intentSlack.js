@@ -14,7 +14,7 @@ export async function reconcileIntentSlack(prisma) {
   });
   for (const alert of alerts) {
     const company = alert.report.company.name.replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character]);
-    const message = `Experimental intent signal for ${company}: ${(alert.slackScore * 100).toFixed(0)}%. Review before outreach: ${appUrl()}/dashboard/reports/${alert.reportId}`;
+    const message = `Experimental intent signal for ${company}: ${(alert.slackScore * 100).toFixed(0)}%. Review before outreach: ${appUrl()}/dashboard/reports/${alert.reportId}?alert=${alert.id}`;
     const claimed = await prisma.reportEvent.updateMany({
       where: { id: alert.id, ...ready, slackAttempts: alert.slackAttempts },
       data: { slackStatus: 'sending', slackDueAt: new Date(Date.now() + 10 * 60000), slackAttempts: { increment: 1 } },

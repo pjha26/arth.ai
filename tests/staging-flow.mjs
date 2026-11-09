@@ -146,6 +146,7 @@ try {
   await sendChat(first.jar);
   const history = await call(`/api/reports/${first.id}/chat`, { jar: first.jar });
   const messages = await history.json(); assert.equal(messages.length, 2); assert.ok(messages.every(message => message.parts[0].text)); pass('Prospect chat streams and durable history reloads');
+  let intentAlert;
   if (process.env.ENABLE_INTENT_SCORING === 'true') {
     await until(async () => (await prisma.lead.findUnique({ where: { id: report.leadId } })).intentStatus === 'scored', 'Intent was not scored');
     await sendChat(first.jar, 'What is the pricing?');
@@ -158,9 +159,11 @@ try {
     assert.equal(await prisma.reportEvent.count({ where: { reportId: first.id, type: 'intent-alert' } }), 1); pass('Prospect-only intent alerts are recorded once across repeated crossings');
     await until(async () => await prisma.reportEvent.count({ where: { reportId: first.id, type: 'intent-alert', slackStatus: 'sent' } }) === 1, 'Worker did not confirm Slack delivery');
     const events = (await readFile('.data/staging/provider-events.jsonl', 'utf8')).trim().split('\n').map(JSON.parse);
-    const alerts = events.filter(event => event.provider === 'slack-fixture' && event.text.startsWith('Experimental intent signal') && event.text.endsWith(`/dashboard/reports/${first.id}`));
+    intentAlert = await prisma.reportEvent.findFirstOrThrow({ where: { reportId: first.id, type: 'intent-alert' } });
+    const reportLink = `${base}/dashboard/reports/${first.id}?alert=${intentAlert.id}`;
+    const alerts = events.filter(event => event.provider === 'slack-fixture' && event.text.startsWith('Experimental intent signal') && event.text.includes(`/dashboard/reports/${first.id}?`));
     assert.equal(alerts.length, 1);
-    assert.ok(alerts[0].text.includes(`90%. Review before outreach: ${base}/dashboard/reports/${first.id}`));
+    assert.ok(alerts[0].text.includes(`90%. Review before outreach: ${reportLink}`));
     pass('Worker delivers one hot-lead alert to the Slack fixture with the staff report link');
     await sendChat(first.jar, 'Check scoring outage');
     await until(async () => (await prisma.lead.findUnique({ where: { id: report.leadId } })).intentStatus === 'unavailable', 'Scorer outage was hidden');
@@ -204,6 +207,28 @@ try {
       await page.screenshot({ path: path.join(artifactDir, 'arth-crm-processing-desktop.png'), fullPage: true });
       pass('CRM Processing filter includes actively running research');
     } finally { await prisma.report.delete({ where: { id: processing.id } }); }
+    if (intentAlert) {
+      const reason = 'Confirmed need and timing with the prospect.';
+      const qualification = { alertId: intentAlert.id, decision: 'qualified', reason };
+      const review = (id, jar, body) => call(`/api/leads/${id}`, { method: 'PATCH', jar, body: { qualification: body } });
+      assert.equal((await review(first.id, first.jar, qualification)).status, 401);
+      assert.equal((await review(second.id, staff, qualification)).status, 404);
+      assert.equal((await review(first.id, staff, { ...qualification, reason: ' ' })).status, 400);
+      const before = (await (await call('/api/analytics', { jar: staff })).json()).data.qualification;
+      const qualificationPage = `${base}/dashboard/reports/${first.id}?alert=${intentAlert.id}`;
+      await page.goto(qualificationPage, { waitUntil: 'domcontentloaded' });
+      await page.select('.cr-qualification select', 'qualified');
+      await page.type('.cr-qualification input', reason);
+      await page.click('.cr-qualification button');
+      await page.waitForFunction(() => document.querySelector('.cr-qualification [role="status"]')?.textContent === 'Qualification saved.', { timeout: 30000 });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      assert.equal(await page.$eval('.cr-qualification input', input => input.value), reason);
+      assert.equal(await page.$eval('.cr-qualification select', select => select.value), 'qualified');
+      assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: report.leadId } })).salesStatus, 'new');
+      const after = (await (await call('/api/analytics', { jar: staff })).json()).data.qualification;
+      assert.deepEqual(after, { ...before, qualified: before.qualified + 1 });
+      pass('Staff qualifies the exact Slack alert in the browser while prospect access and sales status stay separate');
+    }
     assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
     pass('Desktop/mobile completion UI distinguishes acceptance, stops terminal polling, and handles denied access');
   } finally { await browser.close(); }
@@ -215,7 +240,10 @@ try {
   const badWebhook = await fetch(base + '/api/webhooks/resend', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' } });
   assert.equal(badWebhook.status, 400); pass('Unsigned delivery webhook rejected');
   const analytics = await call('/api/analytics', { jar: staff }); assert.equal(analytics.status, 200);
-  assert.ok((await analytics.json()).data.overview.totalLeads >= 2); pass('CRM analytics read real staging records');
+  const analyticsData = (await analytics.json()).data;
+  assert.ok(analyticsData.overview.totalLeads >= 2);
+  if (intentAlert) assert.ok(analyticsData.qualification.qualified >= 1);
+  pass('CRM analytics read real staging records and reviewed inbound alerts');
   const operations = await call('/api/operations', { jar: staff });
   assert.equal(operations.status, 200);
   const measured = await operations.json();

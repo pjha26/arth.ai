@@ -53,8 +53,22 @@ export async function GET(
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guard(request); if (denied) return denied;
   const { id } = await params;
-  const input = z.object({ salesStatus: z.enum(['new', 'contacted', 'engaged', 'converted', 'rejected']) }).safeParse(await request.json().catch(() => null));
-  if (!input.success) return Response.json({ message: 'Invalid sales status' }, { status: 400 });
+  const input = z.union([
+    z.object({ qualification: z.object({
+      alertId: z.string().uuid(), decision: z.enum(['qualified', 'rejected']), reason: z.string().trim().min(1).max(500),
+    }) }).strict(),
+    z.object({ salesStatus: z.enum(['new', 'contacted', 'engaged', 'converted', 'rejected']) }),
+  ]).safeParse(await request.json().catch(() => null));
+  if (!input.success) return Response.json({ message: 'Invalid sales or qualification update' }, { status: 400 });
+  if ('qualification' in input.data) {
+    const { alertId, decision, reason } = input.data.qualification;
+    const updated = await prisma.reportEvent.updateMany({
+      where: { id: alertId, reportId: id, type: 'intent-alert', report: { leadId: { not: null } } },
+      data: { qualificationDecision: decision, qualificationReason: reason },
+    });
+    if (!updated.count) return Response.json({ message: 'Intent alert not found for this report' }, { status: 404 });
+    return Response.json({ success: true });
+  }
   const report = await prisma.report.findUnique({ where: { id }, select: { leadId: true } });
   if (!report?.leadId) return Response.json({ message: 'Original lead is not linked' }, { status: 409 });
   await prisma.$transaction([

@@ -173,6 +173,8 @@ model ReportEvent {
   slackDueAt DateTime? // Next attempt when pending, claim expiry when sending
   slackAttempts Int @default(0)
   slackError String?
+  qualificationDecision String?
+  qualificationReason String?
   @@index([reportId, type])
   @@index([createdAt, type])
   @@index([slackStatus, slackDueAt])

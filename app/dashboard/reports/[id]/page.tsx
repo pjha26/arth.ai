@@ -4,17 +4,21 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import ReportLayoutClient from "./ReportLayoutClient";
 
-export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
+export default async function ReportPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ alert?: string | string[] }> }) {
   await requireStaff();
-  const params = await props.params;
-  const { id } = params;
+  const [{ id }, { alert }] = await Promise.all([props.params, props.searchParams]);
 
   const report = await prisma.report.findUnique({
     where: { id },
-    include: { company: true }
+    include: { company: true, events: {
+      where: { type: 'intent-alert', ...(typeof alert === 'string' ? { id: alert } : {}) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1,
+      select: { id: true, slackScore: true, qualificationDecision: true, qualificationReason: true },
+    } },
   });
 
   if (!report) return notFound();
 
-  return <ReportLayoutClient report={report as unknown as ReportView} />;
+  const { events, ...view } = report;
+  return <ReportLayoutClient report={view as unknown as ReportView} alert={report.leadId ? events[0] : undefined} />;
 }

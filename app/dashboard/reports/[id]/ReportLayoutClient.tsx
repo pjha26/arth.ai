@@ -2,11 +2,58 @@
 
 import Link from "next/link";
 import type { ReportView } from "@/lib/ui-types";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import ReportChatUI from "./ReportChatUI";
 import "./report-chat.css";
 
-export default function ReportLayoutClient({ report }: { report: ReportView }) {
+type ReviewableAlert = { id: string; slackScore: number | null; qualificationDecision: string | null; qualificationReason: string | null };
+
+function QualificationReview({ reportId, alert }: { reportId: string; alert: ReviewableAlert }) {
+  const [savedDecision, setSavedDecision] = useState(alert.qualificationDecision);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const decision = String(form.get('decision'));
+    const reason = String(form.get('reason')).trim();
+    if (!reason) { setFeedback('Enter a reason for your decision.'); return; }
+    setSaving(true);
+    setFeedback('');
+    try {
+      const response = await fetch(`/api/leads/${reportId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qualification: { alertId: alert.id, decision, reason } }),
+      });
+      if (!response.ok) throw new Error('Save failed');
+      setSavedDecision(decision);
+      setFeedback('Qualification saved.');
+    } catch {
+      setFeedback('Could not save qualification. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <details className="cr-qualification" open={!alert.qualificationDecision}>
+      <summary>Lead qualification · {savedDecision ?? 'Awaiting review'}{alert.slackScore == null ? '' : ` · ${Math.round(alert.slackScore * 100)}% experimental intent`}</summary>
+      <form onSubmit={save}>
+        <label>Decision <select name="decision" defaultValue={alert.qualificationDecision ?? ''} required disabled={saving}>
+          <option value="" disabled>Select a decision</option>
+          <option value="qualified">Qualified</option>
+          <option value="rejected">Rejected</option>
+        </select></label>
+        <label>Reason <input name="reason" defaultValue={alert.qualificationReason ?? ''} maxLength={500} required disabled={saving} /></label>
+        <button type="submit" className="cr-btn-outline" disabled={saving}>{saving ? 'Saving…' : 'Save qualification'}</button>
+      </form>
+      <p role="status">{feedback}</p>
+    </details>
+  );
+}
+
+export default function ReportLayoutClient({ report, alert }: { report: ReportView; alert?: ReviewableAlert }) {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfZoom, setPdfZoom] = useState(100);
@@ -47,6 +94,7 @@ export default function ReportLayoutClient({ report }: { report: ReportView }) {
           </div>
         </div>
 
+        {alert && <QualificationReview key={alert.id} reportId={report.id} alert={alert} />}
         {/* ── Body ── */}
         <div className="cr-body">
           {/* ── PDF Panel ── */}
