@@ -1,17 +1,17 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
+let queue: Queue | undefined;
+export function getLeadsQueue() {
+if (queue) return queue;
 const connection = new IORedis(process.env.UPSTASH_REDIS_URL!, {
-  maxRetriesPerRequest: null, // required by BullMQ
-  retryStrategy(times) {
-    return Math.min(times * 1000, 10000); // 1s to 10s backoff for Redis reconnections
-  },
-  tls: process.env.UPSTASH_REDIS_URL?.startsWith("rediss://")
-    ? { rejectUnauthorized: false }
-    : undefined,
+  maxRetriesPerRequest: 1,
+  enableOfflineQueue: false,
+  connectTimeout: 5000,
+  commandTimeout: 5000,
 });
 
-export const leadsQueue = new Queue("leads", {
+queue = new Queue("leads", {
   connection,
   defaultJobOptions: {
     attempts: 5,
@@ -23,3 +23,6 @@ export const leadsQueue = new Queue("leads", {
     removeOnFail: 200,
   },
 });
+
+return queue;
+}

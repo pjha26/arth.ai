@@ -1,15 +1,18 @@
+import { accessFor } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import LeadChatUI from "./LeadChatUI";
 import Link from "next/link";
 import ParticleBackground from "@/components/ParticleBackground";
 import CustomCursor from "@/components/CustomCursor";
 
-const prisma = new PrismaClient();
+
 
 export default async function PublicReportPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
+  const access = await accessFor(id);
+  if (!access) return notFound();
 
   const report = await prisma.report.findUnique({
     where: { id },
@@ -18,16 +21,17 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
     }
   });
 
-  if (!report) {
+  if (!report || !access.staff && access.leadId !== report.leadId) {
     return notFound();
   }
 
+  await prisma.reportEvent.create({ data: { reportId: id, type: "view", actor: access.staff ? "staff" : access.leadId } });
   const companyName = report.company?.name || "Your Company";
   
   const initialData = {
     reportId: report.id,
     companyName: companyName,
-    executiveSummary: report.aiSummary || "Your intelligence report has been generated.",
+    executiveSummary: report.aiSummary || (report.status === 'done' ? 'Your report is available for review.' : report.status === 'failed' ? 'Your request needs a review by the team.' : 'Your research request is still processing.'),
     pdfUrl: `/api/leads/${report.id}/download`,
     status: report.status
   };
@@ -46,7 +50,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
           <span className="font-['Newsreader',_serif] text-2xl font-bold tracking-tight text-[#1b1b1b]">ArthAI</span>
         </Link>
         <div className="flex items-center gap-4">
-          {report.status === "done" && (
+          {report.artifactStatus === 'ready' && report.pdfUrl && (
             <a 
               href={initialData.pdfUrl}
               download
@@ -88,8 +92,8 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
           {report.status !== "done" ? (
             <div className="flex-1 flex flex-col items-center justify-center text-[#514538] p-12">
               <span className="material-symbols-outlined text-5xl mb-4 text-[#fbba6f] animate-pulse">hourglass_empty</span>
-              <p className="font-medium text-[#1b1b1b] text-xl font-['Newsreader',_serif]">Analyzing Intent Signals...</p>
-              <p className="text-sm mt-2 opacity-80">Your report is currently processing. Chat will be enabled shortly.</p>
+              <p className="font-medium text-[#1b1b1b] text-xl font-['Newsreader',_serif]">{report.status === "failed" ? "Report could not be completed" : "Researching your company…"}</p>
+              <p className="text-sm mt-2 opacity-80">{report.status === "failed" ? "The available evidence or a required service was insufficient. Contact the team for review." : "Your report is processing. Refresh this page after generation completes."}</p>
             </div>
           ) : (
             <LeadChatUI 

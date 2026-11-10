@@ -1,15 +1,18 @@
 "use client";
 
+import ReactMarkdown from "react-markdown";
+
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LeadChatUI({ reportId, companyName }: { reportId: string, companyName: string }) {
   const [input, setInput] = useState("");
+  const transport = useMemo(() => new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` }), [reportId]);
 
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: `/api/reports/${reportId}/chat` }),
+    transport,
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -63,7 +66,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
               ArthAI is ready.
             </motion.h2>
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-base text-[#514538] max-w-md mb-10 leading-relaxed bg-white/40 p-4 rounded-2xl border border-white/50 shadow-sm">
-              I've fully analyzed the intelligence report for <strong className="text-[#845411] font-bold">{companyName}</strong>. What would you like to explore?
+              I&apos;ve fully analyzed the intelligence report for <strong className="text-[#845411] font-bold">{companyName}</strong>. What would you like to explore?
             </motion.p>
             
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
@@ -93,9 +96,7 @@ export default function LeadChatUI({ reportId, companyName }: { reportId: string
                       : 'rounded-bl-sm bg-white/90 border border-white text-[#1b1b1b]'
                   }`}
                 >
-                  {(m.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '').split('\n').map((line: string, i: number) => (
-                    <p key={i} className="mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, m.role === 'user' ? '<strong class="font-bold text-[#fbba6f]">$1</strong>' : '<strong class="font-bold text-[#845411]">$1</strong>') }} />
-                  ))}
+                  <ReactMarkdown>{m.parts?.filter((p) => p.type === "text").map((p) => p.text).join("") || ""}</ReactMarkdown>
                 </div>
               </motion.div>
             ))}

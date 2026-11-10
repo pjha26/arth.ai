@@ -17,19 +17,16 @@ export async function generatePDF(lead, enriched, report) {
   template = injectData(template, lead, enriched, report);
 
   const browser = await puppeteer.launch({
-    headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--single-process"
-    ],
+    headless: true,
+    args: ["--disable-dev-shm-usage"],
   });
 
   try {
     const page = await browser.newPage();
-    await page.setContent(template, { waitUntil: "networkidle0" });
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on("request", req => void req.abort());
+    await page.setContent(template, { waitUntil: "domcontentloaded", timeout: 10000 });
     await page.emulateMediaType("screen");
 
     const pdf = await page.pdf({
@@ -71,13 +68,7 @@ function injectData(template, lead, enriched, report) {
     }
   }
 
-  function sanitizeVerificationText(text) {
-    if (typeof text !== 'string') return text;
-    return text.replace(/^[\s~]+/, '') // strip leading ~ and spaces
-               .replace(/\bESTIMATED\b:?/ig, '') // strip ESTIMATED tag globally
-               .trim()
-               .replace(/^[\s:\-]+/, ''); // clean up any leftover colons/dashes
-  }
+  function sanitizeVerificationText(text) { return text; }
 
   const painPointsHtml = (report.painPoints || [])
     .slice(0, 3)
@@ -166,7 +157,8 @@ function injectData(template, lead, enriched, report) {
     )
     .replace(/\{\{REASON_DIGITAL\}\}/g, escapeHtml(scores.digitalReadinessReason || ""))
     .replace(/\{\{REASON_AUTOMATION\}\}/g, escapeHtml(scores.automationPotentialReason || ""))
-    .replace(/\{\{REASON_GROWTH\}\}/g, escapeHtml(scores.growthIndexReason || ""));
+    .replace(/\{\{REASON_GROWTH\}\}/g, escapeHtml(scores.growthIndexReason || ""))
+    .replace("</body>", `<section style="padding:32px;page-break-before:always;font-family:Arial;font-size:12px"><h2>Evidence and limits</h2><p>${escapeHtml(report.verificationNote || "AI assessments, not measured performance.")}</p>${(report.sources || []).map(s => `<h3>[${escapeHtml(s.id)}] ${escapeHtml(s.title)}</h3><p>${escapeHtml(s.url)}</p><p>Retrieved: ${escapeHtml(s.retrievedAt)}. Publication date: ${escapeHtml(s.publishedAt || "Not established")}</p><p>${escapeHtml(s.excerpt.slice(0,1600))}</p>`).join("")}</section></body>`);
 }
 
 function escapeHtml(str) {

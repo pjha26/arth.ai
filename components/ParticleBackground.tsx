@@ -20,7 +20,7 @@ const ParticleBackground: React.FC = () => {
     const colors = ["#fbba6f", "#845411", "#d5c3b3", "#514538", "#c4922a"];
 
     // Mouse interaction
-    let mouse = { x: -1000, y: -1000, radius: 150 };
+    const mouse = { x: -1000, y: -1000, radius: 150 };
 
     const handleMouseMove = (e: MouseEvent) => {
       mouse.x = e.clientX;

@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { deliveryCopy, shouldPollReport } from "@/shared/status.js";
 
 function SuccessContent() {
   const params  = useSearchParams();
@@ -12,10 +12,12 @@ function SuccessContent() {
 
   const [completedStages, setCompletedStages] = useState<string[]>([]);
   const [activeStage,     setActiveStage]     = useState<string | null>(null);
-  const [leadStatus,      setLeadStatus]      = useState<string>("processing");
+  const [leadStatus,      setLeadStatus]      = useState<string>(jobId ? 'processing' : 'unavailable');
   const [elapsed,         setElapsed]         = useState(0);
   const [pdfReady,        setPdfReady]        = useState(false);
-  const [emailSkipped,    setEmailSkipped]    = useState(false);
+  const [deliveryStatus, setDeliveryStatus] = useState("pending");
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const emailSkipped = deliveryStatus === "skipped";
 
   const [logo, setLogo] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
@@ -29,88 +31,72 @@ function SuccessContent() {
 
   // Dynamic Stages
   const STAGES = [
-    { label: `Analyzing ${company}'s tech stack...`,    icon: "🔍", key: "enrich"    },
-    { label: "Identifying growth signals for your industry...",       icon: "🧠", key: "ai_report" },
+    { label: `Reading ${company}'s public website...`,    icon: "🔍", key: "enrich"    },
+    { label: "Drafting and checking source-backed recommendations...", icon: "🧠", key: "ai_report" },
     { label: "Generating personalized PDF...",     icon: "📄", key: "pdf"       },
     { label: "Delivering intelligence report",     icon: "📬", key: "email"     },
   ];
 
   // Elapsed timer
   useEffect(() => {
+    if (["done", "failed", "unavailable"].includes(leadStatus)) return;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [leadStatus]);
 
-  // Real-time DB polling
+  // Poll serially and stop after both report generation and dispatch settle.
   useEffect(() => {
     if (!jobId) return;
-
-    const checkStatus = async () => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController;
+    const poll = async () => {
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      let again = true;
       try {
-        const res  = await fetch(`/api/leads/${jobId}`);
-        const data = await res.json();
-
-        if (!data.success || !data.lead) return;
-
-        const { status, stages } = data.lead;
-        setLeadStatus(status);
-        
-        // Update mirror fields
-        setLogo(data.lead.logo);
-        setDescription(data.lead.description);
-        setIndustry(data.lead.industry);
-        setCompanySize(data.lead.companySize);
-        setAiSummary(data.lead.aiSummary);
-
-        const doneKeys: string[]   = [];
-        let   latestActive: string | null = null;
-
-        stages.forEach((s: { stage: string; status: string; message?: string }) => {
-          if (s.status === "done")    doneKeys.push(s.stage);
-          if (s.status === "running") latestActive = s.stage;
-
-          // Detect sandbox email skipped
-          if (
-            s.stage === "email" &&
-            s.status === "done" &&
-            s.message?.toLowerCase().includes("skipped")
-          ) {
-            setEmailSkipped(true);
-          }
-        });
-
-        setCompletedStages(doneKeys);
-        setActiveStage(latestActive);
-
-        // PDF is ready once the 'pdf' stage is done
-        if (doneKeys.includes("pdf")) setPdfReady(true);
-
-        // If overall job is done or failed, mark all core stages complete
-        if (status === "done") {
-          setCompletedStages(["enrich", "ai_report", "pdf", "email"]);
-          setActiveStage(null);
-          setPdfReady(true);
+        const res = await fetch(`/api/leads/${jobId}`, { signal: controller.signal });
+        if (cancelled) return;
+        if ([401, 403, 404].includes(res.status)) {
+          again = false;
+          setLeadStatus('unavailable'); setStatusError('Private report access is unavailable or expired. Contact the team for a new link.'); return;
         }
-      } catch (err) {
-        console.error("[success] Polling error:", err);
+        const data = await res.json();
+        if (cancelled || !data.success || !data.lead) return;
+        const lead = data.lead;
+        setLeadStatus(lead.status); setDeliveryStatus(lead.deliveryStatus);
+        setLogo(lead.logo); setDescription(lead.description); setIndustry(lead.industry);
+        setCompanySize(lead.companySize); setAiSummary(lead.aiSummary);
+        const stages = lead.stages as { stage: string; status: string }[];
+        const completed = new Set(stages.filter(stage => stage.status === 'done' && (stage.stage !== 'email' || ['accepted', 'delivered'].includes(lead.deliveryStatus))).map(stage => stage.stage));
+        if (lead.verificationStatus === 'reviewed') { completed.add('enrich'); completed.add('ai_report'); }
+        if (lead.artifactStatus === 'ready') completed.add('pdf');
+        if (['accepted', 'delivered'].includes(lead.deliveryStatus)) completed.add('email');
+        setCompletedStages([...completed]);
+        setActiveStage(stages.filter(stage => stage.status === 'running').at(-1)?.stage || null);
+        setPdfReady(lead.artifactStatus === 'ready');
+        again = shouldPollReport(lead.status, lead.deliveryStatus);
+      } catch (error) {
+        if (!cancelled) console.warn('Report status is temporarily unavailable', error instanceof Error ? error.name : 'Error');
+      } finally {
+        clearTimeout(timeout);
+        if (!cancelled && again) timer = setTimeout(() => void poll(), 3000);
       }
     };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 3000);
-    return () => clearInterval(interval);
+    void poll();
+    return () => { cancelled = true; clearTimeout(timer); controller?.abort(); };
   }, [jobId]);
 
   // SSE connection for real-time agent thoughts
   useEffect(() => {
-    if (!jobId) return;
+    if (!jobId || ["done", "failed", "unavailable"].includes(leadStatus)) return;
 
     const eventSource = new EventSource(`/api/leads/${jobId}/stream`);
 
     eventSource.onmessage = (event) => {
       const thought = event.data;
       if (thought) {
-        setAgentThoughts((prev) => [...prev, thought]);
+        setAgentThoughts((prev) => [...prev, thought].slice(-200));
       }
     };
 
@@ -132,7 +118,7 @@ function SuccessContent() {
   }, [agentThoughts]);
 
   const allDone = leadStatus === "done";
-  const hasFailed = leadStatus === "failed";
+  const hasFailed = !jobId || ["failed", "unavailable"].includes(leadStatus);
 
   const stageStatus = (key: string) => {
     if (completedStages.includes(key)) return "done";
@@ -174,10 +160,7 @@ function SuccessContent() {
                 Your report is ready!
               </h1>
               <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                {emailSkipped
-                  ? <>Your AI intelligence report for <strong style={{ color: "var(--text-primary)" }}>{company}</strong> has been generated.</>
-                  : <>Your AI intelligence report has been delivered to <strong style={{ color: "var(--text-primary)" }}>{email}</strong>.</>
-                }
+                {deliveryCopy(deliveryStatus)}
               </p>
             </>
           ) : hasFailed ? (
@@ -187,10 +170,7 @@ function SuccessContent() {
                 Pipeline note
               </h1>
               <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                {pdfReady
-                  ? <>Email delivery was restricted, but your PDF report for <strong style={{ color: "var(--text-primary)" }}>{company}</strong> was generated successfully.</>
-                  : <>Something went wrong during processing. Please try submitting again.</>
-                }
+                {statusError || 'The report could not be completed. Contact the team to review or retry your existing request.'}
               </p>
             </>
           ) : (
@@ -200,7 +180,7 @@ function SuccessContent() {
                 Compiling intelligence for {company}.
               </h1>
               <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                Your personalized audit will arrive at <strong style={{ color: "var(--text-primary)" }}>{email}</strong> in around 3 minutes.
+                Your report is being prepared for <strong style={{ color: "var(--text-primary)" }}>{email}</strong> You can track generation and email acceptance below.
               </p>
             </>
           )}

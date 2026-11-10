@@ -1,38 +1,21 @@
-import puppeteer from "puppeteer";
+import puppeteer from 'puppeteer';
+import { fetchPublicPage } from '../../shared/network.js';
 
 export async function captureWebsiteScreenshot(url) {
-  let browser = null;
+  if (process.env.ENABLE_VISUAL_ANALYSIS !== 'true') return null;
+  let browser;
   try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--single-process"
-      ],
-    });
-
+    const { html } = await fetchPublicPage(url);
+    browser = await puppeteer.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
     const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on('request', request => void request.abort());
     await page.setViewport({ width: 1280, height: 800 });
-    
-    // Load page, wait for network idle with 15s timeout
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 15000 });
-
-    const screenshotBuffer = await page.screenshot({
-      type: "jpeg",
-      quality: 80,
-      fullPage: false // Only above the fold
-    });
-
-    return screenshotBuffer.toString("base64");
-  } catch (err) {
-    console.warn(`[VisualAnalysis] Screenshot failed for ${url}:`, err.message);
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    return Buffer.from(await page.screenshot({ type: 'jpeg', quality: 75 })).toString('base64');
+  } catch (error) {
+    console.warn('Static visual snapshot unavailable:', error.message);
     return null;
-  } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
-  }
+  } finally { await browser?.close(); }
 }

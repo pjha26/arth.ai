@@ -2,13 +2,16 @@ import os
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uvicorn
 from contextlib import asynccontextmanager
 
-from train import extract_features
+from features import extract_features
+from pathlib import Path
+import hashlib
 
-MODEL_PATH = "model.pkl"
+MODEL_PATH = Path(__file__).with_name("model.pkl")
+MODEL_VERSION = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()[:12] if MODEL_PATH.exists() else "missing"
 model = None
 
 @asynccontextmanager
@@ -25,20 +28,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ML Lead Scoring API", lifespan=lifespan)
 
 class SessionContext(BaseModel):
-    messageIndex: int = 0
-    minutesSinceDelivery: float = 0.0
+    messageIndex: int = Field(default=0, ge=0, le=100000)
+    minutesSinceDelivery: float = Field(default=0.0, ge=0)
 
 class ScoreRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=2000)
     session_context: SessionContext = SessionContext()
 
 class ScoreResponse(BaseModel):
     intent_probability: float
-    delta: int
+    model_version: str
+    experimental: bool = True
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    return {"status": "ok", "model_version": MODEL_VERSION, "experimental": True}
 
 @app.post("/score", response_model=ScoreResponse)
 def score_message(request: ScoreRequest):
@@ -59,18 +65,9 @@ def score_message(request: ScoreRequest):
     # Predict probability of class 1 (High Intent)
     prob = model.predict_proba(df)[0][1]
     
-    # Calculate delta
-    delta = 2
-    if request.message and len(request.message) > 50:
-        delta += 3
-        
-    # High intent threshold
-    if prob > 0.75:
-        delta += 10
-        
     return ScoreResponse(
         intent_probability=float(prob),
-        delta=delta
+        model_version=MODEL_VERSION
     )
 
 if __name__ == "__main__":

@@ -28,12 +28,8 @@ export const companySizeOptions = [
 
 export const personaOptions = ["Founder", "CTO", "Marketer"] as const;
 
-// Helper to block common free email domains
-const freeEmailDomains = [
-  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com"
-];
-
 export const LeadSchema = z.object({
+  outreachConsent: z.boolean().default(false),
   fullName: z
     .string()
     .min(2, "Name must be at least 2 characters")
@@ -51,11 +47,11 @@ export const LeadSchema = z.object({
   website: z
     .string()
     .url("Enter a valid website URL including https://")
-    .max(500),
+    .max(500).refine(value => { try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password; } catch { return false; } }, 'Use a public HTTP or HTTPS website'),
     
   personaType: z.enum(personaOptions),
   
-  challengeTags: z.array(z.string()).min(1, "Please select at least one challenge"),
+  challengeTags: z.array(z.string().trim().min(1).max(100)).min(1, "Please select at least one challenge").max(10),
   
   painPoints: z
     .string()

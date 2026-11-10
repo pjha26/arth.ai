@@ -1,9 +1,11 @@
 "use client";
+import Link from "next/link";
+import type { PreviewData } from "@/lib/ui-types";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-const SUGGESTIONS = ["Try: Razorpay", "Try: Zepto", "Try: Notion", "Try: Figma"];
+const SUGGESTIONS = ["Try: razorpay.com", "Try: notion.so", "Try: figma.com"];
 const LOADING_MESSAGES = [
   "🔍 Locating company data...",
   "🌐 Scanning digital presence...",
@@ -21,7 +23,7 @@ export default function InteractiveDemo() {
   const [suggestionIdx, setSuggestionIdx] = useState(0);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PreviewData | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [shake, setShake] = useState(false);
 
@@ -67,7 +69,7 @@ export default function InteractiveDemo() {
 
       if (res.status === 429) {
         setStatus("rate_limited");
-        setErrorMsg(result.message);
+        setErrorMsg(result.message || result.error || "Preview is temporarily unavailable.");
       } else if (!result.success) {
         setStatus("error");
         setErrorMsg(result.message);
@@ -204,7 +206,7 @@ export default function InteractiveDemo() {
         {/* Rate limit inline message */}
         {status === "rate_limited" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: 16, padding: 16, background: "rgba(196,146,42,0.1)", borderRadius: 10, color: "#C4922A", fontSize: 14 }}>
-            {errorMsg} <a href="/form" style={{ fontWeight: 600, textDecoration: "underline" }}>Get Full Report</a>
+            {errorMsg} <Link href="/form" style={{ fontWeight: 600, textDecoration: "underline" }}>Get Full Report</Link>
           </motion.div>
         )}
       </motion.div>

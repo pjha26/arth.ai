@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,30 +28,18 @@ const PERSONAS = [
 
 export default function FormPage() {
   const router = useRouter();
+  const [submissionId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({ challengeTags: [] });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Favicon fetching state
-  const [favicon, setFavicon] = useState<string | null>(null);
-
-  // When website changes, try fetching favicon
-  useEffect(() => {
-    if (formData.website && formData.website.length > 5 && formData.website.includes(".")) {
-      try {
-        const url = new URL(formData.website.startsWith('http') ? formData.website : `https://${formData.website}`);
-        setFavicon(`https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`);
-      } catch {
-        setFavicon(null);
-      }
-    } else {
-      setFavicon(null);
-    }
+  const favicon = useMemo(() => {
+    try { const url = new URL(formData.website || ''); return 'https://www.google.com/s2/favicons?domain=' + url.hostname + '&sz=64'; } catch { return null; }
   }, [formData.website]);
 
-  const update = (field: keyof Lead, value: any) => {
+  const update = <K extends keyof Lead,>(field: K, value: Lead[K]) => {
     setFormData(p => ({ ...p, [field]: value }));
     setErrors(p => ({ ...p, [field]: undefined }));
   };
@@ -92,7 +80,7 @@ export default function FormPage() {
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": submissionId },
         body: JSON.stringify(final.data),
       });
       const data = await res.json();
@@ -137,7 +125,7 @@ export default function FormPage() {
         </div>
 
         {/* Form Container */}
-        <div style={{ maxWidth: 520, width: "100%", margin: "0 auto", marginTop: "15vh" }}>
+        <div style={{ maxWidth: 520, width: "calc(100% - 40px)", margin: "0 auto", marginTop: "15vh", marginBottom: 40 }}>
           
           {/* Progress Indicator */}
           <div style={{ marginBottom: 40 }}>
@@ -233,7 +221,7 @@ export default function FormPage() {
                 {step === 3 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                     <div>
-                      <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 28, color: "#F5F0E6", marginBottom: 8, fontWeight: 500 }}>What's your biggest challenge?</h2>
+                      <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 28, color: "#F5F0E6", marginBottom: 8, fontWeight: 500 }}>What&apos;s your biggest challenge?</h2>
                       <p style={{ color: "#9C845F", fontSize: 14 }}>This shapes the AI recommendations in your report.</p>
                     </div>
 
@@ -272,7 +260,7 @@ export default function FormPage() {
                     <div style={{ padding: 20, background: "#2A2218", border: "1px solid rgba(196,146,42,0.4)", borderRadius: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <span style={{ fontSize: 18 }}>📄</span>
-                        <span style={{ color: "#C4922A", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em" }}>WHAT YOU'LL RECEIVE</span>
+                        <span style={{ color: "#C4922A", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em" }}>WHAT YOU&apos;LL RECEIVE</span>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {["AI Readiness Score (Digital, Automation, Growth)", "Personalized pain point analysis", "3–5 specific AI automation opportunities", "Actionable next steps for your industry"].map(i => (
@@ -287,6 +275,8 @@ export default function FormPage() {
                 )}
               </motion.div>
             </AnimatePresence>
+
+            {step === 3 && <label style={{ display: "flex", gap: 10, marginTop: 20, color: "#F5F0E6", fontSize: 14 }}><input type="checkbox" checked={formData.outreachConsent || false} onChange={e => update("outreachConsent", e.target.checked)} />Send me optional follow-up emails about these recommendations. I can unsubscribe at any time.</label>}
 
             {/* Error & Controls anchored to bottom */}
             <div style={{ marginTop: 40 }}>
@@ -313,7 +303,7 @@ export default function FormPage() {
                   </button>
                 ) : (
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ color: "#C4922A", fontSize: 11, marginBottom: 8 }}>⚡ Report ready in under 60 seconds</div>
+                    <div style={{ color: "#C4922A", fontSize: 11, marginBottom: 8 }}>Track research progress after submission</div>
                     <button onClick={handleSubmit} disabled={isSubmitting} className="shimmer-btn" style={{ background: "#C4922A", color: "#0E0C0A", padding: "14px 32px", borderRadius: 9999, border: "none", fontWeight: 700, fontSize: 15, cursor: isSubmitting ? "not-allowed" : "pointer", position: "relative", overflow: "hidden" }}>
                       {isSubmitting ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -1,0 +1,94 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/arth_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/arth_test
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix worker ci
+      - run: npm audit --audit-level=moderate
+      - run: npm run db:generate
+      - run: npx prisma validate
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r ml/requirements.txt
+      - run: python -m unittest discover -s ml -p 'test_*.py'
+  staging:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+      STAGING_DB_PASSWORD: ci-only-disposable-password
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: arthai
+          POSTGRES_PASSWORD: ci-only-disposable-password
+          POSTGRES_DB: arthai_staging
+        ports: ['55439:5432']
+        options: >-
+          --health-cmd "pg_isready -U arthai -d arthai_staging"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ['56379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix worker ci
+      - run: npm run staging:init
+      - name: Protect the disposable Redis with the generated staging password
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { parseEnv } from 'node:util';
+          import Redis from 'ioredis';
+          const env = parseEnv(readFileSync('.env.staging', 'utf8'));
+          const redis = new Redis('redis://127.0.0.1:56379', { retryStrategy: null });
+          try { await redis.config('SET', 'requirepass', env.STAGING_REDIS_PASSWORD); }
+          finally { redis.disconnect(); }
+          JS
+      - run: npm run test:staging
+      - name: Save sanitized validation summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-validation
+          path: |
+            .data/staging/flow-check.json
+            .data/staging/migration-check.json
+            .data/staging/recovery-check.json
+            .data/staging/load-check.json
+          if-no-files-found: ignore
+      - name: Save completion UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: completion-ui
+          path: |
+            ${{ runner.temp }}/arth-completion-*.png
+            ${{ runner.temp }}/arth-crm-*.png
+          if-no-files-found: ignore

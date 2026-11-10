@@ -17,6 +17,7 @@ datasource db {
 model Company {
   id              String      @id @default(uuid())
   domain          String      @unique
+  website         String?
   name            String
   industry        String?
   size            String?
@@ -24,6 +25,7 @@ model Company {
   fundingStage    String?
   lastAuditedAt   DateTime?
   auditCount      Int         @default(0)
+  shortlistedAt   DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   
@@ -49,23 +51,49 @@ model Lead {
   fullName          String?
   email             String?
   source            String   @default("manual") // manual | auto_discovered
+  salesStatus       String   @default("new")
   painPoints        String
+  challengeTags     String[] @default([])
+  personaType       String   @default("general")
+  outreachConsent   Boolean  @default(false)
   intentProbability Float?
+  legacyIntentProbability Float?
+  intentModel       String?
+  intentScoredAt    DateTime?
+  intentStatus      String @default("unknown")
+  intentAlertedAt   DateTime?
+  intentSampledAt   DateTime?
   unsubscribed      Boolean  @default(false)
   lastFollowUpSentAt DateTime?
   followUpStage     Int      @default(0)
   createdAt         DateTime @default(now())
   company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reports           Report[]
 }
 
 model Report {
   id            String   @id @default(uuid())
   companyId     String
+  leadId        String?
+  requestKey    String? @unique
+  requestFingerprint String?
+  lead          Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
   personaType   String   @default("general") // "founder", "cto", "marketer"
+  legacyScore   Int?
   score         Int?     // AI quality score 0-100
   insights      Json?    // structured AI output
   deltaInsights Json?    // diff from previous report
   pdfUrl        String?
+  verificationStatus String @default("unverified")
+  artifactStatus String @default("pending")
+  deliveryStatus String @default("pending")
+  deliveryError String?
+  providerMessageId String?
+  deliveryStartedAt DateTime?
+  generationAttempt Int @default(1)
+  freshResearch Boolean @default(false)
+  errorMessage  String?
+  dispatchedAt DateTime?
   
   // Mirror fields used by the frontend while processing
   logo          String?  
@@ -81,12 +109,86 @@ model Report {
   company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   stages        PipelineStage[]
   chatMessages  ChatMessage[]
+  sources       ReportSource[]
+  events        ReportEvent[]
+  followUps     FollowUp[]
+  modelCalls    ModelCall[]
+  @@index([status, dispatchedAt])
+  @@index([leadId, createdAt])
+  @@index([providerMessageId])
+}
+
+model FollowUp {
+  id String @id @default(uuid())
+  reportId String
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  stage Int
+  dueAt DateTime
+  status String @default("pending") // pending | sending | accepted | delivered | bounced | failed | complained | skipped | uncertain
+  startedAt DateTime?
+  providerMessageId String?
+  errorMessage String?
+  @@unique([reportId, stage])
+  @@index([status, dueAt])
+  @@index([status, startedAt])
+  @@index([providerMessageId])
+}
+
+model ModelCall {
+  id String @id @default(uuid())
+  reportId String?
+  report Report? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  operation String
+  provider String
+  model String
+  status String
+  durationMs Int
+  inputTokens Int?
+  outputTokens Int?
+  estimatedCostUSD Float?
+  createdAt DateTime @default(now())
+  @@index([reportId])
+  @@index([createdAt])
+}
+
+model ReportSource {
+  id String @id
+  reportId String
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  url String
+  title String
+  excerpt String
+  retrievedAt DateTime
+  publishedAt DateTime?
+  @@index([reportId])
+}
+
+model ReportEvent {
+  id String @id @default(uuid())
+  reportId String
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  type String
+  actor String
+  createdAt DateTime @default(now())
+  slackStatus String?
+  intentScore Float? @map("slackScore")
+  intentModel String?
+  intentMessageId String?
+  slackDueAt DateTime? // Next attempt when pending, claim expiry when sending
+  slackAttempts Int @default(0)
+  slackError String?
+  qualificationDecision String?
+  qualificationReason String?
+  @@index([reportId, type])
+  @@index([createdAt, type])
+  @@index([slackStatus, slackDueAt])
 }
 
 model ChatMessage {
   id        String   @id @default(uuid())
   reportId  String
   role      String   // "user" or "assistant"
+  actor     String @default("legacy")
   content   String
   createdAt DateTime @default(now())
   report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
@@ -112,6 +214,7 @@ model Embedding {
   metadata    Json?
   createdAt   DateTime @default(now())
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  @@index([reportId])
 }
 
 model IndustryBenchmark {

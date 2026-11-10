@@ -73,3 +73,8 @@ stitch*.html
 updated_stitch.html
 apply_stitch.mjs
 
+
+# Private generated artifacts and audit scratch
+.data/
+.audit-tmp/
+!.env.example

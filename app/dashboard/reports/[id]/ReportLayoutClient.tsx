@@ -1,16 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import type { ReportView } from "@/lib/ui-types";
+import { useState, type FormEvent } from "react";
 import ReportChatUI from "./ReportChatUI";
 import "./report-chat.css";
 
-export default function ReportLayoutClient({ report }: { report: any }) {
+type ReviewableAlert = {
+  id: string; type: string; intentScore: number | null; intentModel: string | null; message: string | null;
+  qualificationDecision: string | null; qualificationReason: string | null;
+};
+
+function QualificationReview({ reportId, alert }: { reportId: string; alert: ReviewableAlert }) {
+  const [savedDecision, setSavedDecision] = useState(alert.qualificationDecision);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const decision = String(form.get('decision'));
+    const reason = String(form.get('reason')).trim();
+    if (!reason) { setFeedback('Enter a reason for your decision.'); return; }
+    setSaving(true);
+    setFeedback('');
+    try {
+      const response = await fetch(`/api/leads/${reportId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qualification: { alertId: alert.id, decision, reason } }),
+      });
+      if (!response.ok) throw new Error('Save failed');
+      setSavedDecision(decision);
+      setFeedback('Qualification saved.');
+    } catch {
+      setFeedback('Could not save qualification. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <details className="cr-qualification" open={!alert.qualificationDecision}>
+      <summary>{alert.type === 'intent-sample' ? 'Below-threshold sample' : 'Lead qualification'} · {savedDecision ?? 'Awaiting review'}{alert.intentScore == null ? '' : ` · ${Math.round(alert.intentScore * 100)}% experimental intent`}</summary>
+      {alert.intentModel && <p>Model {alert.intentModel}</p>}
+      {alert.message && <blockquote className="cr-qualification-message" aria-label="Scored prospect message">{alert.message}</blockquote>}
+      <form onSubmit={save}>
+        <label>Decision <select name="decision" defaultValue={alert.qualificationDecision ?? ''} required disabled={saving}>
+          <option value="" disabled>Select a decision</option>
+          <option value="qualified">Qualified</option>
+          <option value="rejected">Rejected</option>
+        </select></label>
+        <label>Reason <input name="reason" defaultValue={alert.qualificationReason ?? ''} maxLength={500} required disabled={saving} /></label>
+        <button type="submit" className="cr-btn-outline" disabled={saving}>{saving ? 'Saving…' : 'Save qualification'}</button>
+        <Link href="/dashboard/needs-review" prefetch={false} className="cr-btn-outline">Needs Review</Link>
+      </form>
+      <p role="status">{feedback}</p>
+    </details>
+  );
+}
+
+export default function ReportLayoutClient({ report, alert }: { report: ReportView; alert?: ReviewableAlert }) {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfZoom, setPdfZoom] = useState(100);
   const [pdfError, setPdfError] = useState(false);
 
-  const TOTAL_PAGES = 6;
   const pdfUrl = `/api/leads/${report.id}/download`;
   const pdfSrc = pdfUrl ? `${pdfUrl}#page=${pdfPage}&zoom=${pdfZoom}` : null;
 
@@ -20,9 +74,9 @@ export default function ReportLayoutClient({ report }: { report: any }) {
         {/* ── Top bar ── */}
         <div className="cr-topbar">
           <div className="cr-topbar-left">
-            <a href="/dashboard" className="cr-back-btn">
+            <Link href="/dashboard" className="cr-back-btn">
               ← Back
-            </a>
+            </Link>
             <div className="cr-company-badge">
               <div className="cr-company-initial">
                 {report.company.name.charAt(0).toUpperCase()}
@@ -46,6 +100,7 @@ export default function ReportLayoutClient({ report }: { report: any }) {
           </div>
         </div>
 
+        {alert && <QualificationReview key={alert.id} reportId={report.id} alert={alert} />}
         {/* ── Body ── */}
         <div className="cr-body">
           {/* ── PDF Panel ── */}
@@ -57,11 +112,11 @@ export default function ReportLayoutClient({ report }: { report: any }) {
                   disabled={pdfPage <= 1}
                   onClick={() => setPdfPage(p => Math.max(1, p - 1))}
                 >← Prev</button>
-                <span className="cr-pdf-page-info">Page {pdfPage} of {TOTAL_PAGES}</span>
+                <span className="cr-pdf-page-info">Page {pdfPage}</span>
                 <button
                   className="cr-pdf-nav-btn"
-                  disabled={pdfPage >= TOTAL_PAGES}
-                  onClick={() => setPdfPage(p => Math.min(TOTAL_PAGES, p + 1))}
+                  disabled={false}
+                  onClick={() => setPdfPage(p => p + 1)}
                 >Next →</button>
               </div>
               <div className="cr-pdf-zoom">

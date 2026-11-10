@@ -2,22 +2,37 @@
   "name": "arth.ai",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=22.12.0" },
   "scripts": {
-    "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\" \"cd ml && .\\venv\\Scripts\\uvicorn app:app --port 8001\"",
+    "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "node --test tests/core.test.mjs tests/pipeline.test.mjs tests/delivery.test.mjs tests/followups.test.mjs tests/staging-safety.test.mjs tests/research-cache.test.mjs tests/intent.test.mjs tests/operations.test.mjs tests/readiness.test.mjs tests/status.test.mjs tests/delivery-events.test.mjs tests/report-quality.test.mjs tests/report-quality-pilot.test.mjs",
+    "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "typecheck": "next typegen && tsc --noEmit --incremental false",
+    "dev:web": "next dev",
+    "test:ml": "node scripts/ml.mjs test",
+    "test:artifacts": "node --test tests/artifact-flow.test.mjs",
+    "dev:ml": "node scripts/ml.mjs serve",
+    "staging:init": "node scripts/staging-init.mjs",
+    "staging:up": "docker compose --env-file .env.staging -f compose.staging.yml up -d --wait db redis",
+    "staging:down": "docker compose --env-file .env.staging -f compose.staging.yml down",
+    "staging:migrate": "node --env-file=.env.staging scripts/staging-migrate.mjs",
+    "test:staging": "node scripts/staging-test.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "release:check:live": "node scripts/release-check.mjs --live",
+    "test:migrations": "node --env-file=.env.staging tests/staging-migrations.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.79",
     "@ai-sdk/groq": "^3.0.39",
     "@ai-sdk/react": "^3.0.193",
-    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-table": "^8.21.3",
-    "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "ai": "^6.0.191",
     "axios": "^1.16.1",
@@ -27,8 +42,7 @@
     "framer-motion": "^12.40.0",
     "googleapis": "^171.4.0",
     "ioredis": "^5.10.1",
-    "langfuse": "^3.38.20",
-    "next": "16.2.6",
+    "next": "^16.4.5",
     "next-themes": "^0.4.6",
     "prisma": "^5.22.0",
     "puppeteer": "^25.0.2",
@@ -47,11 +61,15 @@
     "@types/react-dom": "^19",
     "concurrently": "^9.2.1",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "^16.4.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
+  },
+  "overrides": {
+    "googleapis-common": { "gaxios": "^7.3.1" },
+    "@typescript-eslint/typescript-estree": { "minimatch": "^11.0.1" }
   }
 }

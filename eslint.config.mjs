@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "test.js",
+    "scratch_check.js",
+    "worker/scratch_check.js",
+    "ml/venv/**",
+    ".audit-tmp/**",
+    ".data/**",
   ]),
 ]);
 
