@@ -77,9 +77,14 @@ globalThis.fetch = async (input, init) => {
     const data = JSON.parse(text);
     if (system.startsWith('Extract only directly supported facts.')) {
       await log({ provider: 'google-fixture', action: 'research' });
-      return json(generation({ findings: [{ text: 'The source describes accounting software.', sourceId: data.sources[0].id, quote: data.sources[0].excerpt.slice(0, 95) }], missing: ['Independent funding and growth evidence'] }));
+      const finding = { text: 'The source describes accounting software.', sourceId: data.sources[0].id, quote: data.sources[0].excerpt.slice(0, 95) };
+      return json(generation({ findings: Array.from({ length: reportPilot ? 7 : 1 }, () => finding), missing: Array.from({ length: reportPilot ? 6 : 1 }, () => 'Independent funding and growth evidence') }));
     }
-    if (system.startsWith('You write evidence-backed company research.')) { await log({ provider: 'google-fixture', action: 'writer' }); return json(generation(report(data))); }
+    if (system.startsWith('You write evidence-backed company research.')) {
+      if (reportPilot && data.specialists.some(result => result.findings.length !== 6 || result.missing.length !== 5)) throw new Error('Pilot exceeded the specialist findings limit');
+      await log({ provider: 'google-fixture', action: 'writer' });
+      return json(generation(report(data)));
+    }
     if (system.startsWith('Independently audit every section')) {
       if (process.env.ARTHAI_SCENARIO === 'review-outage') return json({ error: { code: 503, message: 'Controlled verifier outage', status: 'UNAVAILABLE' } }, 503);
       await log({ provider: 'google-fixture', action: 'review' }); return json(generation({ approved: true, reason: 'Controlled integration fixture; semantic accuracy is not being evaluated.' }));
