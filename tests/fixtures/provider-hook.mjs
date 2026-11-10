@@ -8,6 +8,7 @@ assertStaging();
 const directory = path.resolve('.data/staging');
 const fixtureText = 'Staging Research Company builds accounting software for small business teams. Its public product page describes invoice tracking, reconciliation, and reporting. The product has an API for importing transaction records. This is controlled integration-test evidence, not a real prospect or independent market research. No funding, staff size, revenue, conversion rate, or savings are stated.';
 const source = 'https://www.iana.org';
+const reportPilot = process.env.ARTHAI_REPORT_PILOT_FIXTURE === '1';
 const originalAdapter = axios.getAdapter(axios.defaults.adapter);
 axios.defaults.adapter = async config => {
   const url = new URL(config.url);
@@ -23,8 +24,8 @@ axios.defaults.adapter = async config => {
   if (discoveryName) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
     data: `<html><title>${discoveryName}</title><main><h1>${discoveryName}</h1><p>${fixtureText}</p></main></html>` };
   if (url.origin === source && process.env.ARTHAI_SCENARIO === 'private-redirect') return { status: 302, statusText: 'Found', headers: { location: 'http://127.0.0.1/private' }, config, data: '' };
-  if (url.origin === source && process.env.ARTHAI_SCENARIO === 'insufficient') return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config, data: '<main>Not enough evidence.</main>' };
-  if (url.origin === source) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
+  if ((url.origin === source && process.env.ARTHAI_SCENARIO === 'insufficient') || (reportPilot && url.origin === 'https://8.8.8.8')) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config, data: '<main>Not enough evidence.</main>' };
+  if (url.origin === source || reportPilot && url.origin === 'https://1.1.1.1') return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
     data: `<html><title>Staging Research Company</title><main><h1>Accounting tools</h1><p>${fixtureText}</p></main></html>` };
   if (url.hostname !== '127.0.0.1') throw new Error('External Axios request blocked by staging fixtures');
   return originalAdapter(config);
@@ -68,6 +69,7 @@ globalThis.fetch = async (input, init) => {
     if (url.pathname.endsWith(':embedContent')) return json({ embedding: { values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) } });
     const system = body.systemInstruction?.parts?.map(p => p.text || '').join('') || '';
     const text = body.contents?.flatMap(c => c.parts).map(p => p.text || '').join('') || '';
+    if (reportPilot && text.includes('Evaluator-only expectation')) throw new Error('Pilot expectations leaked into the model request');
     if (url.pathname.endsWith(':streamGenerateContent')) {
       await log({ provider: 'google-fixture', action: 'chat' });
       return new Response(`data: ${JSON.stringify(generation('The report recommends a small invoice-review pilot. This is a hypothesis; measure a baseline before implementation.'))}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
