@@ -17,6 +17,6 @@ export async function storeReportIntelligence(lead, report, companyId, reportId)
   await prisma.$transaction(async tx => {
     await tx.embedding.deleteMany({ where: { reportId } });
     const metadata = JSON.stringify({ model: modelId, dimensions: 768, version: 1 });
-    for (const row of rows) await tx.$executeRaw`INSERT INTO "Embedding" (id, "companyId", "reportId", chunk, embedding, metadata, "createdAt") VALUES (gen_random_uuid(), ${companyId}, ${reportId}, ${row.chunk}, ${row.embedding}::vector, ${metadata}::jsonb, NOW())`;
+    for (const row of rows) await tx.$executeRaw`INSERT INTO "Embedding" (id, "companyId", "reportId", chunk, embedding, metadata, "createdAt") VALUES (gen_random_uuid(), ${companyId}, ${reportId}, ${row.chunk}, ${row.embedding}::extensions.vector, ${metadata}::jsonb, NOW())`;
   });
 }

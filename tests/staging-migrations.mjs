@@ -30,6 +30,9 @@ try {
   prisma('migrate', 'deploy');
   const unprotected = await legacy.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations' AND NOT rowsecurity`;
   assert.deepEqual(unprotected, [], 'Every application table must have row-level security');
+  const vector = JSON.stringify([1, ...Array(767).fill(0)]);
+  const [distance] = await legacy.$queryRaw`SELECT ${vector}::extensions.vector OPERATOR(extensions.<=>) ${vector}::extensions.vector AS value`;
+  assert.equal(distance.value, 0, 'Vector search resolves through the extensions schema');
   const report = await legacy.report.findUniqueOrThrow({ where: { id: reportId } });
   const lead = await legacy.lead.findUniqueOrThrow({ where: { id: leadId } });
   const chat = await legacy.chatMessage.findUniqueOrThrow({ where: { id: chatId } });
