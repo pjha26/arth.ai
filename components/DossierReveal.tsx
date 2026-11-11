@@ -11,7 +11,7 @@ export function DossierReveal({ children, className }: { children: ReactNode; cl
   const y = useTransform(scrollYProgress, [0, 1], [28, 0]);
 
   return (
-    <motion.div ref={ref} className={className} style={reduce ? undefined : { rotate, y }}>
+    <motion.div ref={ref} className={className} style={reduce ? { rotate: 0, y: 0 } : { rotate, y }}>
       {children}
     </motion.div>
   );

@@ -496,6 +496,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dossierMotion { transform: none !important; }
+
   :global(html):has(.landing) {
     scroll-behavior: auto;
   }
