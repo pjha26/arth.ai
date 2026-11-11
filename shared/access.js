@@ -47,6 +47,21 @@ export function sameOrigin(request) {
   catch { return false; }
 }
 
+export function sameReportRequestOrigin(request) {
+  const site = request.headers.get('sec-fetch-site');
+  if (site !== null && site !== 'same-origin') return false;
+  if (sameOrigin(request)) return true;
+  if (site !== 'same-origin') return false;
+
+  // Browsers control Fetch Metadata, even when a deployment alias differs from appUrl().
+  const origin = request.headers.get('origin');
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.origin === origin;
+  } catch { return false; }
+}
+
 export function reportLink(reportId, leadId) {
   return `${appUrl()}/api/reports/${encodeURIComponent(reportId)}/access?token=${encodeURIComponent(signAccess('report', reportId, leadId))}`;
 }

@@ -2,14 +2,14 @@ import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { LeadSchema } from '@/lib/validation';
 import { prisma } from '@/lib/prisma';
-import { sameOrigin, guard } from '@/lib/auth';
+import { guard } from '@/lib/auth';
 import { limitRequest } from '@/lib/rateLimit';
 import { dispatchReport } from '@/lib/dispatch';
 import { assertPublicUrl } from '@/shared/network.js';
-import { cookieOptions, reportCookie, signAccess } from '@/shared/access.js';
+import { cookieOptions, reportCookie, sameReportRequestOrigin, signAccess } from '@/shared/access.js';
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return new Response('Invalid origin', { status: 403 });
+  if (!sameReportRequestOrigin(request)) return new Response('Invalid origin', { status: 403 });
   const limited = await limitRequest(request, 'reports', 3, 3600, 100);
   if (limited) return limited;
   if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) return Response.json({ message: 'Report access is not configured' }, { status: 503 });

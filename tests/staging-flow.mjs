@@ -207,6 +207,8 @@ try {
     assert.equal(await page.$eval('#sample-source [class*="traceLine"]', node => getComputedStyle(node).transform), 'none');
     pass('Scrolling moves the hero image and assembles the dossier; reduced motion keeps both still');
     await page.emulateMediaFeatures([]);
+    const browserOrigin = base.replace('127.0.0.1', 'localhost');
+    await page.goto(browserOrigin, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('a[href="/form?focus=Automating%20workflows"]');
     await page.click('a[href="/form?focus=Automating%20workflows"]');
     await page.waitForSelector('input[type="email"]');
@@ -229,7 +231,7 @@ try {
     // The earlier API checks use the three slots in the isolated staging limiter.
     const sharedBucket = createHash('sha256').update('shared').digest('hex');
     await redis.del(`limit:reports:${sharedBucket}:${Math.floor(Date.now() / 3600000)}`);
-    const submitted = page.waitForResponse(response => response.url() === `${base}/api/leads` && response.request().method() === 'POST');
+    const submitted = page.waitForResponse(response => response.url() === `${browserOrigin}/api/leads` && response.request().method() === 'POST');
     await page.click('.ui-form button[type="submit"]');
     const submission = await submitted;
     assert.equal(submission.status(), 202, `Browser submission failed: ${await submission.text()}`);
@@ -239,7 +241,7 @@ try {
     assert.deepEqual(saved.lead.challengeTags, ['Automating workflows']);
     assert.equal(saved.lead.outreachConsent, false);
     await until(async () => ['done', 'failed'].includes((await prisma.report.findUniqueOrThrow({ where: { id: browserReport } })).status), 'Browser report did not settle before CRM filter checks');
-    pass('Browser submission passes origin validation, saves the selected focus without follow-up consent, and opens report status');
+    pass('Browser submission from an alternate hostname saves the selected focus without follow-up consent and opens report status');
     await page.goto(`${base}/login`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('button[aria-label="Dark mode"]:not(:disabled)', { timeout: 60000 });
     const wasDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));

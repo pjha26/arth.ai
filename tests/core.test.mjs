@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { signAccess, verifyAccess, reportLink, sameOrigin } from '../shared/access.js';
+import { signAccess, verifyAccess, reportLink, sameOrigin, sameReportRequestOrigin } from '../shared/access.js';
 import { isPublicAddress, publicUrl, assertPublicUrl } from '../shared/network.js';
 import { makeReportJob, reportChunks } from '../shared/jobs.js';
 import { validateEvidence } from '../shared/report.js';
@@ -20,6 +20,23 @@ test('origin checks use the configured public origin behind an internal server U
   const original = process.env.NEXT_PUBLIC_APP_URL;
   try { process.env.NEXT_PUBLIC_APP_URL = 'invalid-url'; assert.equal(sameOrigin(request('https://example.com')), false); }
   finally { process.env.NEXT_PUBLIC_APP_URL = original; }
+});
+
+test('public intake accepts same-origin browser submissions on an alternate hostname', () => {
+  const request = (origin, site) => new Request('http://internal-server:3101/api/leads', {
+    headers: { ...(origin ? { Origin: origin } : {}), ...(site ? { 'Sec-Fetch-Site': site } : {}) },
+  });
+  const alias = request('https://preview.example.com', 'same-origin');
+  assert.equal(sameReportRequestOrigin(alias), true);
+  assert.equal(sameOrigin(alias), false);
+  assert.equal(sameReportRequestOrigin(request('http://localhost:3000', 'same-origin')), true);
+  assert.equal(sameReportRequestOrigin(request('https://example.com')), true);
+  assert.equal(sameReportRequestOrigin(request('https://preview.example.com')), false);
+  assert.equal(sameReportRequestOrigin(request('https://preview.example.com', 'same-site')), false);
+  assert.equal(sameReportRequestOrigin(request('https://example.com', 'cross-site')), false);
+  for (const origin of ['', 'null', 'https://example.com/path']) {
+    assert.equal(sameReportRequestOrigin(request(origin, 'same-origin')), false);
+  }
 });
 
 test('access tokens are scoped, signed, expire, and fail closed without configuration', () => {

@@ -86,7 +86,7 @@ function RequestForm() {
       const result = await response.json().catch(() => null);
       if (!response.ok) {
         setSubmitError(response.status === 403
-          ? "This address could not submit the request. Open the main ArthAI site and try again."
+          ? "ArthAI rejected this submission. Open the request form directly in your browser and try again."
           : result?.message || result?.error || "Could not submit your request. Try again.");
         setIsSubmitting(false);
         return;
