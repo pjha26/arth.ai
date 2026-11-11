@@ -18,8 +18,6 @@
     "test:artifacts": "node --test tests/artifact-flow.test.mjs",
     "dev:ml": "node scripts/ml.mjs serve",
     "staging:init": "node scripts/staging-init.mjs",
-    "staging:up": "docker compose --env-file .env.staging -f compose.staging.yml up -d --wait db redis",
-    "staging:down": "docker compose --env-file .env.staging -f compose.staging.yml down",
     "staging:migrate": "node --env-file=.env.staging scripts/staging-migrate.mjs",
     "test:staging": "node scripts/staging-test.mjs",
     "release:check": "node scripts/release-check.mjs",
