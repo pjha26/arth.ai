@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID, createHmac } from 'node:crypto';
+import { randomUUID, createHash, createHmac } from 'node:crypto';
 import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
 import IORedis from 'ioredis';
@@ -64,6 +64,7 @@ try {
     do { const result = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100); cursor = result[0]; if (result[1].length) await redis.del(...result[1]); } while (cursor !== '0');
   }
   assert.equal((await call('/api/leads')).status, 401); pass('Anonymous CRM access denied');
+  assert.equal((await call('/api/leads', { method: 'POST', headers: { Origin: 'https://untrusted.example' }, body: {} })).status, 403);
   assert.equal((await call('/api/operations')).status, 401);
   const login = await fetch(base + '/api/auth/login', { method: 'POST', redirect: 'manual', headers: { Origin: base },
     body: new URLSearchParams({ password: process.env.STAFF_PASSWORD }), signal: AbortSignal.timeout(60000) });
@@ -209,22 +210,20 @@ try {
     assert.equal(await page.$eval('input[type="url"]', node => node.value), 'https://www.iana.org');
     await page.click('.ui-form button[type="submit"]');
     await page.waitForSelector('.ui-request-review');
-    await page.setRequestInterception(true);
-    let focusedRequest;
-    const captureFocus = request => {
-      if (request.url() === `${base}/api/leads` && request.method() === 'POST') {
-        focusedRequest = JSON.parse(request.postData());
-        void request.respond({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Controlled form test; no report created.' }) });
-      } else void request.continue();
-    };
-    page.on('request', captureFocus);
+    // The earlier API checks use the three slots in the isolated staging limiter.
+    const sharedBucket = createHash('sha256').update('shared').digest('hex');
+    await redis.del(`limit:reports:${sharedBucket}:${Math.floor(Date.now() / 3600000)}`);
+    const submitted = page.waitForResponse(response => response.url() === `${base}/api/leads` && response.request().method() === 'POST');
     await page.click('.ui-form button[type="submit"]');
-    await page.waitForFunction(() => document.body.innerText.includes('Controlled form test; no report created.'));
-    assert.deepEqual(focusedRequest.challengeTags, ['Automating workflows']);
-    assert.equal(focusedRequest.outreachConsent, false);
-    await page.setRequestInterception(false);
-    page.off('request', captureFocus);
-    pass('Landing focus reaches the report payload; unknown focus is ignored, review preserves edits, and follow-up stays opt-in');
+    const submission = await submitted;
+    assert.equal(submission.status(), 202, `Browser submission failed: ${await submission.text()}`);
+    const { jobId: browserReport } = await submission.json();
+    await page.waitForFunction(id => location.pathname === '/success' && new URLSearchParams(location.search).get('jobId') === id, {}, browserReport);
+    const saved = await prisma.report.findUniqueOrThrow({ where: { id: browserReport }, include: { lead: true } });
+    assert.deepEqual(saved.lead.challengeTags, ['Automating workflows']);
+    assert.equal(saved.lead.outreachConsent, false);
+    await until(async () => ['done', 'failed'].includes((await prisma.report.findUniqueOrThrow({ where: { id: browserReport } })).status), 'Browser report did not settle before CRM filter checks');
+    pass('Browser submission passes origin validation, saves the selected focus without follow-up consent, and opens report status');
     await page.goto(`${base}/login`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('button[aria-label="Dark mode"]:not(:disabled)', { timeout: 60000 });
     const wasDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));

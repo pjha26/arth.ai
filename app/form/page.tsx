@@ -79,12 +79,20 @@ function RequestForm() {
     try {
       const response = await fetch("/api/leads", {
         method: "POST",
+        referrerPolicy: "same-origin",
         headers: { "Content-Type": "application/json", "Idempotency-Key": key },
         body: JSON.stringify(final.data),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
       if (!response.ok) {
-        setSubmitError(result?.message || "Could not submit your request. Try again.");
+        setSubmitError(response.status === 403
+          ? "This address could not submit the request. Open the main ArthAI site and try again."
+          : result?.message || result?.error || "Could not submit your request. Try again.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (typeof result?.jobId !== "string" || !result.jobId) {
+        setSubmitError("ArthAI could not confirm your request. Try again.");
         setIsSubmitting(false);
         return;
       }
