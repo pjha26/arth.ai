@@ -198,6 +198,12 @@ try {
     await page.waitForSelector(heroImage);
     const transforms = await page.$$eval(`${heroImage}, ${dossierSheets}`, nodes => nodes.map(node => getComputedStyle(node).transform));
     assert.deepEqual(transforms, ['none', 'none', 'none', 'none']);
+    const sourceLink = 'nav[aria-label="Inside the sample report"] a[href="#sample-source"]';
+    await page.focus(sourceLink);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.hash === '#sample-source' && document.activeElement?.id === 'sample-source');
+    assert.match(await page.$eval('#sample-source q', node => node.textContent), /scheduled training call/);
+    assert.equal(await page.$eval('#sample-source [class*="traceLine"]', node => getComputedStyle(node).transform), 'none');
     pass('Scrolling moves the hero image and assembles the dossier; reduced motion keeps both still');
     await page.emulateMediaFeatures([]);
     await page.waitForSelector('a[href="/form?focus=Automating%20workflows"]');

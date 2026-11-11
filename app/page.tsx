@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EvidenceRule } from "@/components/EvidenceRule";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { DossierReveal, HeroDossier } from "@/components/DossierReveal";
+import { DossierReveal, HeroDossier, ReportTraceRow } from "@/components/DossierReveal";
 import { researchFocuses } from "@/lib/research-focus";
 import styles from "./landing.module.css";
 
@@ -146,6 +146,11 @@ export default function Home() {
             <div className={styles.sampleIntro}>
               <div><p className={styles.sampleLabel}>Sample report</p><EvidenceRule /></div>
               <h2 id="sample-title">See what backs each finding.</h2>
+              <nav className={styles.traceNav} aria-label="Inside the sample report">
+                <a href="#sample-finding">Finding</a>
+                <a href="#sample-source">Source quote</a>
+                <a href="#sample-action">Next step</a>
+              </nav>
             </div>
             <DossierReveal className={styles.dossierMotion} sheetClassName={styles.dossierSheet}>
             <article className={styles.dossier} aria-labelledby="dossier-title">
@@ -153,21 +158,18 @@ export default function Home() {
               <h3 id="dossier-title">Rivermere Tools</h3>
               <p className={styles.researchFocus}><strong>Research focus</strong> Onboarding new customers</p>
               <dl className={styles.reportDetails}>
-                <div>
-                  <dt>Finding</dt>
-                  <dd>New customers rely on live training to get started.</dd>
-                </div>
-                <div>
-                  <dt>Evidence</dt>
+                <ReportTraceRow id="sample-finding" label="Finding">
+                  <dd>The onboarding guide says every new account starts with live training.</dd>
+                </ReportTraceRow>
+                <ReportTraceRow id="sample-source" label="Source quote" className={styles.traceSource}>
                   <dd>
                     <q>Every new account starts with a scheduled training call.</q>
                     <cite>Rivermere Tools · Sample onboarding guide</cite>
                   </dd>
-                </div>
-                <div className={styles.recommendation}>
-                  <dt>Recommended next step</dt>
+                </ReportTraceRow>
+                <ReportTraceRow id="sample-action" label="Recommended next step" className={styles.recommendation}>
                   <dd>Test a self-serve setup checklist with a small group of new customers.</dd>
-                </div>
+                </ReportTraceRow>
               </dl>
             </article>
             </DossierReveal>

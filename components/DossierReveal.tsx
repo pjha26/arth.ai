@@ -2,6 +2,28 @@
 
 import { useRef, type ReactNode } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import styles from "@/app/landing.module.css";
+
+export function ReportTraceRow({ id, label, children, className }: {
+  id: string;
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 86%", "center 52%"] });
+
+  return (
+    <div ref={ref} id={id} tabIndex={-1} className={`${styles.traceRow} ${className ?? ""}`}>
+      <dt>
+        <motion.span aria-hidden="true" className={styles.traceLine} style={{ scaleX: reduce ? 1 : scrollYProgress }} />
+        {label}
+      </dt>
+      {children}
+    </div>
+  );
+}
 
 export function HeroDossier({ children, className }: { children: ReactNode; className: string }) {
   const ref = useRef<HTMLDivElement>(null);

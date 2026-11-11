@@ -283,6 +283,27 @@
   text-wrap: balance;
 }
 
+.traceNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.traceNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 13px;
+  border: 1px solid #8c8b77;
+  font-size: 13px;
+}
+
+.traceNav a:hover,
+.traceNav a:focus-visible {
+  background: var(--ui-on-olive);
+  color: var(--ui-olive);
+}
+
 .dossier {
   padding: clamp(18px, 3vw, 42px);
   background: var(--ui-sheet);
@@ -341,6 +362,31 @@
 .reportDetails > div {
   padding-block: 11px;
   border-top: 1px solid var(--rule);
+}
+
+.traceRow {
+  position: relative;
+  scroll-margin-block-start: 18vh;
+}
+
+.traceRow:focus-visible,
+.traceRow:target {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.traceLine {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: left;
+  pointer-events: none;
+}
+
+.reportDetails .traceSource {
+  padding-inline: 12px;
+  background: var(--ui-inset);
 }
 
 .reportDetails dt {
@@ -499,7 +545,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dossierMotion > div,
-  .heroImage > div { transform: none !important; }
+  .heroImage > div,
+  .traceLine { transform: none !important; }
 
   :global(html):has(.landing) {
     scroll-behavior: auto;
