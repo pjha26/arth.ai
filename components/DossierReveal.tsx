@@ -29,12 +29,13 @@ export function HeroDossier({ children, className }: { children: ReactNode; clas
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 85%", "end start"] });
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 1.23]);
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "7%"]);
+  // Cinema Studio's focal-perspective controls inspired the wide-to-detail crop.
+  const scale = useTransform(scrollYProgress, [0, 0.55, 1], [1, 1.12, 1.27]);
+  const y = useTransform(scrollYProgress, [0, 0.55, 1], ["0%", "4%", "10%"]);
 
   return (
     <div ref={ref} className={className}>
-      <motion.div style={{ position: "absolute", inset: 0, scale: reduce ? 1 : scale, y: reduce ? 0 : y }}>
+      <motion.div style={{ position: "absolute", inset: 0, transformOrigin: "62% 58%", scale: reduce ? 1 : scale, y: reduce ? 0 : y }}>
         {children}
       </motion.div>
     </div>
@@ -49,8 +50,9 @@ export function DossierReveal({ children, className, sheetClassName }: {
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center 40%"] });
-  const rotate = useTransform(scrollYProgress, [0, 1], [-7, 0]);
-  const y = useTransform(scrollYProgress, [0, 1], [52, 0]);
+  // UI UX Pro Max's multilayer parallax preset uses staggered 8% travel.
+  const outlineY = useTransform(scrollYProgress, [0, 1], ["8%", "0%"]);
+  const underlayY = useTransform(scrollYProgress, [0, 1], ["16%", "0%"]);
   const underlayRotate = useTransform(scrollYProgress, [0, 1], [9, 0]);
   const underlayX = useTransform(scrollYProgress, [0, 1], ["8%", "0%"]);
   const outlineRotate = useTransform(scrollYProgress, [0, 1], [-14, 0]);
@@ -59,10 +61,10 @@ export function DossierReveal({ children, className, sheetClassName }: {
   return (
     <div ref={ref} className={className}>
       <motion.div aria-hidden="true" className={sheetClassName}
-        style={{ x: reduce ? 0 : outlineX, rotate: reduce ? 0 : outlineRotate }} />
+        style={{ x: reduce ? 0 : outlineX, y: reduce ? 0 : outlineY, rotate: reduce ? 0 : outlineRotate }} />
       <motion.div aria-hidden="true" className={sheetClassName}
-        style={{ x: reduce ? 0 : underlayX, rotate: reduce ? 0 : underlayRotate }} />
-      <motion.div style={{ rotate: reduce ? 0 : rotate, y: reduce ? 0 : y }}>{children}</motion.div>
+        style={{ x: reduce ? 0 : underlayX, y: reduce ? 0 : underlayY, rotate: reduce ? 0 : underlayRotate }} />
+      <div className={styles.dossierFace}>{children}</div>
     </div>
   );
 }

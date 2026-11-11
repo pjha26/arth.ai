@@ -313,6 +313,7 @@
 
 .dossierMotion { position: relative; isolation: isolate; min-width: 0; }
 .dossierMotion > div { transform-origin: 50% 72%; }
+.dossierFace { position: relative; }
 .dossierSheet {
   position: absolute;
   inset: 0;

@@ -188,6 +188,7 @@ try {
     const heroImage = '[class*="heroImage"] > div';
     const dossierSheets = '[class*="dossierMotion"] > div';
     await page.waitForFunction(selector => getComputedStyle(document.querySelector(selector)).transform !== 'none', {}, dossierSheets);
+    assert.equal(await page.$eval('[class*="dossierFace"]', node => getComputedStyle(node).transform), 'none');
     const startTransform = await page.$eval(heroImage, node => getComputedStyle(node).transform);
     await page.evaluate(() => window.scrollTo({ top: 280, behavior: 'instant' }));
     await page.waitForFunction((selector, initial) => getComputedStyle(document.querySelector(selector)).transform !== initial, {}, heroImage, startTransform);
