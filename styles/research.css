@@ -217,6 +217,13 @@ html.dark {
 .ui-check input, .ui-choice input { accent-color: var(--ui-action); }
 .ui-check input { margin-top: .34em; }
 .ui-form-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ui-help { color: var(--ui-muted); font-size: 14px; line-height: 1.5; }
+.ui-request-review { padding: 20px; border: 1px solid var(--ui-rule); background: var(--ui-sheet); }
+.ui-request-review h3 { font-size: 16px; font-weight: 600; }
+.ui-request-review dl { display: grid; gap: 12px; margin-block: 16px; }
+.ui-request-review dt { color: var(--ui-muted); font-size: 12px; }
+.ui-request-review dd { margin-top: 3px; overflow-wrap: anywhere; font-size: 14px; }
+.ui-request-review p { color: var(--ui-muted); font-size: 13px; line-height: 1.5; }
 .ui-document { width: min(100% - 36px, 1120px); margin-inline: auto; padding-block: clamp(24px, 4vw, 58px); }
 .ui-document-cover { background: var(--ui-olive); color: var(--ui-on-olive); padding: clamp(22px, 5vw, 60px); }
 .ui-document-cover .ui-label { margin-bottom: 16px; }

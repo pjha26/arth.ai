@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { IntakeShell } from "@/components/ResearchShell";
 import { LeadSchema, Step1Schema, Step2Schema, Step3Schema, personaOptions, type Lead } from "@/lib/validation";
+import { researchChallenge, researchChallenges, researchFocuses } from "@/lib/research-focus";
 
 const steps = [
   { label: "Contact", title: "Tell us who you are", schema: Step1Schema },
@@ -13,18 +14,18 @@ const steps = [
   { label: "Challenge", title: "What’s your biggest challenge?", schema: Step3Schema },
 ];
 
-const challenges = ["Scaling my team", "Lead generation", "Automating workflows", "Competitive positioning", "Product-market fit", "Fundraising"];
-
 type FieldErrors = Partial<Record<keyof Lead, string>>;
 
 function RequestForm() {
   const router = useRouter();
-  const company = useSearchParams().get("company")?.trim().slice(0, 200);
+  const search = useSearchParams();
+  const company = search.get("company")?.trim().slice(0, 200);
+  const focus = researchChallenge(search.get("focus"));
   const reduce = useReducedMotion();
   const id = useId();
   const [submissionId, setSubmissionId] = useState<string>();
   const [step, setStep] = useState(0);
-  const [data, setData] = useState<Partial<Lead>>({ fullName: "", email: "", website: "", challengeTags: [] });
+  const [data, setData] = useState<Partial<Lead>>({ fullName: "", email: "", website: "", challengeTags: focus ? [focus] : [] });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -114,6 +115,7 @@ function RequestForm() {
   return (
     <>
       {company && <p className="ui-footnote">Research request for <strong>{company}</strong></p>}
+      {focus && <p className="ui-footnote">Starting focus: <strong>{focus}</strong>. You can change it in the final step.</p>}
       <ol className="ui-step-list ui-label" aria-label="Request steps">
         {steps.map(({ label }, index) => (
           <li key={label} className={index < step ? "ui-step-done" : undefined} aria-current={index === step ? "step" : undefined}>
@@ -127,6 +129,7 @@ function RequestForm() {
         {step === 0 && <>
           {input("fullName", "Full name", "text", "Alex Johnson", "name")}
           {input("email", "Business email", "email", "alex@yourcompany.com", "email")}
+          <p className="ui-help">We use this email to send your private report. Optional follow-up is a separate choice in the final step.</p>
         </>}
         {step === 1 && <>
           {input("website", "Company website", "url", "https://yourcompany.com", "url")}
@@ -143,7 +146,7 @@ function RequestForm() {
         {step === 2 && <>
           <fieldset className="ui-field" aria-describedby={errors.challengeTags ? `${id}-challengeTags-error` : undefined}>
             <legend>Select the topics your report should address</legend>
-            <div className="ui-options">{challenges.map(challenge => (
+            <div className="ui-options">{researchChallenges.map(challenge => (
               <button key={challenge} className="ui-choice" type="button" aria-pressed={data.challengeTags?.includes(challenge) ?? false}
                 onClick={() => toggleChallenge(challenge)}>{challenge}</button>
             ))}</div>
@@ -152,9 +155,20 @@ function RequestForm() {
           <div className="ui-field">
             <label htmlFor={`${id}-context`}>Tell us more (optional)</label>
             <textarea className="ui-input" id={`${id}-context`} rows={3} maxLength={1000} value={data.painPoints ?? ""}
+              placeholder={researchFocuses.find(focus => data.challengeTags?.includes(focus.challenge))?.prompt ?? "What would you like to learn? Describe the challenge and the outcome you want."}
               onChange={event => update("painPoints", event.target.value)} />
             {error("painPoints")}
           </div>
+          <section className="ui-request-review" aria-labelledby={`${id}-review`}>
+            <h3 id={`${id}-review`}>Review your request</h3>
+            <dl>
+              <div><dt>Report recipient</dt><dd>{data.fullName} · {data.email}</dd></div>
+              <div><dt>Company website</dt><dd>{data.website}</dd></div>
+              <div><dt>Your role</dt><dd>{data.personaType}</dd></div>
+              <div><dt>Research focus</dt><dd>{data.challengeTags?.join(", ") || "Choose at least one topic above."}</dd></div>
+            </dl>
+            <p>Use Back to edit your contact or company details. Findings depend on the public evidence available.</p>
+          </section>
           <label className="ui-check"><input type="checkbox" checked={data.outreachConsent ?? false}
             onChange={event => update("outreachConsent", event.target.checked)} />
             Send me optional follow-up emails about these recommendations. I can unsubscribe at any time.

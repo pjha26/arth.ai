@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { EvidenceRule } from "@/components/EvidenceRule";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DossierReveal } from "@/components/DossierReveal";
+import { researchFocuses } from "@/lib/research-focus";
 import styles from "./landing.module.css";
 
 const title = "ArthAI | Company research worth opening";
@@ -109,6 +111,23 @@ export default function Home() {
             </div>
           </section>
 
+          <section className={styles.focus} aria-labelledby="focus-title">
+            <div className={styles.sectionHeading}>
+              <h2 id="focus-title">Start with a question that matters.</h2>
+              <p>Choose a focus. Your request will carry it into the research.</p>
+            </div>
+            <div className={styles.focusItems}>
+              {researchFocuses.map((focus, index) => (
+                <Link key={focus.challenge} href={`/form?focus=${encodeURIComponent(focus.challenge)}`} className={styles.focusCard}>
+                  <span className={styles.documentLabel}>0{index + 1} / {focus.challenge}</span>
+                  <h3>{focus.title}</h3>
+                  <p>{focus.description}</p>
+                  <span className={styles.textLink}>Research this <Arrow /></span>
+                </Link>
+              ))}
+            </div>
+          </section>
+
           <section id="how-it-works" className={styles.process} aria-labelledby="process-title">
             <h2 id="process-title">How it works</h2>
             <EvidenceRule />
@@ -128,6 +147,7 @@ export default function Home() {
               <div><p className={styles.sampleLabel}>Sample report</p><EvidenceRule /></div>
               <h2 id="sample-title">See what backs each finding.</h2>
             </div>
+            <DossierReveal className={styles.dossierMotion}>
             <article className={styles.dossier} aria-labelledby="dossier-title">
               <p className={styles.documentLabel}>Illustrative report · Fictional company</p>
               <h3 id="dossier-title">Rivermere Tools</h3>
@@ -150,6 +170,7 @@ export default function Home() {
                 </div>
               </dl>
             </article>
+            </DossierReveal>
           </section>
 
           <section id="workspace" className={styles.workspace} aria-labelledby="workspace-title">
