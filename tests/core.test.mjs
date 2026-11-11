@@ -63,6 +63,7 @@ test('verification rejects invented quotes, references, and verified findings wi
   const sources = [{ id: 's1', excerpt: 'We offer accounting software. Our product is public.' }];
   assert.doesNotThrow(() => validateEvidence(report, sources));
   assert.throws(() => validateEvidence({ ...report, claims: [{ sourceId: 's1', quote: 'We raised one billion dollars.' }] }, sources));
+  assert.throws(() => validateEvidence({ ...report, claims: [{ sourceId: 's1', quote: ' '.repeat(10) }] }, sources));
   assert.throws(() => validateEvidence({ ...report, painPoints: [{ category: 'verified', evidence: [] }] }, sources));
   assert.throws(() => validateEvidence({ ...report, painPoints: [{ category: 'inferred', evidence: ['fake'] }] }, sources));
 });

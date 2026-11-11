@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { APICallError, NoObjectGeneratedError, RetryError } from 'ai';
+import { isAxiosError } from 'axios';
 import { z } from 'zod';
 import { personaSchema } from '../shared/jobs.js';
 import { publicUrl } from '../shared/network.js';
@@ -53,6 +55,7 @@ async function runPilot(cases, manifestSha256) {
   const model = reportModelName();
   const startedAt = new Date().toISOString();
   const results = [];
+  let modelRateLimited = false;
 
   for (const entry of cases) {
     const { website, companyName, personaType, painPoints, challengeTags } = entry;
@@ -62,31 +65,51 @@ async function runPilot(cases, manifestSha256) {
     let report = null;
     let actual = 'failed';
     let failedStage = 'source-collection';
+    let failureCode = null;
     try {
       const enriched = await enrich(lead);
       sources = enriched.sources;
       failedStage = 'report-generation-or-review';
-      const { sources: reportSources, ...content } = await generateAiReport(lead, enriched);
-      sources = reportSources;
-      report = content;
-      actual = 'generated';
-      failedStage = null;
+      if (modelRateLimited) {
+        failureCode = 'model-deferred-after-rate-limit';
+      } else {
+        const { sources: reportSources, ...content } = await generateAiReport(lead, enriched);
+        sources = reportSources;
+        report = content;
+        actual = 'generated';
+        failedStage = null;
+      }
     } catch (error) {
-      if (failedStage === 'source-collection' && error.message === INSUFFICIENT_RESEARCH_EVIDENCE) {
+      if (failedStage === 'source-collection' && error?.message === INSUFFICIENT_RESEARCH_EVIDENCE) {
         actual = 'insufficient-evidence';
         failedStage = null;
+      } else {
+        const cause = RetryError.isInstance(error) ? error.lastError : error;
+        failureCode = 'unexpected-error';
+        if (NoObjectGeneratedError.isInstance(cause)) {
+          failureCode = cause.finishReason === 'length' ? 'model-output-truncated' : 'model-output-invalid';
+        } else if (APICallError.isInstance(cause)) {
+          if (cause.statusCode === 429) {
+            modelRateLimited = true;
+            failureCode = 'model-rate-limited';
+          } else {
+            failureCode = 'model-api-error';
+          }
+        } else if (failedStage === 'source-collection' && isAxiosError(cause) && cause.code === 'ERR_BAD_RESPONSE' && cause.message.startsWith('maxContentLength size of ')) {
+          failureCode = 'source-page-too-large';
+        }
       }
     }
 
     const packetFile = `case-${entry.id}.json`;
     const reviewFile = `review-${entry.id}.json`;
-    await save(packetFile, { reportId, model, case: entry, actual, failedStage, sources, report });
+    await save(packetFile, { reportId, model, case: entry, actual, failedStage, failureCode, sources, report });
     await save(reviewFile, {
       version: 2, reportId, generationAttempt: 1, expected: entry.expected, actual, notes: '',
       ratings: report ? { citations: null, uncertainty: null, usefulness: null } : null,
       claims: report ? report.claims.map(claim => ({ text: claim.text, verdict: null, citation: null })) : [],
     });
-    results.push({ id: entry.id, expected: entry.expected, actual, packetFile, reviewFile });
+    results.push({ id: entry.id, expected: entry.expected, actual, failureCode, packetFile, reviewFile });
   }
 
   await save('run.json', { model, manifestSha256, startedAt, results });

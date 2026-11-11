@@ -20,12 +20,17 @@ export const reportSchema = z.object({
   signals: z.array(z.object({ type: z.string(), data: z.string(), severity: z.enum(['high','medium','low']) })).max(10),
 });
 
+export function hasEvidenceQuote(sources, { sourceId, quote }) {
+  const normalize = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+  const source = sources.find(s => s.id === sourceId);
+  const excerpt = normalize(quote);
+  return Boolean(source && excerpt.length >= 10 && normalize(source.excerpt).includes(excerpt));
+}
+
 export function validateEvidence(report, sources) {
   const ids = new Set(sources.map(s => s.id));
-  const normalize = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
   for (const claim of report.claims) {
-    const source = sources.find(s => s.id === claim.sourceId);
-    if (!source || !normalize(source.excerpt).includes(normalize(claim.quote))) throw new Error('A report claim has no matching source excerpt');
+    if (!hasEvidenceQuote(sources, claim)) throw new Error('A report claim has no matching source excerpt');
   }
   for (const item of [...report.painPoints, ...report.aiOpportunities]) {
     if (item.evidence.some(id => !ids.has(id))) throw new Error('Invalid evidence reference');

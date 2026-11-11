@@ -4,11 +4,6 @@ import { createHash } from 'node:crypto';
 import { fetchPublicPage, publicUrl } from '../../shared/network.js';
 import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../../shared/report.js';
 
-export function normalizeUrl(input) {
-  const url = publicUrl(input.startsWith('http') ? input : `https://${input}`);
-  return url.origin;
-}
-
 export function extractPage(html, url) {
   const $ = cheerio.load(html);
   const title = $('title').first().text().trim().slice(0, 200);
@@ -28,8 +23,11 @@ export async function scrapeWebsite(input) {
 }
 
 export async function enrich(lead) {
-  const rootDomain = normalizeUrl(lead.website);
-  const first = await scrapeWebsite(rootDomain);
+  const entryPage = publicUrl(lead.website.startsWith('http') ? lead.website : `https://${lead.website}`);
+  entryPage.search = '';
+  entryPage.hash = '';
+  const rootDomain = entryPage.origin;
+  const first = await scrapeWebsite(entryPage.href);
   const rootHost = new URL(first.url).hostname.replace(/^www\./, '');
   // An unrelated redirect must not silently become the researched company.
   if (rootHost !== new URL(rootDomain).hostname.replace(/^www\./, '')) throw new Error('Company website redirects to a different domain; identity review required');

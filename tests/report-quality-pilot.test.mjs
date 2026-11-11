@@ -19,13 +19,13 @@ test('report pilot validates first and preserves generated and insufficient-evid
   const script = fileURLToPath(new URL('../scripts/report-quality-pilot.mjs', import.meta.url));
   const fixture = new URL('./fixtures/provider-hook.mjs', import.meta.url).href;
   const complete = {
-    id: 'complete', website: 'https://1.1.1.1', companyName: 'Fixture Research Company', personaType: 'cto',
+    id: 'complete', website: 'https://1.1.1.1/product', companyName: 'Fixture Research Company', personaType: 'cto',
     painPoints: 'Reduce manual invoice checks.', expected: 'generated',
     expectedFacts: ['Evaluator-only expectation that must stay out of the generated report.'], expectedUnknowns: ['Funding'],
   };
   const sparse = { ...complete, id: 'sparse', website: 'https://8.8.8.8', expected: 'insufficient-evidence', expectedFacts: [] };
   const env = { ...process.env, ARTHAI_STAGING: '1', ARTHAI_REPORT_PILOT_FIXTURE: '1', ARTHAI_SCENARIO: '',
-    GEMINI_API_KEY: 'staging-fixture-key', GOOGLE_GENERATIVE_AI_API_KEY: '', ENABLE_VISUAL_ANALYSIS: 'false', REPORT_MODEL: 'fixture-research-model',
+    GEMINI_API_KEY: 'staging-fixture-key', GOOGLE_GENERATIVE_AI_API_KEY: '', ENABLE_VISUAL_ANALYSIS: 'false', REPORT_MODEL: 'gemini-2.5-flash',
     DATABASE_URL: 'postgresql://arthai:unused@127.0.0.1:55439/arthai_staging', DIRECT_URL: 'postgresql://arthai:unused@127.0.0.1:55439/arthai_staging',
     UPSTASH_REDIS_URL: 'redis://127.0.0.1:56379',
   };
@@ -48,9 +48,10 @@ test('report pilot validates first and preserves generated and insufficient-evid
   const { output, outcomeMismatches } = JSON.parse(result.stdout);
   assert.equal(outcomeMismatches, 0);
   const summary = await read(path.join(output, 'run.json'));
-  assert.equal(summary.model, 'fixture-research-model');
+  assert.equal(summary.model, 'gemini-2.5-flash');
   assert.deepEqual(summary.results.map(entry => entry.actual), ['generated', 'insufficient-evidence']);
   const packet = await read(path.join(output, 'case-complete.json'));
+  assert.equal(packet.sources[0].url, complete.website);
   assert.ok(packet.sources[0].excerpt.includes('accounting software'));
   assert.equal(packet.report.claims[0].sourceId, packet.sources[0].id);
   assert.equal(packet.case.expectedFacts[0], complete.expectedFacts[0]);
@@ -65,4 +66,29 @@ test('report pilot validates first and preserves generated and insufficient-evid
   assert.deepEqual(events.map(event => [event.provider, event.action]), [
     ['google-fixture', 'research'], ['google-fixture', 'research'], ['google-fixture', 'research'], ['google-fixture', 'writer'], ['google-fixture', 'review'],
   ]);
+
+  env.ARTHAI_SCENARIO = 'pilot-truncated';
+  const failed = run('--live');
+  assert.equal(failed.status, 1, failed.stderr);
+  const failedSummary = await read(path.join(JSON.parse(failed.stdout).output, 'run.json'));
+  assert.deepEqual(failedSummary.results.map(entry => [entry.actual, entry.failureCode]), [
+    ['failed', 'model-output-truncated'], ['insufficient-evidence', null],
+  ]);
+
+  const later = { ...complete, id: 'later' };
+  const oversized = { ...complete, id: 'oversized', website: 'https://9.9.9.9' };
+  await writeFile(manifest, JSON.stringify({ cases: [complete, later, oversized, sparse] }));
+  env.ARTHAI_SCENARIO = 'quota';
+  const limited = run('--live');
+  assert.equal(limited.status, 1, limited.stderr);
+  const limitedOutput = JSON.parse(limited.stdout).output;
+  const limitedSummary = await read(path.join(limitedOutput, 'run.json'));
+  assert.deepEqual(limitedSummary.results.map(entry => [entry.actual, entry.failureCode]), [
+    ['failed', 'model-rate-limited'], ['failed', 'model-deferred-after-rate-limit'],
+    ['failed', 'source-page-too-large'], ['insufficient-evidence', null],
+  ]);
+  assert.ok((await read(path.join(limitedOutput, 'case-later.json'))).sources.length > 0);
+  const quotaCalls = (await readFile(eventsPath, 'utf8')).trim().split('\n').map(JSON.parse)
+    .filter(event => event.action === 'quota');
+  assert.ok(quotaCalls.length > 0 && quotaCalls.length <= 6);
 });

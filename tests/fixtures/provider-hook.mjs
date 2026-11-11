@@ -24,6 +24,7 @@ axios.defaults.adapter = async config => {
   if (discoveryName) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
     data: `<html><title>${discoveryName}</title><main><h1>${discoveryName}</h1><p>${fixtureText}</p></main></html>` };
   if (url.origin === source && process.env.ARTHAI_SCENARIO === 'private-redirect') return { status: 302, statusText: 'Found', headers: { location: 'http://127.0.0.1/private' }, config, data: '' };
+  if (reportPilot && url.origin === 'https://9.9.9.9') throw new axios.AxiosError('maxContentLength size of 2097152 exceeded', 'ERR_BAD_RESPONSE', config);
   if ((url.origin === source && process.env.ARTHAI_SCENARIO === 'insufficient') || (reportPilot && url.origin === 'https://8.8.8.8')) return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config, data: '<main>Not enough evidence.</main>' };
   if (url.origin === source || reportPilot && url.origin === 'https://1.1.1.1') return { status: 200, statusText: 'OK', headers: { 'content-type': 'text/html' }, config,
     data: `<html><title>Staging Research Company</title><main><h1>Accounting tools</h1><p>${fixtureText}</p></main></html>` };
@@ -64,7 +65,10 @@ globalThis.fetch = async (input, init) => {
   }
   if (url.hostname === '127.0.0.1') return originalFetch(request);
   if (url.hostname === 'generativelanguage.googleapis.com') {
-    if (process.env.ARTHAI_SCENARIO === 'quota') return json({ error: { code: 429, message: 'Controlled quota exhaustion', status: 'RESOURCE_EXHAUSTED' } }, 429);
+    if (process.env.ARTHAI_SCENARIO === 'quota') {
+      if (reportPilot) await log({ provider: 'google-fixture', action: 'quota' });
+      return json({ error: { code: 429, message: 'Controlled quota exhaustion', status: 'RESOURCE_EXHAUSTED' } }, 429);
+    }
     const body = await request.json();
     if (url.pathname.endsWith(':embedContent')) return json({ embedding: { values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) } });
     const system = body.systemInstruction?.parts?.map(p => p.text || '').join('') || '';
@@ -75,13 +79,29 @@ globalThis.fetch = async (input, init) => {
       return new Response(`data: ${JSON.stringify(generation('The report recommends a small invoice-review pilot. This is a hypothesis; measure a baseline before implementation.'))}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
     }
     const data = JSON.parse(text);
+    if (reportPilot && url.pathname.includes('/gemini-2.5-flash:')) {
+      const { maxOutputTokens, thinkingConfig } = body.generationConfig;
+      if (thinkingConfig?.thinkingBudget !== 2048 || maxOutputTokens - thinkingConfig.thinkingBudget < 6000) {
+        throw new Error('Gemini report request did not reserve space for structured output');
+      }
+    }
     if (system.startsWith('Extract only directly supported facts.')) {
       await log({ provider: 'google-fixture', action: 'research' });
+      if (process.env.ARTHAI_SCENARIO === 'pilot-truncated') {
+        const response = generation('{"findings":[');
+        response.candidates[0].finishReason = 'MAX_TOKENS';
+        return json(response);
+      }
       const finding = { text: 'The source describes accounting software.', sourceId: data.sources[0].id, quote: data.sources[0].excerpt.slice(0, 95) };
-      return json(generation({ findings: Array.from({ length: reportPilot ? 7 : 1 }, () => finding), missing: Array.from({ length: reportPilot ? 6 : 1 }, () => 'Independent funding and growth evidence') }));
+      const findings = Array.from({ length: reportPilot ? 7 : 1 }, () => finding);
+      if (reportPilot) findings.unshift({ ...finding, quote: 'Fabricated specialist quote' });
+      return json(generation({ findings, missing: Array.from({ length: reportPilot ? 6 : 1 }, () => 'Independent funding and growth evidence') }));
     }
     if (system.startsWith('You write evidence-backed company research.')) {
       if (reportPilot && data.specialists.some(result => result.findings.length !== 6 || result.missing.length !== 5)) throw new Error('Pilot exceeded the specialist findings limit');
+      if (reportPilot && data.specialists.some(result => result.findings.some(finding => finding.quote === 'Fabricated specialist quote'))) {
+        throw new Error('Unsupported specialist findings reached the report writer');
+      }
       await log({ provider: 'google-fixture', action: 'writer' });
       return json(generation(report(data)));
     }
