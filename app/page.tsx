@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EvidenceRule } from "@/components/EvidenceRule";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { DossierReveal } from "@/components/DossierReveal";
+import { DossierReveal, HeroDossier } from "@/components/DossierReveal";
 import { researchFocuses } from "@/lib/research-focus";
 import styles from "./landing.module.css";
 
@@ -82,7 +82,7 @@ export default function Home() {
               </div>
             </div>
             <figure className={styles.heroFigure}>
-              <div className={styles.heroImage}>
+              <HeroDossier className={styles.heroImage}>
                 <Image
                   src="/research-dossier.webp"
                   alt=""
@@ -91,7 +91,7 @@ export default function Home() {
                   loading="eager"
                   fetchPriority="high"
                 />
-              </div>
+              </HeroDossier>
               <figcaption>
                 <span>FIG. 01</span>
                 <span>The research dossier</span>
@@ -147,7 +147,7 @@ export default function Home() {
               <div><p className={styles.sampleLabel}>Sample report</p><EvidenceRule /></div>
               <h2 id="sample-title">See what backs each finding.</h2>
             </div>
-            <DossierReveal className={styles.dossierMotion}>
+            <DossierReveal className={styles.dossierMotion} sheetClassName={styles.dossierSheet}>
             <article className={styles.dossier} aria-labelledby="dossier-title">
               <p className={styles.documentLabel}>Illustrative report · Fictional company</p>
               <h3 id="dossier-title">Rivermere Tools</h3>
