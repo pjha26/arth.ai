@@ -7,6 +7,8 @@ export type ReportInsights = Partial<z.infer<typeof reportSchema>> & {
 };
 export interface ReportView {
   id: string; score: number | null; status: string; personaType: string;
+  artifactStatus?: string;
+  pdfUrl?: string | null;
   insights: ReportInsights | null;
   company: { name: string; industry: string | null; signals?: { severity: string; type: string; detectedAt: string; data?: { message?: string } }[] };
 }

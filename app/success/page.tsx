@@ -2,11 +2,13 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { PublicHeader } from "@/components/ResearchShell";
+import { EvidenceRule } from "@/components/EvidenceRule";
 import { deliveryCopy, shouldPollReport } from "@/shared/status.js";
 
 function SuccessContent() {
   const params  = useSearchParams();
-  const company = params.get("company") || "Your Company";
+  const [company, setCompany] = useState(params.get("company") || "your company");
   const email   = params.get("email")   || "your inbox";
   const jobId   = params.get("jobId");
 
@@ -17,9 +19,7 @@ function SuccessContent() {
   const [pdfReady,        setPdfReady]        = useState(false);
   const [deliveryStatus, setDeliveryStatus] = useState("pending");
   const [statusError, setStatusError] = useState<string | null>(null);
-  const emailSkipped = deliveryStatus === "skipped";
 
-  const [logo, setLogo] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
   const [industry, setIndustry] = useState<string | null>(null);
   const [companySize, setCompanySize] = useState<string | null>(null);
@@ -31,10 +31,10 @@ function SuccessContent() {
 
   // Dynamic Stages
   const STAGES = [
-    { label: `Reading ${company}'s public website...`,    icon: "🔍", key: "enrich"    },
-    { label: "Drafting and checking source-backed recommendations...", icon: "🧠", key: "ai_report" },
-    { label: "Generating personalized PDF...",     icon: "📄", key: "pdf"       },
-    { label: "Delivering intelligence report",     icon: "📬", key: "email"     },
+    { label: "Read public sources", key: "enrich"    },
+    { label: "Draft and verify findings", key: "ai_report" },
+    { label: "Prepare the private PDF", key: "pdf"       },
+    { label: "Send the report email", key: "email"     },
   ];
 
   // Elapsed timer
@@ -65,7 +65,8 @@ function SuccessContent() {
         if (cancelled || !data.success || !data.lead) return;
         const lead = data.lead;
         setLeadStatus(lead.status); setDeliveryStatus(lead.deliveryStatus);
-        setLogo(lead.logo); setDescription(lead.description); setIndustry(lead.industry);
+        if (lead.companyName) setCompany(lead.companyName);
+        setDescription(lead.description); setIndustry(lead.industry);
         setCompanySize(lead.companySize); setAiSummary(lead.aiSummary);
         const stages = lead.stages as { stage: string; status: string }[];
         const completed = new Set(stages.filter(stage => stage.status === 'done' && (stage.stage !== 'email' || ['accepted', 'delivered'].includes(lead.deliveryStatus))).map(stage => stage.stage));
@@ -117,388 +118,66 @@ function SuccessContent() {
     }
   }, [agentThoughts]);
 
-  const allDone = leadStatus === "done";
-  const hasFailed = !jobId || ["failed", "unavailable"].includes(leadStatus);
-
-  const stageStatus = (key: string) => {
-    if (completedStages.includes(key)) return "done";
-    if (activeStage === key)           return "active";
-    return "waiting";
-  };
+  const ready = leadStatus === "done";
+  const unavailable = ["failed", "unavailable"].includes(leadStatus);
+  const processing = !ready && !unavailable;
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-      {/* Navbar */}
-      <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        height: "58px", display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 2.5rem", background: "rgba(250,250,248,0.9)",
-        backdropFilter: "blur(16px)", borderBottom: "1px solid #E8E6E1",
-      }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.55rem", textDecoration: "none" }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
-          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>arth.ai</span>
-        </Link>
-        <Link href="/dashboard" style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
-          Dashboard
-        </Link>
-      </nav>
-
-      {/* Main */}
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", minHeight: "100vh",
-        padding: "5rem 1.5rem", gap: "2rem",
-      }}>
-        
-        {/* Status heading */}
-        <div className="animate-fade-up" style={{ textAlign: "center", maxWidth: "480px" }}>
-          {allDone ? (
-            <>
-              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🎉</div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", marginBottom: "0.65rem" }}>
-                Your report is ready!
-              </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                {deliveryCopy(deliveryStatus)}
-              </p>
-            </>
-          ) : hasFailed ? (
-            <>
-              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚠️</div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", marginBottom: "0.65rem" }}>
-                Pipeline note
-              </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                {statusError || 'The report could not be completed. Contact the team to review or retry your existing request.'}
-              </p>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⏳</div>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", marginBottom: "0.65rem" }}>
-                Compiling intelligence for {company}.
-              </h1>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-                Your report is being prepared for <strong style={{ color: "var(--text-primary)" }}>{email}</strong> You can track generation and email acceptance below.
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Smart Welcome Screen Post-Report */}
-        {allDone && aiSummary && (
-          <div className="animate-fade-up delay-100" style={{
-            background: "white", border: "1px solid #E8E6E1", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "600px", boxShadow: "0 4px 20px rgba(24,24,27,0.08)", textAlign: "left"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FDF5E8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>✨</div>
-              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>Intelligence Brief</h2>
-            </div>
-            <p style={{ fontFamily: "var(--font-body)", fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "1.5rem" }}>
-              {aiSummary}
-            </p>
-            
-            {/* Download Button inside the welcome screen */}
-            {pdfReady && jobId && (
-              <div style={{ borderTop: "1px solid #E8E6E1", paddingTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-muted)", margin: 0 }}>
-                  View the full breakdown in your PDF report.
-                </p>
-                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                  <a
-                    href={`/report/${jobId}`}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                      background: "linear-gradient(135deg, #18181B, #27272A)", color: "white",
-                      fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
-                      padding: "0.65rem 1.5rem", borderRadius: "100px",
-                      textDecoration: "none",
-                      boxShadow: "0 4px 14px rgba(24,24,27,0.2)",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    💬 Chat With Report
-                  </a>
-                  <a
-                    href={`/api/leads/${jobId}/download`}
-                    download
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                      background: "transparent", color: "var(--text-primary)", border: "1px solid #E8E6E1",
-                      fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
-                      padding: "0.65rem 1.5rem", borderRadius: "100px",
-                      textDecoration: "none",
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseOver={(e) => (e.currentTarget.style.background = "#F4F4F5")}
-                    onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    ↓ Download PDF
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
+    <>
+      <PublicHeader />
+      <main className="ui-document">
+        <header className="ui-document-cover" aria-live="polite">
+          <p className="ui-label">Report status</p>
+          <h1 className="ui-display">{ready ? "Your report is ready" : unavailable ? "Report unavailable" : `Researching ${company}`}</h1>
+          <p>{ready ? deliveryCopy(deliveryStatus)
+            : unavailable ? statusError || (jobId ? "The report could not be completed. Contact the team to review your request." : "Open your private link or start a new request.")
+            : `Your report is being prepared for ${email}. You can follow its progress here.`}</p>
+        </header>
+        {processing && (
+          <section className="ui-document-section">
+            <h2 className="ui-step-title">Research progress</h2>
+            <EvidenceRule />
+            <ol className="ui-ruled-list">
+              {STAGES.map(({ key, label }, index) => (
+                <li key={key} className="ui-progress-row" aria-current={activeStage === key ? "step" : undefined}>
+                  <span className="ui-label">0{index + 1}</span>
+                  <strong>{label}</strong>
+                  <span className={activeStage === key ? "ui-status-active" : undefined}>
+                    {completedStages.includes(key) ? "Complete" : activeStage === key ? "In progress" : "Waiting"}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="ui-label">Elapsed {Math.floor(elapsed / 60)}m {elapsed % 60}s</p>
+            {(description || industry || companySize) && <div className="ui-footnote">
+              {(industry || companySize) && <p>{[industry, companySize].filter(Boolean).join(" · ")}</p>}
+              {description && <p>{description}</p>}
+            </div>}
+            {agentThoughts.length > 0 && <details className="ui-updates">
+              <summary>Research updates</summary>
+              <div ref={terminalRef}>{agentThoughts.map((entry, index) => <p key={index}>{entry}</p>)}</div>
+            </details>}
+          </section>
         )}
-
-        {/* Fallback PDF Download for failures or if aiSummary is missing */}
-        {pdfReady && jobId && (!allDone || !aiSummary) && (
-          <div
-            className="animate-fade-up delay-100"
-            style={{
-              background: "linear-gradient(135deg, #FDF5E8, #FFFBF5)", border: "1.5px solid #C58B45", borderRadius: "14px", padding: "1.5rem 2rem", width: "100%", maxWidth: "400px", boxShadow: "0 4px 20px rgba(197,139,69,0.15)", textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📄</div>
-            <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1rem" }}>
-              Your AI Intelligence Report is ready
-            </p>
-            <a
-              href={`/api/leads/${jobId}/download`}
-              download
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                background: "#C58B45", color: "white",
-                fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 700,
-                padding: "0.65rem 1.5rem", borderRadius: "100px",
-                textDecoration: "none",
-                boxShadow: "0 4px 14px rgba(197,139,69,0.3)",
-                transition: "all 0.2s ease",
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "#A97030")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "#C58B45")}
-            >
-              ↓ Download PDF Report
-            </a>
-          </div>
+        {(ready || pdfReady) && jobId && (
+          <section className="ui-document-section">
+            <h2 className="ui-step-title">Your research dossier</h2>
+            {aiSummary && <p>{aiSummary}</p>}
+            <div className="ui-actions ui-document-actions">
+              {ready && <Link className="ui-button" href={`/report/${jobId}`}>Open report and chat →</Link>}
+              {pdfReady && <a className="ui-button ui-button-secondary" href={`/api/leads/${jobId}/download`} download>Download PDF</a>}
+            </div>
+          </section>
         )}
-
-        <div style={{ display: "flex", gap: "2rem", width: "100%", maxWidth: "800px", justifyContent: "center", flexWrap: "wrap", alignItems: "flex-start" }}>
-          
-          {/* Instant Company Mirror */}
-          {(logo || description) && !allDone && !hasFailed && (
-            <div className="animate-fade-up delay-100" style={{
-              background: "white", border: "1px solid #E8E6E1", borderRadius: "16px", padding: "1.5rem", width: "100%", maxWidth: "340px", boxShadow: "0 1px 4px rgba(24,24,27,0.06)", display: "flex", flexDirection: "column", gap: "1rem"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                {logo ? (
-                  <img src={logo} alt={`${company} logo`} style={{ width: 48, height: 48, borderRadius: "8px", objectFit: "contain", border: "1px solid #E8E6E1" }} />
-                ) : (
-                  <div style={{ width: 48, height: 48, borderRadius: "8px", background: "#F4F4F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "bold", color: "var(--text-placeholder)", border: "1px solid #E8E6E1" }}>
-                    {company.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.15rem" }}>{company}</h2>
-                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                    {industry && <span style={{ fontSize: "0.7rem", background: "#FDF5E8", color: "#C58B45", padding: "0.15rem 0.5rem", borderRadius: "100px", fontWeight: 600 }}>{industry}</span>}
-                    {companySize && <span style={{ fontSize: "0.7rem", background: "#F4F4F5", color: "var(--text-muted)", padding: "0.15rem 0.5rem", borderRadius: "100px", fontWeight: 600 }}>{companySize}</span>}
-                  </div>
-                </div>
-              </div>
-              {description && (
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6, margin: 0, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  {description}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Pipeline status card */}
-          {!allDone && !hasFailed && (
-            <div className="animate-fade-up delay-200" style={{
-              background: "white", border: "1px solid #E8E6E1", borderRadius: "16px", padding: "1.75rem", width: "100%", maxWidth: "400px", boxShadow: "0 1px 4px rgba(24,24,27,0.06), 0 8px 24px rgba(24,24,27,0.04)",
-            }}>
-              {/* Timer row */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-placeholder)" }}>
-                  Pipeline
-                </span>
-                <span style={{ fontFamily: "monospace", fontSize: "0.78rem", color: "var(--text-placeholder)" }}>
-                  {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
-                </span>
-              </div>
-
-              {/* Stages */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {STAGES.map((stage) => {
-                  const st = stageStatus(stage.key);
-                  const done   = st === "done";
-                  const active = st === "active";
-                  const waiting = st === "waiting";
-
-                  return (
-                    <div key={stage.key} style={{
-                      display: "flex", alignItems: "center", gap: "0.85rem",
-                      opacity: waiting ? 0.35 : 1,
-                      transition: "opacity 0.5s ease",
-                    }}>
-                      {/* Status dot */}
-                      <div style={{
-                        width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: done ? "0.75rem" : "0.9rem",
-                        fontFamily: "var(--font-heading)", fontWeight: 700,
-                        background: done ? "#5C7A62" : active ? "#FDF5E8" : "#F4F4F5",
-                        border: active ? "1.5px solid #C58B45" : "none",
-                        color: done ? "white" : "inherit",
-                        transition: "all 0.4s ease",
-                      }}>
-                        {done ? "✓" : stage.icon}
-                      </div>
-
-                      {/* Label + bar */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontFamily: "var(--font-heading)", fontSize: "0.875rem", fontWeight: 600,
-                          color: done ? "#5C7A62" : active ? "var(--text-primary)" : "var(--text-muted)",
-                          marginBottom: active ? "0.35rem" : 0,
-                          transition: "color 0.4s ease",
-                        }}>
-                          {stage.label}
-                          {stage.key === "email" && emailSkipped && done && (
-                            <span style={{ fontSize: "0.72rem", color: "var(--text-placeholder)", fontWeight: 400, marginLeft: "0.4rem" }}>(sandbox)</span>
-                          )}
-                        </div>
-
-                        {/* Active progress bar */}
-                        {active && (
-                          <div style={{ height: 3, borderRadius: 100, background: "var(--border)", overflow: "hidden" }}>
-                            <div style={{
-                              height: "100%", width: "55%", borderRadius: 100,
-                              background: "linear-gradient(90deg, #C58B45, #D4A04E, #C58B45)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 2s linear infinite",
-                            }} />
-                          </div>
-                        )}
-
-                        {/* Done bar */}
-                        {done && (
-                          <div style={{ height: 3, borderRadius: 100, background: "var(--border)", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: "100%", background: "#5C7A62", borderRadius: 100 }} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Agent Terminal ── */}
-        {!allDone && !hasFailed && agentThoughts.length > 0 && (
-          <div className="animate-fade-up delay-300" style={{
-            width: "100%", maxWidth: "800px",
-            background: "#0D0D0D", borderRadius: "16px",
-            border: "1px solid #2A2A2A",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
-            overflow: "hidden",
-          }}>
-            {/* Terminal Title Bar */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: "0.5rem",
-              padding: "0.65rem 1rem",
-              background: "linear-gradient(180deg, #1A1A1A 0%, #141414 100%)",
-              borderBottom: "1px solid #2A2A2A",
-            }}>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#FF5F57" }} />
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#FEBC2E" }} />
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28C840" }} />
-              </div>
-              <span style={{
-                fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
-                fontSize: "0.7rem", fontWeight: 600,
-                color: "#6B6B6B", marginLeft: "0.5rem",
-                letterSpacing: "0.03em",
-              }}>
-                agent-terminal — {company}
-              </span>
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <div style={{
-                  width: 6, height: 6, borderRadius: "50%",
-                  background: "#28C840",
-                  boxShadow: "0 0 6px #28C840",
-                  animation: "pulse-dot 2s infinite",
-                }} />
-                <span style={{ fontFamily: "monospace", fontSize: "0.65rem", color: "#4A4A4A" }}>LIVE</span>
-              </div>
-            </div>
-
-            {/* Terminal Body */}
-            <div
-              ref={terminalRef}
-              className="agent-terminal-scroll"
-              style={{
-                padding: "1rem 1.25rem",
-                maxHeight: "280px",
-                overflowY: "auto",
-                scrollBehavior: "smooth",
-              }}
-            >
-              {agentThoughts.map((thought, idx) => {
-                // Determine color based on agent prefix
-                let color = "#8B8B8B";
-                if (thought.includes("Orchestrator"))    color = "#A78BFA";
-                else if (thought.includes("Research"))   color = "#60A5FA";
-                else if (thought.includes("Analysis"))   color = "#34D399";
-                else if (thought.includes("Writer"))     color = "#FBBF24";
-                else if (thought.includes("Critic"))     color = "#F87171";
-                else if (thought.includes("System"))     color = "#6B7280";
-                else if (thought.includes("->"))         color = "#6EE7B7";
-
-                return (
-                  <div key={idx} style={{
-                    fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
-                    fontSize: "0.78rem",
-                    lineHeight: 1.7,
-                    color: color,
-                    opacity: idx === agentThoughts.length - 1 ? 1 : 0.7,
-                    transition: "opacity 0.3s ease",
-                  }}>
-                    <span style={{ color: "#3A3A3A", marginRight: "0.5rem", userSelect: "none" }}>{'>'}</span>
-                    {thought}
-                  </div>
-                );
-              })}
-              {/* Blinking cursor */}
-              <div style={{
-                fontFamily: "monospace", fontSize: "0.78rem",
-                color: "#C58B45", marginTop: "0.25rem",
-                animation: "blink-cursor 1s step-end infinite",
-              }}>▋</div>
-            </div>
-          </div>
-        )}
-
-        {/* Actions below everything */}
-        {(allDone || hasFailed) && (
-          <div className="animate-fade-up delay-200" style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", justifyContent: "center", marginTop: "1rem" }}>
-            <Link href="/" style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", border: "1.5px solid #E0DDD8", background: "white", color: "#52525B", textDecoration: "none" }}>
-              ← Back to Home
-            </Link>
-            <Link href="/form" style={{ fontFamily: "var(--font-heading)", fontSize: "0.82rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", border: "1.5px solid #E0DDD8", background: "white", color: "#52525B", textDecoration: "none" }}>
-              Submit another company
-            </Link>
-          </div>
-        )}
-
-      </div>
-    </div>
+        {!processing && <p className="ui-footnote"><Link href="/form">Request another report →</Link></p>}
+      </main>
+    </>
   );
 }
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={
-      <div style={{ background: "var(--bg)", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontFamily: "var(--font-heading)", fontSize: "0.9rem", color: "var(--text-placeholder)" }}>
-        Loading…
-      </div>
-    }>
+    <Suspense fallback={<><PublicHeader /><main className="ui-document">Loading report status…</main></>}>
       <SuccessContent />
     </Suspense>
   );

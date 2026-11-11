@@ -83,8 +83,8 @@ export default function ReviewForm({ reportId, generationAttempt, actual, listed
   }
 
   return (
-    <form className="mt-8 grid max-w-2xl gap-4 rounded border p-4" onSubmit={download}>
-      <h2 className="font-semibold">Record your review</h2>
+    <form className="ui-document-section grid gap-4" onSubmit={download}>
+      <h2 className="ui-step-title">Record your review</h2>
       <p>Use the expected outcome from the benchmark case. Check the full report, including material claims outside its citation list.</p>
       <label className="grid gap-1">Expected outcome
         <select name="expected" defaultValue="" required className="rounded border p-2">
@@ -110,7 +110,7 @@ export default function ReviewForm({ reportId, generationAttempt, actual, listed
             <p>Check the report PDF for citations and the saved excerpts for support. Add any material claim missing from this list.</p>
             {listedClaims.map((claim, index) => <ClaimFields key={`listed-${index}`} prefix={`listed-${index}`} claim={claim} />)}
             {addedClaims.map(id => <ClaimFields key={`added-${id}`} prefix={`added-${id}`} onRemove={() => setAddedClaims(current => current.filter(item => item !== id))} />)}
-            <button type="button" name="addClaim" className="w-fit rounded border px-4 py-2" onClick={() => {
+            <button type="button" name="addClaim" className="ui-button ui-button-secondary" onClick={() => {
               const id = nextClaim.current++;
               setAddedClaims(current => [...current, id]);
             }}>Add claim from report text</button>
@@ -120,7 +120,7 @@ export default function ReviewForm({ reportId, generationAttempt, actual, listed
       <label className="grid gap-1">Reviewer notes
         <textarea name="notes" required maxLength={2000} rows={4} className="rounded border p-2" />
       </label>
-      <button type="submit" className="w-fit rounded border px-4 py-2">Download review file</button>
+      <button type="submit" className="ui-button">Download review file</button>
       <p role="status">{feedback}</p>
     </form>
   );

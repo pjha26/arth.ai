@@ -1,179 +1,56 @@
 import { buildCompanyProfile } from "@/lib/companyProfile";
+import { EvidenceRule } from "@/components/EvidenceRule";
+import { PublicHeader } from "@/components/ResearchShell";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
-// Force dynamic rendering so cache is busted
-export const dynamic = 'force-static';
+export const dynamic = "force-static";
 
 interface Props {
   params: Promise<{ company: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const resolvedParams = await params;
-  const slug = resolvedParams.company.toLowerCase();
+async function companySlug(params: Props["params"]) {
+  const slug = (await params).company.toLowerCase();
   if (!/^[a-z0-9-]{2,60}$/i.test(slug)) notFound();
-  const name = slug.replaceAll('-', ' ');
+  return slug;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const name = (await companySlug(params)).replaceAll("-", " ");
   return {
-    title: `${name} × arth.ai — Company Report Request`,
-    description: `Request source-backed company research for ${name}. Enter the official website before research begins.`,
+    title: `${name} × ArthAI | Company report request`,
+    description: `Request source-backed company research for ${name}.`,
   };
 }
 
 export default async function CompanyPage({ params }: Props) {
-  const resolvedParams = await params;
-  const slug = resolvedParams.company.toLowerCase();
-  if (!/^[a-z0-9-]{2,60}$/i.test(slug)) notFound();
-  const profile = await buildCompanyProfile(slug);
+  const profile = await buildCompanyProfile(await companySlug(params));
+  const request = `/form?company=${encodeURIComponent(profile.name)}`;
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-
-      {/* ── Navbar ── */}
-      <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        height: "58px", display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 2.5rem",
-        background: "rgba(250,250,248,0.92)",
-        backdropFilter: "blur(16px)",
-        borderBottom: "1px solid #E8E6E1",
-      }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.55rem", textDecoration: "none" }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
-          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>arth.ai</span>
-        </Link>
-        <Link href="/form" style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", fontWeight: 600, padding: "0.5rem 1.1rem", borderRadius: "100px", background: "var(--text-primary)", color: "white", textDecoration: "none" }}>
-          Get your report
-        </Link>
-      </nav>
-
-      {/* ── Hero ── */}
-      <section style={{ paddingTop: "130px", paddingBottom: "80px", textAlign: "center" }}>
-        <div style={{ maxWidth: "700px", margin: "0 auto", padding: "0 2rem" }}>
-
-          {/* Company logo + name */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", marginBottom: "2rem" }}>
-            <span style={{
-              fontFamily: "var(--font-heading)", fontSize: "0.78rem", fontWeight: 600,
-              padding: "0.3rem 0.8rem", borderRadius: "100px",
-              border: "1.5px solid #E0DDD8", background: "white",
-              color: "var(--text-muted)",
-            }}>
-              arth.ai Intelligence &nbsp;·&nbsp; {profile.industry}
-            </span>
-          </div>
-
-          <h1 style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "clamp(2.2rem, 5vw, 3.8rem)",
-            fontWeight: 800, lineHeight: 1.08,
-            letterSpacing: "-0.03em", color: "var(--text-primary)",
-            marginBottom: "1.5rem",
-          }}>
-            {profile.headline}
-          </h1>
-
-          <p style={{ color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "1.5rem" }}>{profile.description}</p>
-
-          <Link href={`/form?company=${encodeURIComponent(profile.name)}`} style={{
-            display: "inline-flex", alignItems: "center", gap: "0.4rem",
-            padding: "0.85rem 2rem", borderRadius: "100px",
-            background: "#C58B45", color: "white",
-            fontFamily: "var(--font-heading)", fontSize: "0.95rem", fontWeight: 700,
-            textDecoration: "none", letterSpacing: "-0.01em",
-            boxShadow: "0 4px 20px rgba(197,139,69,0.25)",
-          }}>
-            Request your report →
-          </Link>
-
-          <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.72rem", color: "var(--text-placeholder)", marginTop: "0.85rem" }}>
-            Delivery depends on research and provider availability · No account needed
-          </p>
-        </div>
-      </section>
-
-      <div style={{ borderTop: "1px solid #E8E6E1", margin: "0 2.5rem" }} />
-
-      {/* ── Pain Points ── */}
-      <section style={{ padding: "6rem 2rem" }}>
-        <div style={{ maxWidth: "620px", margin: "0 auto" }}>
-          <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#C58B45", marginBottom: "1.25rem" }}>
-            Your Context
-          </p>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.2, marginBottom: "2rem" }}>
-            Questions for your<br />research request.
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-            {profile.painPoints.map((p, i) => (
-              <div key={i} style={{ display: "flex", gap: "1rem", alignItems: "flex-start", padding: "1.25rem 0", borderBottom: i < profile.painPoints.length - 1 ? "1px solid #E8E6E1" : "none" }}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", border: "1.5px solid #E8E6E1", background: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C58B45" }} />
-                </div>
-                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.7 }}>{p}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <div style={{ borderTop: "1px solid #E8E6E1", margin: "0 2.5rem" }} />
-
-      {/* ── AI Opportunities ── */}
-      <section style={{ padding: "6rem 2rem", background: "white" }}>
-        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
-          <p style={{ fontFamily: "var(--font-heading)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#C58B45", marginBottom: "1.25rem" }}>
-            AI Opportunities
-          </p>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.2, marginBottom: "2rem" }}>
-            How arth.ai helps you<br />convert faster.
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {profile.aiOpportunities.map((o, i) => (
-              <div key={i} style={{ display: "flex", gap: "1rem", alignItems: "flex-start", padding: "1.25rem 1.5rem", background: "var(--bg)", border: "1px solid #E8E6E1", borderRadius: "12px" }}>
-                <div style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.75rem", color: "#C58B45", paddingTop: 3, flexShrink: 0, minWidth: 20 }}>
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.7 }}>{o}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <div style={{ borderTop: "1px solid #E8E6E1" }} />
-
-      {/* ── CTA ── */}
-      <section style={{ padding: "7rem 2rem", textAlign: "center" }}>
-        <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text-primary)", lineHeight: 1.15, marginBottom: "1.1rem" }}>
-            See what your<br />AI audit would look like.
-          </h2>
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.8, marginBottom: "2.25rem" }}>
-            {profile.ctaLine}
-          </p>
-          <Link href={`/form?company=${encodeURIComponent(profile.name)}`} style={{
-            display: "inline-flex", alignItems: "center", gap: "0.4rem",
-            padding: "0.85rem 2rem", borderRadius: "100px",
-            background: "var(--text-primary)", color: "white",
-            fontFamily: "var(--font-heading)", fontSize: "0.95rem", fontWeight: 700,
-            textDecoration: "none", letterSpacing: "-0.01em",
-          }}>
-            Get your free audit →
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer style={{ borderTop: "1px solid #E8E6E1", padding: "1.75rem 2.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-          <div style={{ width: 22, height: 22, borderRadius: 5, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "white", fontFamily: "var(--font-heading)" }}>a</div>
-          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "0.875rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>arth.ai</span>
-        </div>
-        <Link href="/" style={{ fontFamily: "var(--font-heading)", fontSize: "0.78rem", color: "var(--text-placeholder)", textDecoration: "none" }}>
-          ← Back to arth.ai
-        </Link>
-      </footer>
-    </div>
+    <>
+      <PublicHeader><Link href={request} className="ui-button">Request a report</Link></PublicHeader>
+      <main className="ui-document">
+        <header className="ui-document-cover">
+          <h1 className="ui-display">{profile.headline}</h1>
+          <p>{profile.description}</p>
+          <div className="ui-document-actions"><Link href={request} className="ui-button">Start a request →</Link></div>
+        </header>
+        <section className="ui-document-section">
+          <h2 className="ui-step-title">Questions for your request</h2>
+          <EvidenceRule />
+          <ul className="ui-ruled-list">{profile.painPoints.map(question => <li key={question}>{question}</li>)}</ul>
+        </section>
+        <section className="ui-document-section">
+          <h2 className="ui-step-title">What the report can cover</h2>
+          <EvidenceRule />
+          <ul className="ui-ruled-list">{profile.aiOpportunities.map(opportunity => <li key={opportunity}>{opportunity}</li>)}</ul>
+          <p>{profile.ctaLine}</p>
+          <div className="ui-document-actions"><Link href={request} className="ui-text-link">Request company research →</Link></div>
+        </section>
+      </main>
+    </>
   );
 }

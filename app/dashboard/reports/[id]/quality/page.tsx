@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireStaff } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { INSUFFICIENT_RESEARCH_EVIDENCE, reportSchema } from '@/shared/report.js';
+import { EvidenceRule } from '@/components/EvidenceRule';
 import ReviewForm from './ReviewForm';
 
 export default async function ReportQualityPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,25 +26,31 @@ export default async function ReportQualityPage({ params }: { params: Promise<{ 
   const listedClaims = parsedReport.success ? parsedReport.data.claims : [];
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <Link href="/dashboard" className="underline">Back to CRM</Link>
-      <h1 className="mt-5 text-3xl font-semibold">Research quality review</h1>
-      <p className="mt-2">{report.company.name} · {report.personaType}</p>
-      <p className="mt-2">Recorded outcome: {actual === 'insufficient-evidence' ? 'Insufficient evidence' : actual === 'generated' ? 'Report generated' : 'Report failed'}</p>
-      <section className="mt-6">
-        <h2 className="font-semibold">Prospect challenge</h2>
+    <main className="arth-main ui-review">
+      <header className="ui-document-cover">
+        <p className="ui-label">{report.company.name} · {report.personaType}</p>
+        <h1 className="ui-display">Research quality review</h1>
+        <p>Recorded outcome: {actual === 'insufficient-evidence' ? 'Insufficient evidence' : actual === 'generated' ? 'Report generated' : 'Report failed'}</p>
+      </header>
+      <EvidenceRule />
+      <section className="ui-document-section">
+        <h2 className="ui-step-title">Prospect challenge</h2>
         <p className="mt-2 whitespace-pre-wrap break-words">{report.lead.painPoints || 'No challenge description recorded.'}</p>
         {report.lead.challengeTags.length > 0 && <p className="mt-2">{report.lead.challengeTags.join(', ')}</p>}
       </section>
       {actual === 'generated' && (
         <>
-          <section className="mt-6">
-            <h2 className="font-semibold">Generated report</h2>
-            <Link href={`/api/leads/${id}/download`} target="_blank" prefetch={false} className="underline">Open the report PDF</Link>
-            <pre className="mt-2 max-h-96 overflow-auto rounded border p-3 text-sm whitespace-pre-wrap break-words">{JSON.stringify(reportContent, null, 2)}</pre>
+          <section className="ui-document-section">
+            <h2 className="ui-step-title">Generated report</h2>
+            {parsedReport.success && <p className="mb-3">{parsedReport.data.executiveSummary}</p>}
+            <Link href={`/api/leads/${id}/download`} target="_blank" prefetch={false} className="ui-text-link">Open the report PDF</Link>
+            <details className="mt-3">
+              <summary className="cursor-pointer">View full report data</summary>
+              <pre className="mt-2 max-h-96 overflow-auto border p-3 text-sm whitespace-pre-wrap break-words">{JSON.stringify(reportContent, null, 2)}</pre>
+            </details>
           </section>
-          <section className="mt-6">
-            <h2 className="font-semibold">Saved source excerpts</h2>
+          <section className="ui-document-section">
+            <h2 className="ui-step-title">Saved source excerpts</h2>
             {report.sources.map(source => (
               <details key={source.id} className="mt-2 rounded border p-3">
                 <summary className="cursor-pointer">{source.title} · {source.id.replace(`${id}-`, '')}</summary>

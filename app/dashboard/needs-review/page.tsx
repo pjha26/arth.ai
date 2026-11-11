@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { z } from 'zod';
 import { requireStaff } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { EvidenceRule } from '@/components/EvidenceRule';
 
 const pageSize = 20;
 const cursorSchema = z.tuple([z.string().datetime(), z.string().uuid()]);
@@ -30,12 +31,12 @@ export default async function NeedsReviewPage({ searchParams }: { searchParams: 
     : null;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link href="/dashboard" className="underline">Back to CRM</Link>
-      <h1 className="mt-5 text-3xl font-semibold">Needs Review</h1>
-      <p className="mt-2">Review hot-lead alerts and sampled chats. Oldest items appear first.</p>
+    <main className="arth-main">
+      <h1 className="arth-page-title">Needs Review</h1>
+      <p className="arth-page-sub">Review hot-lead alerts and sampled chats. Oldest items appear first.</p>
+      <div className="mt-5"><EvidenceRule /></div>
       {page.length ? (
-        <ul className="mt-6 divide-y divide-current/20 rounded-lg border border-current/20 px-4">
+        <ul className="ui-ruled-list">
           {page.map(alert => (
             <li key={alert.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
               <div>
@@ -45,7 +46,7 @@ export default async function NeedsReviewPage({ searchParams }: { searchParams: 
                   {alert.intentScore != null && ` · ${Math.round(alert.intentScore * 100)}% experimental intent`}
                 </p>
               </div>
-              <Link href={`/dashboard/reports/${alert.reportId}?alert=${alert.id}`} prefetch={false} className="underline">
+              <Link href={`/dashboard/reports/${alert.reportId}?alert=${alert.id}`} prefetch={false} className="ui-button ui-button-secondary">
                 {alert.type === 'intent-sample' ? 'Review sample' : 'Review alert'}<span className="sr-only"> for {alert.report.company.name}</span>
               </Link>
             </li>

@@ -180,6 +180,24 @@ try {
     await context.setCookie(...first.jar.split('; ').map(part => { const split = part.indexOf('='); return { name: part.slice(0, split), value: part.slice(split + 1), domain: '127.0.0.1', path: '/' }; }));
     const page = await browser.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`${base}/login`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button[aria-label="Dark mode"]:not(:disabled)', { timeout: 60000 });
+    const wasDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    await page.click('button[aria-label="Dark mode"]');
+    await page.waitForFunction(before => document.documentElement.classList.contains('dark') !== before, {}, wasDark);
+    await page.type('input[name="password"]', 'incorrect-staging-password');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => document.querySelector('[role="alert"]')?.textContent === 'The password was not accepted.', { timeout: 30000 });
+    await page.focus('input[name="password"]');
+    await page.keyboard.down('Control'); await page.keyboard.press('A'); await page.keyboard.up('Control');
+    await page.type('input[name="password"]', process.env.STAFF_PASSWORD);
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => location.pathname === '/dashboard', { timeout: 60000 });
+    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('dark')), !wasDark);
+    await page.waitForSelector('.ui-workspace-footer button', { timeout: 60000 });
+    await page.click('.ui-workspace-footer button');
+    await page.waitForFunction(() => location.pathname === '/login', { timeout: 30000 });
+    pass('Browser sign-in, inline credential errors, theme persistence, and sign-out work through the actual forms');
     let polls = 0;
     page.on('request', request => { if (new URL(request.url()).pathname === `/api/leads/${first.id}`) polls++; });
     for (const [name, width, height] of [['desktop', 1365, 900], ['mobile', 390, 844]]) {

@@ -1,48 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { DiscoveryRecord } from "@/lib/ui-types";
 import { formatDistanceToNow } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import * as Tooltip from "@radix-ui/react-tooltip";
-
-// Sidebar Component (simplified reuse)
-function Sidebar({ active }: { active: string }) {
-  const nav = [
-    { id: "analytics", icon: "📊", label: "Analytics", href: "/dashboard" },
-    { id: "leads", icon: "👥", label: "Leads & Reports", href: "/dashboard" },
-    { id: "discover", icon: "🔍", label: "Lead Discovery", href: "/dashboard/discover" },
-  ];
-  return (
-    <aside className="arth-sidebar">
-      <div className="arth-sidebar-logo">
-        <div className="arth-logo-mark">A</div>
-        <div>
-          <div className="arth-logo-name">ArthAI</div>
-          <div className="arth-logo-sub">Intelligence CRM</div>
-        </div>
-      </div>
-      <div className="arth-nav-section-label">Main Menu</div>
-      <nav className="arth-nav">
-        {nav.map(n => (
-          <Link key={n.id} href={n.href} className={`arth-nav-item ${active === n.id ? "arth-nav-active" : ""}`}>
-            <span>{n.icon}</span><span>{n.label}</span>
-          </Link>
-        ))}
-      </nav>
-      <div style={{ marginTop: "auto" }}>
-        <div style={{ padding: "0 12px", marginBottom: 12 }}>
-          <ThemeToggle />
-        </div>
-        <Link href="/" className="arth-nav-item" style={{ width: "100%", color: "var(--c-muted)" }}>
-          <span>🏠</span><span>Back to Home</span>
-        </Link>
-      </div>
-    </aside>
-  );
-}
 
 export default function DiscoverPage() {
   const [searches, setSearches] = useState<DiscoveryRecord[]>([]);
@@ -67,8 +28,8 @@ export default function DiscoverPage() {
       if (data.success) {
         setSearches(data.data);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -147,7 +108,7 @@ export default function DiscoverPage() {
       } else {
         alert(data.message || "Error starting search");
       }
-    } catch (e) {
+    } catch {
       alert("Failed to start search");
     } finally {
       setLoading(false);
@@ -157,33 +118,37 @@ export default function DiscoverPage() {
   const shortlistedCompanyIds = new Set(shortlist?.map(company => company.id));
 
   return (
-    <div className="arth-layout">
-      <Sidebar active="discover"  />
-      <main className="arth-main" style={{ display: 'flex', gap: 24, padding: '32px 36px' }}>
+    <main className="arth-main ui-discovery">
         
         {/* Left Column: Form & History */}
-        <div style={{ width: '350px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div className="ui-discovery-controls">
           <div>
             <h1 className="arth-page-title">Lead Discovery</h1>
-            <p className="arth-page-sub">Auto-prospect companies by region & signal</p>
+            <p className="arth-page-sub">Find companies by industry, region, and public signals.</p>
           </div>
 
           <div className="arth-card">
             <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>New Discovery Run</h3>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label className="arth-label">Industry</label>
-                <input required type="text" value={industry} onChange={e => setIndustry(e.target.value)} placeholder="e.g. SaaS, Fintech" className="arth-input" />
+                <label htmlFor="discover-industry" className="arth-label">Industry</label>
+                <input id="discover-industry" required type="text" value={industry} onChange={e => setIndustry(e.target.value)} placeholder="e.g. SaaS, Fintech" className="arth-input" />
               </div>
               <div>
-                <label className="arth-label">Region / City</label>
-                <input required type="text" value={region} onChange={e => setRegion(e.target.value)} placeholder="e.g. San Francisco, CA" className="arth-input" />
+                <label htmlFor="discover-region" className="arth-label">Region / City</label>
+                <input id="discover-region" required type="text" value={region} onChange={e => setRegion(e.target.value)} placeholder="e.g. San Francisco, CA" className="arth-input" />
               </div>
               <div>
-                <label className="arth-label">Intent Signal (Optional)</label>
-                <input type="text" value={signal} onChange={e => setSignal(e.target.value)} placeholder="e.g. Hiring, Funding" className="arth-input" />
+                <label htmlFor="discover-signal" className="arth-label">Intent Signal (Optional)</label>
+                <input id="discover-signal" type="text" value={signal} onChange={e => setSignal(e.target.value)} placeholder="e.g. Hiring, Funding" className="arth-input" />
               </div>
-              <label className="arth-label">Employee range (optional)<input aria-label="Minimum employees" type="number" min="0" value={sizeMin} onChange={e => setSizeMin(e.target.value)} className="arth-input" /><input aria-label="Maximum employees" type="number" min="0" value={sizeMax} onChange={e => setSizeMax(e.target.value)} className="arth-input" /></label>
+              <fieldset>
+                <legend className="arth-label">Employee range (optional)</legend>
+                <div className="ui-size-range">
+                  <label className="arth-label">Minimum<input aria-label="Minimum employees" type="number" min="0" value={sizeMin} onChange={e => setSizeMin(e.target.value)} className="arth-input" /></label>
+                  <label className="arth-label">Maximum<input aria-label="Maximum employees" type="number" min="0" value={sizeMax} onChange={e => setSizeMax(e.target.value)} className="arth-input" /></label>
+                </div>
+              </fieldset>
               <button disabled={loading} type="submit" className="arth-btn-primary" style={{ marginTop: 8, padding: 10, borderRadius: 8, width: '100%', display: 'flex', justifyContent: 'center' }}>
                 {loading ? "Starting..." : "Run Discovery"}
               </button>
@@ -219,7 +184,7 @@ export default function DiscoverPage() {
         </div>
 
         {/* Right Column: Results */}
-        <div style={{ flex: 1, background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="ui-discovery-results" aria-label="Discovery results">
           {activeSearchData ? (
              <div style={{ padding: 24, display: 'flex', flexDirection: 'column', height: '100%' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -244,7 +209,7 @@ export default function DiscoverPage() {
                        <div className="arth-lead-main-info" style={{ minWidth: 200 }}>
                          <div className="arth-lead-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                            {company.name}
-                           <a href={`https://${company.domain}`} target="_blank" rel="noreferrer" style={{ color: 'var(--c-muted)', fontSize: 14 }}><span className="material-symbols-outlined" style={{ fontSize: 14 }}>open_in_new</span></a>
+                           {company.domain && <a href={`https://${company.domain}`} aria-label={`Open ${company.name} website`} target="_blank" rel="noreferrer" style={{ color: 'var(--c-muted)', fontSize: 14 }}><span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 14 }}>open_in_new</span></a>}
                          </div>
                          <div className="arth-lead-meta">{company.domain} • via {company.source.replace('_', ' ')}</div>
                        </div>
@@ -297,15 +262,7 @@ export default function DiscoverPage() {
               Select a search from the left or run a new discovery.
             </div>
           )}
-        </div>
-
-      </main>
-
-      <style>{`
-        /* Minimal required styles to complement globals */
-        .arth-input { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.2s; }
-        .arth-input:focus { border-color: var(--c-accent); }
-      `}</style>
-    </div>
+        </section>
+    </main>
   );
 }

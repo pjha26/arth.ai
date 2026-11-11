@@ -65,7 +65,7 @@ export default function ReportLayoutClient({ report, alert }: { report: ReportVi
   const [pdfZoom, setPdfZoom] = useState(100);
   const [pdfError, setPdfError] = useState(false);
 
-  const pdfUrl = `/api/leads/${report.id}/download`;
+  const pdfUrl = report.artifactStatus === 'ready' && report.pdfUrl ? `/api/leads/${report.id}/download` : null;
   const pdfSrc = pdfUrl ? `${pdfUrl}#page=${pdfPage}&zoom=${pdfZoom}` : null;
 
   return (
@@ -81,7 +81,7 @@ export default function ReportLayoutClient({ report, alert }: { report: ReportVi
               <div className="cr-company-initial">
                 {report.company.name.charAt(0).toUpperCase()}
               </div>
-              <span className="cr-company-name">{report.company.name} Intelligence Report</span>
+              <h1 className="cr-company-name">{report.company.name} Intelligence Report</h1>
             </div>
           </div>
           <div className="cr-topbar-right">
@@ -94,9 +94,9 @@ export default function ReportLayoutClient({ report, alert }: { report: ReportVi
                 <span>✦</span> Open Chat
               </button>
             )}
-            <a href={pdfUrl} download className="cr-btn-outline">
+            {pdfUrl && <a href={pdfUrl} download className="cr-btn-outline">
               ↓ Download PDF
-            </a>
+            </a>}
           </div>
         </div>
 
@@ -140,11 +140,11 @@ export default function ReportLayoutClient({ report, alert }: { report: ReportVi
                 <div className="cr-pdf-error">
                   <div className="cr-pdf-error-icon">📄</div>
                   <p className="cr-pdf-error-text">
-                    PDF preview unavailable.<br />Use the Download button above to view your report.
+                    {pdfUrl ? "PDF preview unavailable. Download the report to read it." : "The PDF is not available yet. Check the report status in the workspace."}
                   </p>
-                  <a href={pdfUrl} download className="cr-btn-gold" style={{ textDecoration: "none", marginTop: 8 }}>
+                  {pdfUrl && <a href={pdfUrl} download className="cr-btn-gold" style={{ textDecoration: "none", marginTop: 8 }}>
                     ↓ Download Report
-                  </a>
+                  </a>}
                 </div>
               )}
             </div>

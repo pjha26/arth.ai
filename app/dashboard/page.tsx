@@ -8,7 +8,7 @@ import type { CRMReport, Analytics } from "@/lib/ui-types";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { EvidenceRule } from "@/components/EvidenceRule";
 
 // ── Shared UI Elements (Sparkline, MetricCard, etc.) ─────────
 
@@ -17,7 +17,7 @@ function Sparkline({ data = [], color = "#C4922A", height = 36 }: { data?: numbe
   const w = 120, h = height;
   const max = Math.max(...data, 1);
   const pts = data
-    .map((v: number, i: number) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`)
+    .map((v: number, i: number) => `${data.length === 1 ? w / 2 : (i / (data.length - 1)) * w},${h - (v / max) * h}`)
     .join(" ");
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none">
@@ -49,7 +49,7 @@ function AnimatedNumber({ value = 0, duration = 1200 }: { value?: number; durati
   return <span>{display}</span>;
 }
 
-function MetricCard({ label, value, trend, trendLabel, spark, sparkColor, delay = 0 }: { label: string; value: number; trend: number; trendLabel: number | null; spark: number[]; sparkColor: string; delay?: number }) {
+function MetricCard({ label, value, trend, trendLabel, spark, sparkColor, delay = 0 }: { label: string; value: number | null; trend: number; trendLabel: number | null; spark: number[]; sparkColor: string; delay?: number }) {
   const isUp = trend > 0;
   const isFlat = trend === 0;
   return (
@@ -63,7 +63,7 @@ function MetricCard({ label, value, trend, trendLabel, spark, sparkColor, delay 
           {trendLabel == null ? "Last 30 days" : `${isFlat ? "→" : isUp ? "↑" : "↓"} ${Math.abs(trendLabel)}%`}
         </span>
       </div>
-      <div className="arth-metric-value"><AnimatedNumber value={value} /></div>
+      <div className="arth-metric-value">{value == null ? "—" : <AnimatedNumber value={value} />}</div>
       <div style={{ marginTop: 8 }}><Sparkline data={spark} color={sparkColor} /></div>
     </div>
   );
@@ -152,42 +152,6 @@ function TrendItem({ text, time, isNew = false }: { text: string; time: string; 
         {isNew && <span className="arth-new-badge">new</span>}
       </div>
     </div>
-  );
-}
-
-function Sidebar({ active, setActive, lastSyncedTime }: { active: string; setActive: (tab: string) => void; lastSyncedTime: string }) {
-  const nav = [
-    { id: "analytics", icon: "📊", label: "Analytics" },
-    { id: "leads", icon: "👥", label: "Leads & Reports" },
-  ];
-  return (
-    <aside className="arth-sidebar">
-      <div className="arth-sidebar-logo">
-        <div className="arth-logo-mark">A</div>
-        <div>
-          <div className="arth-logo-name">ArthAI</div>
-          <div className="arth-logo-sub">Intelligence CRM</div>
-        </div>
-      </div>
-      <div className="arth-nav-section-label">Main Menu</div>
-      <nav className="arth-nav">
-        {nav.map(n => (
-          <button key={n.id} className={`arth-nav-item ${active === n.id ? "arth-nav-active" : ""}`} onClick={() => setActive(n.id)}>
-            <span>{n.icon}</span><span>{n.label}</span>
-          </button>
-        ))}
-        <Link href="/dashboard/needs-review" className="arth-nav-item" prefetch={false}>Needs Review</Link>
-      </nav>
-      <div style={{ marginTop: "auto" }}>
-        <div style={{ padding: "0 12px", marginBottom: 12 }}>
-          <ThemeToggle />
-        </div>
-        <Link href="/" className="arth-nav-item" style={{ width: "100%", color: "var(--c-muted)" }}>
-          <span>🏠</span><span>Back to Home</span>
-        </Link>
-        <div className="arth-sync-badge"><span className="arth-pulse-dot" /><span>Last synced: {lastSyncedTime}</span></div>
-      </div>
-    </aside>
   );
 }
 
@@ -303,13 +267,14 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
             <span className="material-symbols-outlined" style={{ position: 'absolute', left: 12, top: 9, fontSize: 16, color: 'var(--c-muted)' }}>search</span>
             <input 
               type="text" 
-              placeholder="Search companies..." 
+              placeholder="Search companies..."
+              aria-label="Search companies"
               className="arth-toolbar-search"
               value={search} onChange={e => setSearch(e.target.value)}
             />
           </div>
           
-          <select className="arth-toolbar-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <select aria-label="Report status" className="arth-toolbar-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="All">Status: All</option>
             <option value="done">Done</option>
             <option value="pending">Processing</option>
@@ -319,8 +284,8 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
           <div style={{ flex: 1 }} />
 
           <div className="arth-toolbar-toggle">
-            <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><span className="material-symbols-outlined">view_list</span></button>
-            <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}><span className="material-symbols-outlined">grid_view</span></button>
+            <button aria-label="List view" aria-pressed={viewMode === 'list'} className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><span className="material-symbols-outlined" aria-hidden="true">view_list</span></button>
+            <button aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}><span className="material-symbols-outlined" aria-hidden="true">grid_view</span></button>
           </div>
         </div>
 
@@ -337,10 +302,9 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
         ) : filtered.length === 0 ? (
           /* Designed Empty State */
           <div className="arth-leads-empty">
-            <img src="https://raw.githubusercontent.com/KaterinaLupacheva/undraw-illustrations/master/svg/undraw_empty_re_opql.svg" alt="Empty" className="arth-empty-svg" style={{ filter: 'sepia(1) hue-rotate(10deg) saturate(2)' }} />
             <h2 className="arth-empty-headline">No leads yet</h2>
             <p className="arth-empty-sub">Submit your first company URL to generate an intelligence report.</p>
-            <Link href="/" className="arth-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 16, padding: '10px 20px', borderRadius: 99 }}>
+            <Link href="/form" className="ui-button" style={{ marginTop: 16 }}>
               Submit a Lead <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
             </Link>
           </div>
@@ -360,14 +324,14 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                 className={`arth-lead-row ${selectedLeadId === lead.id ? 'active' : ''} ${viewMode === 'grid' ? 'is-card' : ''} ${lead.intentProbability != null && lead.intentProbability > 0.75 ? 'hot-signal' : ''}`}
                 onClick={() => setSelectedLeadId(lead.id)}
               >
-                <input type="checkbox" className="arth-checkbox" checked={selectedRows.has(lead.id)} onChange={(e) => toggleRow(lead.id, e)} />
+                <input type="checkbox" className="arth-checkbox" aria-label={`Select ${lead.companyName}`} checked={selectedRows.has(lead.id)} onChange={(e) => toggleRow(lead.id, e)} />
                 
                 <div className="arth-lead-avatar">
                   <img src={`https://www.google.com/s2/favicons?domain=${lead.website}&sz=64`} alt="" />
                 </div>
 
                 <div className="arth-lead-main-info">
-                  <div className="arth-lead-name">{lead.companyName}</div>
+                  <button type="button" className="arth-lead-name ui-lead-open" onClick={event => { event.stopPropagation(); setSelectedLeadId(lead.id); }}>{lead.companyName}</button>
                   <div className="arth-lead-meta">{lead.industry} • {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}</div>
                 </div>
 
@@ -394,11 +358,11 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                 <div className="arth-lead-actions">
                   {lead.status === 'done' && (
                     <TooltipWrapper content="Download PDF">
-                      <a href={`/api/leads/${lead.id}/download`} download onClick={e => e.stopPropagation()} className="arth-icon-btn"><span className="material-symbols-outlined">download</span></a>
+                      <a href={`/api/leads/${lead.id}/download`} aria-label={`Download report for ${lead.companyName}`} download onClick={e => e.stopPropagation()} className="arth-icon-btn"><span className="material-symbols-outlined" aria-hidden="true">download</span></a>
                     </TooltipWrapper>
                   )}
                   <TooltipWrapper content="Delete">
-                    <button onClick={(e) => handleDelete(lead.id, e)} className="arth-icon-btn arth-danger-hover"><span className="material-symbols-outlined">delete</span></button>
+                    <button aria-label={`Delete report for ${lead.companyName}`} onClick={(e) => handleDelete(lead.id, e)} className="arth-icon-btn arth-danger-hover"><span className="material-symbols-outlined" aria-hidden="true">delete</span></button>
                   </TooltipWrapper>
                 </div>
               </motion.div>
@@ -426,7 +390,7 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                     <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>{selectedLead.website}</div>
                   </div>
                 </div>
-                <button className="arth-close-btn" onClick={() => setSelectedLeadId(null)}><span className="material-symbols-outlined">close</span></button>
+                <button aria-label="Close lead details" className="arth-close-btn" onClick={() => setSelectedLeadId(null)}><span className="material-symbols-outlined" aria-hidden="true">close</span></button>
               </div>
               
               <div className="arth-panel-body">
@@ -473,15 +437,10 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
                     <div className="arth-panel-block">
                       <div className="arth-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Engagement & Intent</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--c-success)', background: 'var(--c-success-bg)', padding: '2px 6px', borderRadius: 4, textTransform: 'none', letterSpacing: 'normal', fontSize: 10 }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: 12 }}>verified</span>
-                          Verified by ArthAI
-                        </span>
+                        {selectedLead.verificationStatus === 'reviewed' && <span className="ui-label">AI reviewed</span>}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                        <div style={{ fontSize: 32, fontWeight: 600, color: selectedLead.intentProbability != null && selectedLead.intentProbability > 0.75 ? '#E85D04' : 'var(--c-accent)', lineHeight: 1 }}>
-                           {selectedLead.intentProbability == null ? 'Unknown' : `${Math.round(selectedLead.intentProbability * 100)}%`}
-                        </div>
+                      <div className="ui-intent-summary">
+                        {selectedLead.intentProbability != null && <div className="ui-intent-value">{Math.round(selectedLead.intentProbability * 100)}%</div>}
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-heading)' }}>
                             {selectedLead.intentStatus === 'disabled' ? 'Scoring disabled' : selectedLead.intentStatus === 'unavailable' ? 'Scorer unavailable' : selectedLead.intentProbability != null && selectedLead.intentProbability > 0.75 ? 'Experimental high-intent signal' : 'Experimental intent estimate'}
@@ -544,21 +503,21 @@ function LeadsView({ leads, setLeads, loading }: { leads: CRMReport[]; setLeads:
 
                       {(selectedLead.insights?.marketPosition?.reasoning || (selectedLead.insights?.recommendedNextSteps && selectedLead.insights.recommendedNextSteps.some((s) => s.reasoning))) && (
                         <div style={{ marginTop: '1.5rem' }}>
-                          <details className="arth-reasoning-collapsible" style={{ background: '#F8F9FA', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px' }}>
-                            <summary style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <details className="arth-reasoning-collapsible" style={{ background: 'var(--ui-inset)', border: '1px solid var(--ui-rule)', borderRadius: 2, padding: '12px' }}>
+                            <summary style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ui-ink)', cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>psychology</span>
-                              View AI Reasoning
+                              Recommendation rationale
                             </summary>
-                            <div style={{ marginTop: '12px', fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6 }}>
+                            <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--ui-muted)', lineHeight: 1.6 }}>
                               {selectedLead.insights?.marketPosition?.reasoning && (
                                 <div style={{ marginBottom: '12px' }}>
-                                  <strong style={{ color: '#334155' }}>Market Position Logic:</strong>
+                                  <strong style={{ color: 'var(--ui-ink)' }}>Market position</strong>
                                   <p style={{ marginTop: '4px' }}>{selectedLead.insights.marketPosition.reasoning}</p>
                                 </div>
                               )}
                               {selectedLead.insights?.recommendedNextSteps && selectedLead.insights.recommendedNextSteps.some((s) => s.reasoning) && (
                                 <div>
-                                  <strong style={{ color: '#334155' }}>Strategic Recommendations Logic:</strong>
+                                  <strong style={{ color: 'var(--ui-ink)' }}>Recommendations</strong>
                                   <ul style={{ marginTop: '4px', paddingLeft: '16px' }}>
                                     {selectedLead.insights.recommendedNextSteps.filter((s) => s.reasoning).map((step, idx: number) => (
                                       <li key={idx} style={{ marginBottom: '6px' }}>{step.reasoning}</li>
@@ -657,7 +616,7 @@ export default function Dashboard() {
     const totalLeads = analytics?.overview?.totalLeads || 0;
     const generated = analytics?.overview?.generated || 0;
     const failed = analytics?.overview?.failed || 0;
-    const avgScore = analytics?.overview?.avgReportScore || 0;
+    const avgScore = analytics?.overview?.avgReportScore ?? null;
     return { totalLeads, generated, avgScore, failed };
   }, [analytics]);
 
@@ -695,244 +654,29 @@ export default function Dashboard() {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap');
-
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        :root {
-          --c-bg:          #F5F0E6;
-          --c-surface:     #FDFAF4;
-          --c-sidebar:     #FEFCF7;
-          --c-heading:     #1C0F05;
-          --c-text:        #3D2B1A;
-          --c-muted:       #9C845F;
-          --c-accent:      #C4922A;
-          --c-accent-light:#FBF0D9;
-          --c-border:      #EAE2D2;
-          --c-border-strong:#D4C8B0;
-          --c-success:     #3E7A2E;
-          --c-success-bg:  #EBF5E8;
-          --c-danger:      #B83A2A;
-          --c-danger-bg:   #FBEEE9;
-          --c-shadow:      rgba(60,30,10,0.07);
-          --font-display:  'Fraunces', Georgia, serif;
-          --font-body:     'DM Sans', system-ui, sans-serif;
-        }
-
-        .dark {
-          --c-bg:          #161412;
-          --c-surface:     #1E1C1A;
-          --c-sidebar:     #181614;
-          --c-heading:     #F3ECE5;
-          --c-text:        #D4C8B0;
-          --c-muted:       #8A7D69;
-          --c-accent:      #DEB052;
-          --c-accent-light:#3A2D16;
-          --c-border:      #2A2622;
-          --c-border-strong:#3D3831;
-          --c-success:     #5C9B4A;
-          --c-success-bg:  #1F3218;
-          --c-danger:      #E25B4C;
-          --c-danger-bg:   #3B1A16;
-          --c-shadow:      rgba(0,0,0,0.3);
-        }
-
-        body { background: var(--c-bg); font-family: var(--font-body); }
-        .arth-layout { display: flex; min-height: 100vh; background: var(--c-bg); overflow: hidden; }
-
-        /* ── Sidebar ── */
-        .arth-sidebar { width: 220px; background: var(--c-sidebar); border-right: 1px solid var(--c-border); display: flex; flex-direction: column; padding: 20px 12px; z-index: 50; }
-        .arth-sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px; border-bottom: 1px solid var(--c-border); margin-bottom: 16px; }
-        .arth-logo-mark { width: 34px; height: 34px; background: var(--c-accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 600; font-size: 17px; color: #fff; flex-shrink: 0; box-shadow: 0 2px 8px rgba(196,146,42,0.35); }
-        .arth-logo-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--c-heading); }
-        .arth-logo-sub  { font-size: 10px; color: var(--c-muted); letter-spacing: 0.06em; text-transform: uppercase; }
-        .arth-nav-section-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-muted); padding: 0 10px; margin-bottom: 6px; }
-        .arth-nav { display: flex; flex-direction: column; gap: 2px; }
-        .arth-nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; color: var(--c-text); background: transparent; border: none; cursor: pointer; text-align: left; transition: background 0.15s, color 0.15s; font-family: var(--font-body); text-decoration: none; }
-        .arth-nav-item:hover { background: var(--c-accent-light); color: var(--c-accent); }
-        .arth-nav-active { background: var(--c-accent-light) !important; color: var(--c-accent) !important; font-weight: 500; border-left: 3px solid var(--c-accent); }
-        .arth-sync-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-muted); padding: 10px 12px 0; }
-        .arth-pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-success); box-shadow: 0 0 0 0 rgba(62,122,46,0.4); animation: pulse 2s infinite; }
-        @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(62,122,46,0.4)} 50%{box-shadow:0 0 0 5px rgba(62,122,46,0)} }
-
-        /* ── Main ── */
-        .arth-main { flex: 1; padding: 32px 36px; overflow-y: auto; position: relative; }
-        .arth-page-title { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--c-heading); letter-spacing: -0.02em; }
-        .arth-page-sub   { font-size: 14px; color: var(--c-muted); margin-top: 4px; }
-        .arth-divider    { height: 1px; background: var(--c-border); margin: 24px 0; }
-
-        /* ── Shared Elements ── */
-        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-        .arth-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; padding: 18px 20px; transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
-        .arth-card:hover { box-shadow: 0 6px 24px var(--c-shadow); transform: translateY(-2px); }
-        .arth-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-muted); font-weight: 600; }
-        .arth-metric-value { font-family: var(--font-display); font-size: 34px; font-weight: 600; color: var(--c-heading); margin-top: 6px; line-height: 1; }
-        .arth-badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 20px; }
-        
-        /* ── Grid/Sections ── */
-        .arth-grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
-        .arth-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
-        .arth-grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-        .arth-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .arth-strip-item { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; transition: box-shadow 0.2s; }
-        .arth-strip-item:hover { box-shadow: 0 4px 14px var(--c-shadow); }
-        .arth-strip-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--c-accent-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-        .arth-strip-value { font-weight: 600; font-size: 15px; color: var(--c-heading); text-transform: capitalize; }
-        .arth-section { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; padding: 22px 24px; }
-        .arth-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-        .arth-section-title { font-family: var(--font-display); font-size: 16px; font-weight: 500; color: var(--c-heading); display: flex; align-items: center; gap: 8px; }
-        .arth-section-icon { font-size: 16px; }
-        .arth-bar-track { height: 6px; background: var(--c-border); border-radius: 99px; overflow: hidden; }
-        .arth-bar-fill { height: 100%; background: var(--c-accent); border-radius: 99px; width: 0; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
-        .arth-persona-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; padding: 20px; transition: box-shadow 0.2s, transform 0.2s; }
-        .arth-persona-card:hover { box-shadow: 0 6px 20px var(--c-shadow); transform: translateY(-2px); }
-        .arth-persona-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--c-border); }
-        .arth-persona-row:last-child { border-bottom: none; }
-        .arth-trend-item { padding: 12px 0; border-bottom: 1px solid var(--c-border); }
-        .arth-trend-item:last-child { border-bottom: none; }
-        .arth-timeline-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-        .arth-new-badge { font-size: 10px; font-weight: 600; color: var(--c-accent); background: var(--c-accent-light); padding: 2px 7px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
-
-        .arth-ai-banner { background: linear-gradient(135deg, #FBF0D9 0%, #FDF7EC 100%); border: 1px solid var(--c-border-strong); border-radius: 14px; padding: 18px 22px; display: flex; align-items: flex-start; gap: 14px; position: relative; overflow: hidden; }
-        .arth-ai-banner::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1' fill='%23C4922A' opacity='0.12'/%3E%3C/svg%3E"); pointer-events: none; }
-        .arth-ai-icon { width: 40px; height: 40px; background: var(--c-accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(196,146,42,0.3); }
-        .arth-ai-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-accent); font-weight: 600; margin-bottom: 4px; }
-        .arth-ai-text  { font-size: 14px; color: var(--c-text); line-height: 1.55; }
-        .arth-ai-meta  { font-size: 11px; color: var(--c-muted); margin-top: 6px; display: flex; align-items: center; gap: 5px; }
-
-        .arth-empty { padding: 40px 20px; text-align: center; }
-        .arth-empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
-        .arth-empty-title { font-family: var(--font-display); font-size: 15px; color: var(--c-heading); margin-bottom: 6px; }
-        .arth-empty-sub   { font-size: 13px; color: var(--c-muted); }
-
-        /* ── Leads UI (Split Zone) ── */
-        .arth-leads-layout { display: flex; width: 100%; height: 100%; border: 1px solid var(--c-border); border-radius: 14px; background: var(--c-surface); overflow: hidden; }
-        .arth-leads-main { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--c-border); }
-        .arth-leads-panel { background: var(--c-sidebar); border-left: 1px solid var(--c-border); overflow: hidden; display: flex; flex-direction: column; }
-        
-        .arth-toolbar { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--c-border); align-items: center; background: var(--c-surface); }
-        .arth-toolbar-search { padding: 8px 16px 8px 36px; border-radius: 99px; border: 1px solid var(--c-border); background: var(--c-sidebar); font-family: var(--font-body); font-size: 13px; width: 220px; outline: none; transition: border-color 0.2s; }
-        .arth-toolbar-search:focus { border-color: var(--c-accent); }
-        .arth-toolbar-select { padding: 8px 32px 8px 12px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-sidebar); font-family: var(--font-body); font-size: 13px; outline: none; appearance: none; cursor: pointer; color: var(--c-text); background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239C845F%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 10px auto; }
-        .arth-toolbar-toggle { display: flex; background: var(--c-border); padding: 3px; border-radius: 8px; }
-        .arth-toolbar-toggle button { background: transparent; border: none; padding: 4px 8px; border-radius: 5px; cursor: pointer; color: var(--c-muted); display: flex; align-items: center; justify-content: center; }
-        .arth-toolbar-toggle button.active { background: var(--c-surface); color: var(--c-accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .arth-toolbar-toggle span { font-size: 18px; }
-
-        /* Leads List View */
-        .arth-leads-wrapper { flex: 1; overflow-y: auto; padding: 0; }
-        .arth-lead-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); cursor: pointer; transition: background 0.15s; background: var(--c-surface); position: relative; }
-        .arth-lead-row:hover { background: var(--c-sidebar); }
-        .arth-lead-row.active { background: var(--c-accent-light); }
-        .hot-signal { border-left: 3px solid #E85D04; background: linear-gradient(to right, rgba(232, 93, 4, 0.05) 0%, var(--c-surface) 100%); }
-        .hot-signal:hover { background: linear-gradient(to right, rgba(232, 93, 4, 0.08) 0%, var(--c-sidebar) 100%); }
-        .hot-signal .circle { stroke: #E85D04; }
-        .hot-signal .score-text { color: #E85D04; }
-        .arth-checkbox { width: 16px; height: 16px; border-radius: 4px; accent-color: var(--c-accent); cursor: pointer; }
-        .arth-lead-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--c-border); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-        .arth-lead-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .arth-lead-main-info { flex: 1; min-width: 0; }
-        .arth-lead-name { font-weight: 600; font-size: 14.5px; color: var(--c-heading); whiteSpace: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .arth-lead-meta { font-size: 12px; color: var(--c-muted); margin-top: 2px; }
-        
-        .arth-lead-tags { display: flex; gap: 8px; align-items: center; width: 220px; }
-        .arth-tag-persona { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--c-border); color: var(--c-text); padding: 4px 8px; border-radius: 6px; font-weight: 600; }
-        
-        .arth-status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .arth-status-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
-        .arth-status-done { background: var(--c-success-bg); color: var(--c-success); }
-        .arth-status-done .dot { background: var(--c-success); }
-        .arth-status-failed { background: var(--c-danger-bg); color: var(--c-danger); }
-        .arth-status-failed .dot { background: var(--c-danger); }
-        .arth-status-processing { background: #FEF3C7; color: #B45309; }
-        .arth-status-processing .dot { background: #F59E0B; animation: pulse 1.5s infinite; }
-        
-        .arth-lead-score { display: flex; align-items: center; gap: 8px; width: 60px; justify-content: flex-end; }
-        .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; width: 28px; height: 28px; }
-        .circle-bg { fill: none; stroke: var(--c-border); stroke-width: 3.8; }
-        .circle { fill: none; stroke-width: 3.8; stroke-linecap: round; stroke: var(--c-accent); animation: progress 1s ease-out forwards; }
-        @keyframes progress { 0% { stroke-dasharray: 0 100; } }
-        .score-text { font-size: 12px; font-weight: 600; color: var(--c-heading); }
-
-        .arth-lead-actions { position: absolute; right: 16px; display: flex; gap: 6px; opacity: 0; transform: translateX(10px); transition: all 0.2s; background: linear-gradient(90deg, transparent, var(--c-sidebar) 20%); padding-left: 20px; }
-        .arth-lead-row:hover .arth-lead-actions { opacity: 1; transform: translateX(0); }
-        .arth-icon-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--c-surface); border: 1px solid var(--c-border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--c-text); transition: all 0.15s; text-decoration: none; }
-        .arth-icon-btn:hover { background: var(--c-border); color: var(--c-heading); }
-        .arth-danger-hover:hover { background: var(--c-danger-bg); color: var(--c-danger); border-color: var(--c-danger-bg); }
-        .arth-icon-btn span { font-size: 18px; }
-
-        /* Leads Grid View */
-        .arth-leads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 16px; flex: 1; overflow-y: auto; background: var(--c-bg); }
-        .arth-lead-row.is-card { flex-direction: column; align-items: flex-start; border: 1px solid var(--c-border); border-radius: 14px; gap: 12px; }
-        .arth-lead-row.is-card .arth-lead-tags { width: 100%; justify-content: space-between; margin-top: 4px; }
-        .arth-lead-row.is-card .arth-lead-score { position: absolute; top: 16px; right: 16px; }
-        .arth-lead-row.is-card .arth-checkbox { position: absolute; top: 16px; right: 80px; }
-        .arth-lead-row.is-card .arth-lead-actions { bottom: 16px; right: 16px; top: auto; background: transparent; padding: 0; }
-
-        /* Skeletons */
-        .arth-skeleton-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); }
-        .arth-skeleton-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--c-border); }
-        .arth-skeleton-text { height: 12px; border-radius: 4px; background: var(--c-border); margin-bottom: 6px; }
-
-        /* Empty State */
-        .arth-leads-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
-        .arth-empty-svg { width: 250px; margin-bottom: 24px; opacity: 0.9; }
-        .arth-empty-headline { font-family: var(--font-display); font-size: 24px; color: var(--c-heading); margin-bottom: 8px; }
-
-        /* Slide-in Detail Panel */
-        .arth-panel-inner { width: 100%; height: 100%; display: flex; flex-direction: column; min-width: 350px; }
-        .arth-panel-header { padding: 20px; border-bottom: 1px solid var(--c-border); display: flex; justify-content: space-between; align-items: flex-start; }
-        .arth-panel-favicon { width: 44px; height: 44px; border-radius: 10px; background: #fff; border: 1px solid var(--c-border); padding: 4px; object-fit: contain; }
-        .arth-close-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--c-border); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--c-muted); transition: background 0.2s; }
-        .arth-close-btn:hover { background: var(--c-border-strong); color: var(--c-heading); }
-        .arth-panel-body { padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
-        .arth-panel-block { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 16px; }
-        .arth-progress-track { height: 6px; background: var(--c-border); border-radius: 99px; overflow: hidden; margin-top: 12px; }
-        .arth-progress-fill { height: 100%; background: #F59E0B; border-radius: 99px; }
-        .arth-contact-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; font-size: 13px; }
-        .arth-contact-grid .k { color: var(--c-muted); }
-        .arth-contact-grid .v { color: var(--c-heading); font-weight: 500; }
-        .arth-stated-challenge { background: var(--c-bg); border-left: 3px solid var(--c-accent); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13.5px; color: var(--c-text); font-style: italic; margin-top: 16px; }
-        .arth-insight-list { margin-top: 12px; padding-left: 20px; font-size: 13.5px; color: var(--c-text); line-height: 1.6; }
-        .arth-insight-list li { margin-bottom: 8px; }
-        .arth-btn-primary { background: var(--c-accent); color: #fff; font-weight: 600; border: none; cursor: pointer; transition: opacity 0.2s; }
-        .arth-btn-primary:hover { opacity: 0.9; }
-        .arth-btn-secondary { background: var(--c-surface); color: var(--c-heading); font-weight: 600; border: 1px solid var(--c-border-strong); cursor: pointer; transition: background 0.2s; }
-        .arth-btn-secondary:hover { background: var(--c-border); }
-
-        /* Floating Bulk Actions Bar */
-        .arth-bulk-bar { position: fixed; bottom: 32px; left: 50%; background: var(--c-heading); color: #fff; padding: 12px 24px; border-radius: 99px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100; border: 1px solid rgba(255,255,255,0.1); }
-        .arth-bulk-count { font-weight: 600; font-size: 14px; }
-        .arth-bulk-btn { background: transparent; border: none; color: #fff; font-size: 13.5px; font-weight: 500; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        .arth-bulk-btn:hover { background: rgba(255,255,255,0.1); }
-        .arth-bulk-btn span { font-size: 18px; }
-        .arth-bulk-btn.arth-btn-error:hover { background: var(--c-danger); color: #fff; }
-
-        /* Tooltip */
-        .arth-tooltip-content { border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; color: #fff; background-color: var(--c-heading); box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: fadeIn 0.2s; font-family: var(--font-body); letter-spacing: 0.02em; }
-        .arth-tooltip-arrow { fill: var(--c-heading); }
-        
-      `}</style>
-
-      <div className="arth-layout">
-        <Sidebar active={active} setActive={setActive} lastSyncedTime={lastSynced ? formatDistanceToNow(lastSynced, { addSuffix: true }) : 'just now'} />
 
         <main className="arth-main">
           {/* Page header */}
           <div style={{ animation: "fadeSlideUp 0.4s ease both" }}>
-            <h1 className="arth-page-title">{active === "analytics" ? "Intelligence CRM" : "Leads & Reports"}</h1>
+            <h1 className="arth-page-title">{active === "analytics" ? "Research workspace" : "Leads & Reports"}</h1>
             <p className="arth-page-sub">
-              {active === "analytics" ? "Real-time prospect analytics and pipeline overview." : "Manage inbound submissions and view generated intelligence reports."}
+              {active === "analytics" ? "Review inbound research, report delivery, and lead activity." : "Manage inbound submissions and view generated intelligence reports."}
             </p>
           </div>
 
-          <div className="arth-divider" />
+          <div className="ui-workspace-controls">
+            <div className="ui-workspace-tabs" role="group" aria-label="Workspace views">
+              <button type="button" aria-pressed={active === "analytics"} onClick={() => setActive("analytics")}>Overview</button>
+              <button type="button" aria-pressed={active === "leads"} onClick={() => setActive("leads")}>Leads &amp; Reports</button>
+            </div>
+            {lastSynced && <p className="ui-label ui-sync">Synced {formatDistanceToNow(lastSynced, { addSuffix: true })}</p>}
+          </div>
+          <EvidenceRule />
 
           {active === "analytics" ? (
             <>
               {/* Metric cards */}
-              <div className="arth-grid-4" style={{ marginBottom: 20 }}>
+              <div className="arth-grid-4 ui-workspace-metrics">
                 <MetricCard label="Total Leads"         value={stats.totalLeads} trend={0} trendLabel={null} spark={sparkBlue}   sparkColor="#4A7AB5" delay={0}   />
                 <MetricCard label="Reports Generated"   value={stats.generated}  trend={0} trendLabel={null}  spark={sparkGreen}  sparkColor="#5B8A4A" delay={80}  />
                 <MetricCard label="Avg Score"            value={stats.avgScore}   trend={0} trendLabel={null}  spark={sparkPurple} sparkColor="#9B7FD4" delay={160} />
@@ -1015,15 +759,14 @@ export default function Dashboard() {
                 <div className="arth-ai-banner">
                   <div className="arth-ai-icon">✦</div>
                   <div style={{ flex: 1 }}>
-                    <div className="arth-ai-label">AI Trend Intelligence</div>
+                    <div className="arth-ai-label">Research activity</div>
                     {trends.length ? (
                       trends.map((t, i) => <TrendItem key={i} {...t} />)
                     ) : (
-                      <p className="arth-ai-text">Trends will appear here once your pipeline processes enough leads. Submit a few leads to activate AI-powered pattern detection.</p>
+                      <p className="arth-ai-text">Recorded submission and report activity will appear here.</p>
                     )}
                     <div className="arth-ai-meta">
-                      <span>🕐</span>
-                      <span>Updated daily · Powered by Gemini</span>
+                      <span>Last 30 days · UTC</span>
                     </div>
                   </div>
                 </div>
@@ -1046,7 +789,6 @@ export default function Dashboard() {
           )}
 
         </main>
-      </div>
     </>
   );
 }

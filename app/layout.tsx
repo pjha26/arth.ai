@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import "@/styles/research.css";
 
 
 export const metadata: Metadata = {
-  title: "arth.ai — Every lead gets a personal touch before you lift a finger.",
+  title: "ArthAI | Company research",
   description:
-    "arth.ai captures a lead, researches their company, writes a tailored audit report, and emails it to them — all before you finish your chai.",
+    "Request private company research with cited findings and practical next steps.",
   keywords: ["AI personalization", "inbound automation", "lead intelligence", "B2B automation"],
   openGraph: {
-    title: "arth.ai — AI-Powered Inbound Personalization",
-    description: "Instant, hyper-personalized AI audit reports delivered the moment a prospect submits your form.",
+    title: "ArthAI | Company research",
+    description: "Private company research grounded in public evidence.",
     type: "website",
   },
 };
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body style={{ "--font-inter": "Arial, sans-serif", "--font-manrope": "Arial, sans-serif" } as React.CSSProperties}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
         </ThemeProvider>
       </body>
