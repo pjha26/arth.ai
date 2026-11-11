@@ -28,6 +28,8 @@ try {
   await legacy.$executeRaw`INSERT INTO "ChatMessage" (id,"reportId",role,content) VALUES (${chatId},${reportId},'user','Keep this historical conversation')`;
   prisma('migrate', 'resolve', '--applied', '20261104000000_baseline');
   prisma('migrate', 'deploy');
+  const unprotected = await legacy.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations' AND NOT rowsecurity`;
+  assert.deepEqual(unprotected, [], 'Every application table must have row-level security');
   const report = await legacy.report.findUniqueOrThrow({ where: { id: reportId } });
   const lead = await legacy.lead.findUniqueOrThrow({ where: { id: leadId } });
   const chat = await legacy.chatMessage.findUniqueOrThrow({ where: { id: chatId } });

@@ -9,7 +9,6 @@ import { deliveryCopy, shouldPollReport } from "@/shared/status.js";
 function SuccessContent() {
   const params  = useSearchParams();
   const [company, setCompany] = useState(params.get("company") || "your company");
-  const email   = params.get("email")   || "your inbox";
   const jobId   = params.get("jobId");
 
   const [completedStages, setCompletedStages] = useState<string[]>([]);
@@ -131,7 +130,7 @@ function SuccessContent() {
           <h1 className="ui-display">{ready ? "Your report is ready" : unavailable ? "Report unavailable" : `Researching ${company}`}</h1>
           <p>{ready ? deliveryCopy(deliveryStatus)
             : unavailable ? statusError || (jobId ? "The report could not be completed. Contact the team to review your request." : "Open your private link or start a new request.")
-            : `Your report is being prepared for ${email}. You can follow its progress here.`}</p>
+            : "Your report is being prepared. You can follow its progress here."}</p>
         </header>
         {processing && (
           <section className="ui-document-section">

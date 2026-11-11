@@ -237,6 +237,7 @@ try {
     assert.equal(submission.status(), 202, `Browser submission failed: ${await submission.text()}`);
     const { jobId: browserReport } = await submission.json();
     await page.waitForFunction(id => location.pathname === '/success' && new URLSearchParams(location.search).get('jobId') === id, {}, browserReport);
+    assert.deepEqual([...new URL(page.url()).searchParams.keys()], ['jobId']);
     const saved = await prisma.report.findUniqueOrThrow({ where: { id: browserReport }, include: { lead: true } });
     assert.deepEqual(saved.lead.challengeTags, ['Automating workflows']);
     assert.equal(saved.lead.outreachConsent, false);

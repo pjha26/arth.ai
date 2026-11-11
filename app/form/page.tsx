@@ -96,7 +96,7 @@ function RequestForm() {
         setIsSubmitting(false);
         return;
       }
-      router.push(`/success?email=${encodeURIComponent(final.data.email)}&jobId=${encodeURIComponent(result.jobId)}`);
+      router.push(`/success?jobId=${encodeURIComponent(result.jobId)}`);
     } catch {
       setSubmitError("Could not reach ArthAI. Try again.");
       setIsSubmitting(false);
