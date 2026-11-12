@@ -59,14 +59,22 @@ export async function POST(request: Request, { params }: Context) {
   let rag = '';
   try {
     const embeddingModel = process.env.EMBEDDING_MODEL || 'gemini-embedding-001';
-    const { embedding } = await measureModelCall(prisma, { reportId: id, operation: 'chat-embedding', provider: 'google', model: embeddingModel }, () => embed({ model: google.textEmbeddingModel(embeddingModel), value: userText, providerOptions: { google: { outputDimensionality: 768 } }, maxRetries: 0, abortSignal: AbortSignal.timeout(5000) }));
-    const chunks = await prisma.$queryRaw<{ chunk: string }[]>`
-      SELECT chunk FROM "Embedding"
-      WHERE "reportId" = ${id} AND metadata->>'model' = ${embeddingModel}
-      ORDER BY embedding OPERATOR(extensions.<=>) ${JSON.stringify(embedding)}::extensions.vector
-      LIMIT 3
+    const [index] = await prisma.$queryRaw<{ ready: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM "Embedding"
+        WHERE "reportId" = ${id} AND metadata->>'model' = ${embeddingModel} AND embedding IS NOT NULL
+      ) AS ready
     `;
-    rag = chunks.map(c => c.chunk).join('\n\n');
+    if (index?.ready) {
+      const { embedding } = await measureModelCall(prisma, { reportId: id, operation: 'chat-embedding', provider: 'google', model: embeddingModel }, () => embed({ model: google.textEmbeddingModel(embeddingModel), value: userText, providerOptions: { google: { outputDimensionality: 768 } }, maxRetries: 0, abortSignal: AbortSignal.timeout(5000) }));
+      const chunks = await prisma.$queryRaw<{ chunk: string }[]>`
+        SELECT chunk FROM "Embedding"
+        WHERE "reportId" = ${id} AND metadata->>'model' = ${embeddingModel} AND embedding IS NOT NULL
+        ORDER BY embedding OPERATOR(extensions.<=>) ${JSON.stringify(embedding)}::extensions.vector
+        LIMIT 3
+      `;
+      rag = chunks.map(c => c.chunk).join('\n\n');
+    }
   } catch { /* The complete authorized report remains available below. */ }
   const messages: ModelMessage[] = [...history.reverse().map(m => ({ role: m.role === 'assistant' ? 'assistant' as const : 'user' as const, content: m.content })), { role: 'user', content: userText }];
   const googleId = process.env.CHAT_MODEL || 'gemini-2.5-flash';
