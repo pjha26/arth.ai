@@ -14,8 +14,20 @@ test('release config checks distinguish missing configuration without exposing v
 test('workers reject missing services before paid processing and enforce production transport/storage', () => {
   assert.doesNotThrow(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'production' }));
   assert.throws(() => assertWorkerConfiguration({}), /Worker configuration incomplete/);
-  assert.throws(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'production', REPORT_STORAGE: 'local' }), /private-drive-config/);
+  assert.throws(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'production', REPORT_STORAGE: 'local' }), /private-storage-config/);
   assert.doesNotThrow(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'development', REPORT_STORAGE: 'local', UPSTASH_REDIS_URL: 'redis://127.0.0.1:56379' }));
+});
+
+test('free storage and dashboard delivery work without Drive or sender credentials', () => {
+  const free = { ...configured, NODE_ENV: 'production', REPORT_STORAGE: 'supabase', SUPABASE_URL: 'https://project.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-server-key', SUPABASE_REPORTS_BUCKET: 'arthai-reports', EMAIL_DELIVERY: 'disabled',
+    GOOGLE_PRIVATE_KEY: '', GOOGLE_DRIVE_FOLDER_ID: '', RESEND_API_KEY: '', EMAIL_FROM: '', RESEND_WEBHOOK_SECRET: '' };
+  assert.ok(configurationChecks(free).every(check => check.status === 'pass'));
+  assert.doesNotThrow(() => assertWorkerConfiguration(free));
+  for (const SUPABASE_URL of ['http://project.supabase.co', 'https://user:pass@project.supabase.co', 'https://project.supabase.co/rest/v1']) {
+    assert.throws(() => assertWorkerConfiguration({ ...free, SUPABASE_URL }), /private-storage-config/);
+  }
+  assert.throws(() => assertWorkerConfiguration({ ...free, EMAIL_DELIVERY: 'enabled' }), /email-sender-config/);
 });
 
 test('hot-lead readiness requires explicit scoring and service configuration without reporting secrets', () => {

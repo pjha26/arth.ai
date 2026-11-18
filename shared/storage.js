@@ -2,6 +2,24 @@ import { google } from 'googleapis';
 import { Readable } from 'node:stream';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { supabaseStorageConfigured } from './readiness.js';
+
+async function supabaseRequest(resource, options = {}) {
+  if (!supabaseStorageConfigured(process.env)) throw new Error('Private Supabase storage is not configured');
+  const response = await fetch(`${new URL(process.env.SUPABASE_URL).origin}/storage/v1/${resource}`, {
+    ...options, redirect: 'error', signal: AbortSignal.timeout(20000),
+    headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, ...options.headers },
+  });
+  if (!response.ok) throw new Error(`Private storage request failed (HTTP ${response.status})`);
+  return response;
+}
+
+export async function checkSupabaseBucket(bucket = process.env.SUPABASE_REPORTS_BUCKET) {
+  if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(bucket || '')) throw new Error('Invalid report storage bucket');
+  const response = await supabaseRequest(`bucket/${bucket}`);
+  const details = await response.json();
+  if (details.public !== false || details.id !== bucket) throw new Error('Report storage bucket must be private');
+}
 
 const localDir = process.env.REPORTS_DIR || path.join(process.cwd(), '.data', 'reports');
 export function reportDrive() {
@@ -17,6 +35,14 @@ export async function saveReportPdf(id, bytes) {
     await mkdir(localDir, { recursive: true }); await writeFile(path.join(localDir, `${id}.pdf`), bytes);
     return `local:${id}`;
   }
+  if (process.env.REPORT_STORAGE === 'supabase') {
+    const bucket = process.env.SUPABASE_REPORTS_BUCKET;
+    await checkSupabaseBucket(bucket);
+    await supabaseRequest(`object/${bucket}/${id}.pdf`, {
+      method: 'POST', headers: { 'Content-Type': 'application/pdf', 'x-upsert': 'true' }, body: bytes,
+    });
+    return `supabase:${bucket}/${id}.pdf`;
+  }
   const client = reportDrive();
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   const permissions = await client.permissions.list({ fileId: folderId, supportsAllDrives: true, fields: 'permissions(type)' }, { timeout: 10000 });
@@ -31,6 +57,12 @@ export async function saveReportPdf(id, bytes) {
 }
 
 export async function readReportPdf(reference) {
+  const stored = /^supabase:([a-z0-9][a-z0-9-]{0,62})\/([a-f0-9-]{36}\.pdf)$/i.exec(reference);
+  if (stored) {
+    await checkSupabaseBucket(stored[1]);
+    const response = await supabaseRequest(`object/authenticated/${stored[1]}/${stored[2]}`);
+    return Buffer.from(await response.arrayBuffer());
+  }
   if (reference.startsWith('local:') && process.env.NODE_ENV !== 'production' && /^[a-f0-9-]{36}$/i.test(reference.slice(6))) return readFile(path.join(localDir, `${reference.slice(6)}.pdf`));
   if (!/^drive:[\w-]+$/.test(reference)) throw new Error('Invalid PDF storage reference');
   const { data } = await reportDrive().files.get({ fileId: reference.slice(6), alt: 'media', supportsAllDrives: true }, { responseType: 'arraybuffer', timeout: 20000 });

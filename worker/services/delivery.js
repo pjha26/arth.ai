@@ -14,7 +14,7 @@ export async function deliverReport(reportId, services) {
   const report = await prisma.report.findUnique({ where: { id: reportId }, include: { lead: true, company: true } });
   if (!report || report.status !== 'done' || !report.lead || report.deliveryStatus !== 'pending') return;
   const lead = report.lead;
-  if (!lead.email || lead.unsubscribed) {
+  if (process.env.EMAIL_DELIVERY === 'disabled' || !lead.email || lead.unsubscribed) {
     await prisma.report.updateMany({ where: { id: reportId, deliveryStatus: 'pending' }, data: { deliveryStatus: 'skipped' } });
     return;
   }

@@ -53,6 +53,20 @@ function deliveryFixture() {
   return { row, calls, services };
 }
 
+test('dashboard-only delivery skips email before loading artifacts or creating follow-ups', async t => {
+  const previous = process.env.EMAIL_DELIVERY;
+  process.env.EMAIL_DELIVERY = 'disabled';
+  t.after(() => { if (previous === undefined) delete process.env.EMAIL_DELIVERY; else process.env.EMAIL_DELIVERY = previous; });
+  const { row, calls, services } = deliveryFixture();
+  row.lead.outreachConsent = true;
+  services.readReportPdf = async () => assert.fail('Skipped delivery must not read the PDF');
+  await deliverReport(row.id, services);
+  await deliverReport(row.id, services);
+  assert.equal(row.deliveryStatus, 'skipped');
+  assert.equal(calls.emails, 0);
+  assert.equal(calls.followUps.length, 0);
+});
+
 test('storage outage stays pending and can recover without duplicate email', async () => {
   const { row, calls, services } = deliveryFixture();
   services.readReportPdf = async () => { throw new Error('Storage unavailable'); };

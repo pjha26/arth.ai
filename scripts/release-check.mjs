@@ -3,7 +3,7 @@ import { parseEnv } from 'node:util';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
 import { configurationChecks, hotLeadConfigurationChecks, intentScorerHealthy } from '../shared/readiness.js';
-import { reportDrive } from '../shared/storage.js';
+import { reportDrive, checkSupabaseBucket } from '../shared/storage.js';
 
 let files = {};
 for (const name of ['.env', '.env.local']) {
@@ -53,7 +53,12 @@ if (live) {
     const body = await response.json();
     note('limiter-redis-ping', response.ok && body.result === 'PONG' ? 'pass' : 'fail', 'REST PING only; no limiter counters changed.');
   } catch { note('limiter-redis-ping', 'unverified', 'Limiter Redis connectivity could not be verified.'); }
-  try {
+  if (env.REPORT_STORAGE === 'supabase') {
+    try {
+      await checkSupabaseBucket();
+      note('private-supabase-bucket', 'pass', 'Bucket metadata confirms private access. Upload and cross-process download still require a live test.');
+    } catch { note('private-supabase-bucket', 'unverified', 'Private bucket metadata or service access could not be verified.'); }
+  } else try {
     const client = reportDrive();
     const folder = await client.files.get({ fileId: env.GOOGLE_DRIVE_FOLDER_ID, fields: 'mimeType,driveId,capabilities(canAddChildren)', supportsAllDrives: true }, { timeout: 10000 });
     const permissions = await client.permissions.list({ fileId: env.GOOGLE_DRIVE_FOLDER_ID, supportsAllDrives: true, fields: 'permissions(type)' }, { timeout: 10000 });
@@ -65,7 +70,7 @@ if (live) {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}`, { redirect: 'error', signal: AbortSignal.timeout(10000), headers: { 'x-goog-api-key': env.GEMINI_API_KEY || env.GOOGLE_GENERATIVE_AI_API_KEY || '' } });
     note('research-model-metadata', response.ok ? 'pass' : 'unverified', 'Model metadata only; no generation or recommendation-quality test performed.');
   } catch { note('research-model-metadata', 'unverified', 'Configured model metadata could not be verified.'); }
-  try {
+  if (env.EMAIL_DELIVERY !== 'disabled') try {
     const response = await fetch('https://api.resend.com/domains', { redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Authorization: `Bearer ${env.RESEND_API_KEY || ''}` } });
     const body = await response.json();
     const domain = env.EMAIL_FROM?.match(/@([^>\s]+)/)?.[1]?.toLowerCase();

@@ -1,3 +1,11 @@
+export function supabaseStorageConfigured(env) {
+  try {
+    const url = new URL(env.SUPABASE_URL);
+    return url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash
+      && !!env.SUPABASE_SERVICE_ROLE_KEY && /^[a-z0-9][a-z0-9-]{0,62}$/.test(env.SUPABASE_REPORTS_BUCKET || '');
+  } catch { return false; }
+}
+
 export function configurationChecks(env) {
   const checks = [];
   const check = (name, valid) => checks.push({ name, status: valid ? 'pass' : 'fail' });
@@ -14,8 +22,9 @@ export function configurationChecks(env) {
   try { check('limiter-redis-https', new URL(env.UPSTASH_REDIS_REST_URL).protocol === 'https:' && !!env.UPSTASH_REDIS_REST_TOKEN); }
   catch { check('limiter-redis-https', false); }
   check('research-provider-key', !!(env.GEMINI_API_KEY || env.GOOGLE_GENERATIVE_AI_API_KEY));
-  check('private-drive-config', env.REPORT_STORAGE === 'drive' && !!env.GOOGLE_SERVICE_ACCOUNT_EMAIL && !!env.GOOGLE_PRIVATE_KEY && !!env.GOOGLE_DRIVE_FOLDER_ID);
-  check('email-and-signed-webhook', !!env.RESEND_API_KEY && !!env.RESEND_WEBHOOK_SECRET && !!env.EMAIL_FROM);
+  check('private-storage-config', env.REPORT_STORAGE === 'supabase' ? supabaseStorageConfigured(env)
+    : env.REPORT_STORAGE === 'drive' && !!env.GOOGLE_SERVICE_ACCOUNT_EMAIL && !!env.GOOGLE_PRIVATE_KEY && !!env.GOOGLE_DRIVE_FOLDER_ID);
+  check('email-and-signed-webhook', env.EMAIL_DELIVERY === 'disabled' || !!env.RESEND_API_KEY && !!env.RESEND_WEBHOOK_SECRET && !!env.EMAIL_FROM);
   return checks;
 }
 
@@ -51,9 +60,9 @@ export function assertWorkerConfiguration(env) {
   if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32) errors.push('AUTH_SECRET');
   if (!env.GEMINI_API_KEY && !env.GOOGLE_GENERATIVE_AI_API_KEY) errors.push('research-provider-key');
   if (env.NODE_ENV === 'production') {
-    const names = ['canonical-https-origin', 'worker-redis-tls', 'private-drive-config'];
+    const names = ['canonical-https-origin', 'worker-redis-tls', 'private-storage-config'];
     errors.push(...configurationChecks(env).filter(check => names.includes(check.name) && check.status !== 'pass').map(check => check.name));
-    if (!env.RESEND_API_KEY || !env.EMAIL_FROM) errors.push('email-sender-config');
+    if (env.EMAIL_DELIVERY !== 'disabled' && (!env.RESEND_API_KEY || !env.EMAIL_FROM)) errors.push('email-sender-config');
   }
   if (errors.length) throw new Error(`Worker configuration incomplete: ${errors.join(', ')}`);
 }

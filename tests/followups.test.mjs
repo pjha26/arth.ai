@@ -26,6 +26,16 @@ function fixture() {
   return { task, services, queued, sends: () => sends, job: { data: { taskId: task.id } } };
 }
 
+test('dashboard-only mode suppresses previously scheduled follow-ups', async t => {
+  const previous = process.env.EMAIL_DELIVERY;
+  process.env.EMAIL_DELIVERY = 'disabled';
+  t.after(() => { if (previous === undefined) delete process.env.EMAIL_DELIVERY; else process.env.EMAIL_DELIVERY = previous; });
+  const f = fixture();
+  await processFollowUp(f.job, f.services);
+  assert.equal(f.task.status, 'skipped');
+  assert.equal(f.sends(), 0);
+});
+
 test('queue outage preserves database tasks and next reconciliation restores them', async () => {
   const f = fixture(), add = f.services.followupsQueue.add;
   f.services.followupsQueue.add = async () => { throw new Error('Redis unavailable'); };

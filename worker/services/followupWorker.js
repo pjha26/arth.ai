@@ -14,7 +14,7 @@ export async function processFollowUp(job, { prisma, sendFollowUpEmail }) {
   const report = task.report, lead = report?.lead;
   if (![1, 2, 3].includes(task.stage)) throw new Error('Invalid follow-up stage');
   const expired = task.dueAt.getTime() < Date.now() - 86400000;
-  if (expired || !lead?.email || lead.unsubscribed || !lead.outreachConsent || report.followUps?.length || report.status !== 'done' || !['accepted', 'delivered'].includes(report.deliveryStatus)) {
+  if (process.env.EMAIL_DELIVERY === 'disabled' || expired || !lead?.email || lead.unsubscribed || !lead.outreachConsent || report.followUps?.length || report.status !== 'done' || !['accepted', 'delivered'].includes(report.deliveryStatus)) {
     await prisma.followUp.updateMany({ where: { id: task.id, status: 'pending' }, data: { status: 'skipped', errorMessage: expired ? 'Follow-up expired; do not send overdue messages in a burst.' : 'Recipient or report is no longer eligible for follow-up.' } });
     return;
   }
