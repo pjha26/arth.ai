@@ -3,6 +3,46 @@ import assert from 'node:assert/strict';
 import { signAccess, verifyAccess, reportLink, sameOrigin, sameReportRequestOrigin } from '../shared/access.js';
 import { isPublicAddress, publicUrl, assertPublicUrl } from '../shared/network.js';
 import { makeReportJob, reportChunks } from '../shared/jobs.js';
+import { pageNumber } from '../shared/pagination.js';
+import { Redis } from '@upstash/redis';
+import { limitRequest } from '../shared/rate-limit.js';
+
+test('admission passes an idempotency reservation and reports quota, conflict, and dependency errors', async t => {
+  const keys = ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'];
+  const previous = keys.map(key => process.env[key]);
+  process.env.UPSTASH_REDIS_REST_URL = 'https://example.invalid';
+  process.env.UPSTASH_REDIS_REST_TOKEN = 'fixture';
+  t.after(() => keys.forEach((key, i) => { if (previous[i] === undefined) delete process.env[key]; else process.env[key] = previous[i]; }));
+  let result = 1;
+  const calls = [];
+  t.mock.method(Redis, 'fromEnv', () => ({ eval: async (...args) => {
+    calls.push(args);
+    if (result instanceof Error) throw result;
+    return result;
+  } }));
+  const request = new Request('https://example.com/api/leads');
+  const check = () => limitRequest(request, 'reports', 3, 3600, 100, undefined, { key: 'submission', fingerprint: 'fingerprint' });
+  assert.equal(await check(), null);
+  assert.equal(calls[0][1][2], 'admission:reports:submission');
+  assert.deepEqual(calls[0][2], [3600, 3, 100, 'fingerprint']);
+  result = 0;
+  assert.equal((await check()).status, 429);
+  result = -1;
+  assert.equal((await check()).status, 409);
+  result = new Error('provider failure');
+  assert.equal((await check()).status, 503);
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  assert.equal((await check()).status, 503);
+});
+
+test('pagination rejects non-integers and unbounded offsets before database access', () => {
+  assert.equal(pageNumber(null), 1);
+  assert.equal(pageNumber('1'), 1);
+  assert.equal(pageNumber('100000'), 100000);
+  for (const input of ['', '0', '-1', '1.5', 'Infinity', 'NaN', '1e3', '100001', '9999999999999999999999', ' 1']) {
+    assert.equal(pageNumber(input), null, input);
+  }
+});
 import { validateEvidence } from '../shared/report.js';
 import { chatSchema, latestText, uiMessage, waitForFirstText, validProbability } from '../shared/chat.js';
 import { summarizeAnalytics } from '../shared/analytics.js';

@@ -11,6 +11,7 @@ import puppeteer from 'puppeteer';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { assertStaging } from './fixtures/staging-safety.mjs';
+import { admissionScript } from '../shared/rate-limit.js';
 
 assertStaging();
 const base = 'http://127.0.0.1:3101';
@@ -52,6 +53,20 @@ async function submit(index) {
 }
 
 try {
+  const quotaPrefix = `fixture-admission:${randomUUID()}`;
+  const quotaKeys = [`${quotaPrefix}:ip`, `${quotaPrefix}:day`, `${quotaPrefix}:request`];
+  try {
+    const args = [3600, 3, 100, 'same-input'];
+    const results = await Promise.all(Array.from({ length: 5 }, () => redis.eval(admissionScript, 3, ...quotaKeys, ...args)));
+    assert.deepEqual(results, [1, 1, 1, 1, 1]);
+    assert.equal(await redis.get(quotaKeys[0]), '1');
+    assert.equal(await redis.get(quotaKeys[1]), '1');
+    assert.equal(await redis.eval(admissionScript, 3, ...quotaKeys, 3600, 3, 100, 'different-input'), -1);
+    await redis.set(quotaKeys[1], '100', 'EX', 60);
+    assert.equal(await redis.eval(admissionScript, 2, ...quotaKeys.slice(0, 2), 3600, 3, 100, ''), 0);
+    assert.equal(await redis.get(quotaKeys[0]), '1');
+    pass('Concurrent matching admission reserves once and exhausted budgets do not consume IP capacity');
+  } finally { await redis.del(...quotaKeys); }
   const companyPage = await call('/fictional-company');
   assert.equal(companyPage.status, 200);
   const companyHtml = await companyPage.text();

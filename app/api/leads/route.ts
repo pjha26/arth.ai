@@ -7,17 +7,16 @@ import { limitRequest } from '@/lib/rateLimit';
 import { dispatchReport } from '@/lib/dispatch';
 import { assertPublicUrl } from '@/shared/network.js';
 import { cookieOptions, reportCookie, sameReportRequestOrigin, signAccess } from '@/shared/access.js';
+import { pageNumber } from '@/shared/pagination.js';
 
 export async function POST(request: Request) {
   if (!sameReportRequestOrigin(request)) return new Response('Invalid origin', { status: 403 });
-  const limited = await limitRequest(request, 'reports', 3, 3600, 100);
+  const limited = await limitRequest(request, 'report-ingress', 30, 60, 10000);
   if (limited) return limited;
   if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) return Response.json({ message: 'Report access is not configured' }, { status: 503 });
   const input = LeadSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return Response.json({ message: 'Validation failed', errors: input.error.flatten().fieldErrors }, { status: 400 });
-  let website: URL;
-  try { website = await assertPublicUrl(input.data.website); }
-  catch { return Response.json({ message: 'Enter a publicly accessible HTTP or HTTPS website' }, { status: 400 }); }
+  const website = new URL(input.data.website);
   const domain = website.hostname.replace(/^www\./, '').toLowerCase();
   const data = input.data;
   const requestKey = request.headers.get('Idempotency-Key');
@@ -27,6 +26,12 @@ export async function POST(request: Request) {
     // Each requester gets a private report. Research reuse must never share another lead's context.
     let report = await prisma.report.findUnique({ where: { requestKey } });
     if (report && report.requestFingerprint !== fingerprint) return Response.json({ message: 'Submission ID was already used for different details' }, { status: 409 });
+    if (!report) {
+      try { await assertPublicUrl(website.href); }
+      catch { return Response.json({ message: 'Enter a publicly accessible HTTP or HTTPS website' }, { status: 400 }); }
+      const admission = await limitRequest(request, 'reports', 3, 3600, 100, undefined, { key: requestKey, fingerprint });
+      if (admission) return admission;
+    }
     if (!report) try { report = await prisma.$transaction(async tx => {
       const company = await tx.company.upsert({
         where: { domain }, update: {},
@@ -57,7 +62,8 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const denied = await guard(request); if (denied) return denied;
   const query = new URL(request.url).searchParams;
-  const page = Math.max(1, Number(query.get('page')) || 1);
+  const page = pageNumber(query.get('page'));
+  if (page === null) return Response.json({ message: 'Page must be an integer between 1 and 100000' }, { status: 400 });
   const take = 50;
   const [reports, total] = await Promise.all([
     prisma.report.findMany({ orderBy: { createdAt: 'desc' }, take, skip: (page - 1) * take,
