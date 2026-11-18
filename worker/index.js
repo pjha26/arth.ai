@@ -1,7 +1,7 @@
 import { Worker, Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '../shared/db.js';
-import { reconcilePendingReports } from './services/reconcileReports.js';
+import { reconcilePendingReports, runRecoveryTasks } from './services/reconcileReports.js';
 import { appUrl } from '../shared/access.js';
 import { assertWorkerConfiguration } from '../shared/readiness.js';
 import { enrich } from './services/enrichment.js';
@@ -42,14 +42,21 @@ let reconciling = false;
 async function reconcile() {
   if (reconciling) return; reconciling = true;
   try {
-    await reconcileFollowUps({ prisma, followupsQueue });
-    await reconcilePendingReports({ prisma, leadsQueue });
-    const searches = await prisma.discoverySearch.findMany({ where: { status: 'pending' }, take: 10 });
-    for (const search of searches) await leadsQueue.add('discover-companies', { ...search, searchId: search.id }, { jobId: `discovery-${search.id}` });
-    const ready = await prisma.report.findMany({ where: { status: 'done', deliveryStatus: 'pending', leadId: { not: null } }, take: 50 });
-    for (const report of ready) await queuePendingDelivery(report.id, leadsQueue);
-    await recoverInterruptedDeliveries(prisma);
-    await reconcileIntentSlack(prisma);
+    const logFailure = (name, error) => console.error('Recovery task failed', name, error.message);
+    await runRecoveryTasks([
+      { name: 'follow-ups', run: () => reconcileFollowUps({ prisma, followupsQueue }) },
+      { name: 'reports', run: () => reconcilePendingReports({ prisma, leadsQueue }) },
+      { name: 'discovery', run: async () => {
+        const searches = await prisma.discoverySearch.findMany({ where: { status: 'pending' }, take: 10 });
+        await runRecoveryTasks(searches.map(search => ({ name: `discovery-${search.id}`, run: () => leadsQueue.add('discover-companies', { ...search, searchId: search.id }, { jobId: `discovery-${search.id}` }) })), logFailure);
+      } },
+      { name: 'delivery', run: async () => {
+        const ready = await prisma.report.findMany({ where: { status: 'done', deliveryStatus: 'pending', leadId: { not: null } }, take: 50 });
+        await runRecoveryTasks(ready.map(report => ({ name: `delivery-${report.id}`, run: () => queuePendingDelivery(report.id, leadsQueue) })), logFailure);
+      } },
+      { name: 'interrupted-delivery', run: () => recoverInterruptedDeliveries(prisma) },
+      { name: 'intent-alerts', run: () => reconcileIntentSlack(prisma) },
+    ], logFailure);
   } finally { reconciling = false; }
 }
 const timer = setInterval(() => void reconcile().catch(error => console.error('Reconciliation failed', error.message)), 60000);

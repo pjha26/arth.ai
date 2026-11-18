@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { processReport } from '../worker/services/pipeline.js';
+import { runRecoveryTasks } from '../worker/services/reconcileReports.js';
+
+test('startup and scheduled recovery continue after synchronous or asynchronous task failure', async () => {
+  const ran = [], failures = [];
+  await runRecoveryTasks([
+    { name: 'follow-ups', run: () => { throw new Error('Unavailable queue'); } },
+    { name: 'reports', run: async () => { ran.push('reports'); } },
+    { name: 'delivery', run: async () => { throw new Error('Unavailable job'); } },
+    { name: 'alerts', run: async () => { ran.push('alerts'); } },
+  ], (name, error) => failures.push([name, error.message]));
+  assert.deepEqual(ran, ['reports', 'alerts']);
+  assert.deepEqual(failures, [['follow-ups', 'Unavailable queue'], ['delivery', 'Unavailable job']]);
+});
 
 const id = '00000000-0000-4000-8000-000000000001';
 function fixture() {
