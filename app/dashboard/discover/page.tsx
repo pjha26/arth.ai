@@ -125,6 +125,7 @@ export default function DiscoverPage() {
           <div>
             <h1 className="arth-page-title">Lead Discovery</h1>
             <p className="arth-page-sub">Find companies by industry, region, and public signals.</p>
+            <Link href="/dashboard/discover/catalogue" className="underline underline-offset-4">Open CSV catalogue</Link>
           </div>
 
           <div className="arth-card">
