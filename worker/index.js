@@ -25,7 +25,8 @@ const defaults = { attempts: 3, backoff: { type: 'exponential', delay: 10000 }, 
 const leadsQueue = new Queue('leads', { connection, defaultJobOptions: defaults });
 const followupsQueue = new Queue('followups', { connection, defaultJobOptions: defaults });
 const monitoringQueue = new Queue('monitoring', { connection, defaultJobOptions: defaults });
-await leadsQueue.setGlobalConcurrency(2);
+const leadsConcurrency = process.env.FREE_PILOT_MODE === 'true' ? 1 : 2;
+await leadsQueue.setGlobalConcurrency(leadsConcurrency);
 await monitoringQueue.setGlobalConcurrency(1);
 
 const deliveryServices = { prisma, readReportPdf, sendEmail, sendSlackNotification, appUrl };
@@ -36,7 +37,7 @@ const worker = new Worker('leads', async job => {
   if (job.name === 'deliver-report') return deliver(job.data.reportId);
   await processReport(job, { prisma, enrich: (lead, companyId, freshResearch) => enrichCompany(lead, companyId, freshResearch, { prisma, enrich }), generateAiReport, generatePDF, saveReportPdf, storeReportIntelligence });
   await deliver(job.data.reportId);
-}, { connection, concurrency: 2 });
+}, { connection, concurrency: leadsConcurrency });
 
 let reconciling = false;
 async function reconcile() {

@@ -1,5 +1,6 @@
+import { UnrecoverableError } from 'bullmq';
 import { reportJobSchema } from '../../shared/jobs.js';
-import { readinessScore } from '../../shared/report.js';
+import { INSUFFICIENT_RESEARCH_EVIDENCE, readinessScore } from '../../shared/report.js';
 
 export async function processReport(job, services) {
   const { prisma, enrich, generateAiReport, generatePDF, saveReportPdf, storeReportIntelligence } = services;
@@ -45,8 +46,10 @@ export async function processReport(job, services) {
     await storeReportIntelligence(lead, insights, data.companyId, reportId).catch(error => console.warn('Embedding unavailable; full report context retained:', error.message));
     await prisma.report.update({ where: { id: reportId }, data: { status: 'done', generatedAt: row.generatedAt || new Date(), chatEnabled: true } });
   } catch (error) {
-    const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts || 1);
+    const noEvidence = error.message === INSUFFICIENT_RESEARCH_EVIDENCE;
+    const finalAttempt = noEvidence || job.attemptsMade + 1 >= (job.opts.attempts || 1);
     await prisma.report.update({ where: { id: reportId }, data: { status: finalAttempt ? 'failed' : 'pending', dispatchedAt: finalAttempt ? row.dispatchedAt : new Date(), errorMessage: error.message.slice(0, 500) } });
+    if (noEvidence) throw new UnrecoverableError(error.message);
     throw error;
   }
 }

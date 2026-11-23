@@ -85,9 +85,9 @@ function RequestForm() {
       });
       const result = await response.json().catch(() => null);
       if (!response.ok) {
-        setSubmitError(response.status === 403
+        setSubmitError(result?.message || (response.status === 403
           ? "ArthAI rejected this submission. Open the request form directly in your browser and try again."
-          : result?.message || result?.error || "Could not submit your request. Try again.");
+          : result?.error || "Could not submit your request. Try again."));
         setIsSubmitting(false);
         return;
       }

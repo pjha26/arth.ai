@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { LeadSchema } from '@/lib/validation';
 import { prisma } from '@/lib/prisma';
-import { guard } from '@/lib/auth';
+import { accessFor, guard } from '@/lib/auth';
 import { limitRequest } from '@/lib/rateLimit';
 import { dispatchReport } from '@/lib/dispatch';
 import { assertPublicUrl } from '@/shared/network.js';
@@ -27,9 +27,13 @@ export async function POST(request: Request) {
     let report = await prisma.report.findUnique({ where: { requestKey } });
     if (report && report.requestFingerprint !== fingerprint) return Response.json({ message: 'Submission ID was already used for different details' }, { status: 409 });
     if (!report) {
+      const pilot = process.env.FREE_PILOT_MODE === 'true';
+      if (pilot && !(await accessFor())?.staff) {
+        return Response.json({ message: 'New reports are limited to staff during the pilot.' }, { status: 403 });
+      }
       try { await assertPublicUrl(website.href); }
       catch { return Response.json({ message: 'Enter a publicly accessible HTTP or HTTPS website' }, { status: 400 }); }
-      const admission = await limitRequest(request, 'reports', 3, 3600, 100, undefined, { key: requestKey, fingerprint });
+      const admission = await limitRequest(request, 'reports', 3, 3600, pilot ? 3 : 100, undefined, { key: requestKey, fingerprint });
       if (admission) return admission;
     }
     if (!report) try { report = await prisma.$transaction(async tx => {

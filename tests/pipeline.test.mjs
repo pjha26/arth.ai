@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { processReport } from '../worker/services/pipeline.js';
+import { UnrecoverableError } from 'bullmq';
+import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../shared/report.js';
 import { runRecoveryTasks } from '../worker/services/reconcileReports.js';
 
 test('startup and scheduled recovery continue after synchronous or asynchronous task failure', async () => {
@@ -41,9 +43,10 @@ test('a failed PDF step resumes the reviewed checkpoint without generating or em
   await processReport(f.job, f.services); assert.equal(f.generationCalls(), 1);
 });
 
-test('insufficient evidence fails explicitly on the final attempt without creating a generic report', async () => {
-  const f = fixture(); f.job.attemptsMade = 2; f.services.enrich = async () => { throw new Error('Insufficient evidence'); };
-  await assert.rejects(processReport(f.job, f.services), /Insufficient evidence/);
+test('insufficient evidence stops automatic retries on the first attempt without creating a generic report', async () => {
+  const f = fixture();
+  f.services.enrich = async () => { throw new Error(INSUFFICIENT_RESEARCH_EVIDENCE); };
+  await assert.rejects(processReport(f.job, f.services), UnrecoverableError);
   assert.equal(f.state.status, 'failed'); assert.equal(f.state.insights, null); assert.equal(f.generationCalls(), 0);
   assert.equal(f.stages[0].status, 'failed');
 });
