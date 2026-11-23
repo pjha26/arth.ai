@@ -1,8 +1,13 @@
 'use client';
 
 import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
+import Link from 'next/link';
 
-type Entry = { id: string; name: string; website: string; country: string; region: string; city: string; industry: string; source: string };
+type Entry = {
+  id: string; name: string; website: string; country: string; region: string; city: string; industry: string; source: string;
+  shortlistedAt: string | null;
+  researchReport: { id: string; status: string } | null;
+};
 type Results = { rows: Entry[]; page: number; hasMore: boolean };
 const fields = ['country', 'region', 'city', 'industry'] as const;
 const endpoint = '/api/discovery/catalogue';
@@ -65,7 +70,24 @@ export function CataloguePanel() {
       const value = String(data.get(field) || '').trim();
       if (value) query.set(field, value);
     }
+    if (data.has('shortlisted')) query.set('shortlisted', '1');
     void run('Searching catalogue…', () => load(query));
+  }
+
+  function updateEntry(row: Entry, method: 'PATCH' | 'POST') {
+    setNotice('');
+    void run(method === 'PATCH' ? 'Saving shortlist…' : 'Requesting research…', async () => {
+      const response = await fetch(`${endpoint}/${encodeURIComponent(row.id)}`, {
+        method,
+        ...(method === 'PATCH' ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shortlisted: !row.shortlistedAt }) } : {}),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || data.error || 'Catalogue action failed.');
+      setNotice(method === 'PATCH'
+        ? data.shortlisted ? 'Added to the shortlist.' : 'Removed from the shortlist.'
+        : data.created ? 'Research request saved.' : 'A research report already exists for this entry.');
+      await load(filters.current, results?.page ?? 1);
+    });
   }
 
   return (
@@ -78,14 +100,19 @@ export function CataloguePanel() {
         </div>
         <button className="arth-btn-primary min-h-11 px-4 disabled:opacity-60" disabled={!interactive}>Import CSV</button>
       </form>
-      <form className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-5" onSubmit={search}>
+      <form className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={search}>
         {fields.map(field => (
           <label key={field} className="arth-label capitalize">
             {field}
             <input className="arth-input mt-1 block w-full" name={field} maxLength={100} disabled={!interactive} />
           </label>
         ))}
-        <button className="arth-btn-secondary min-h-11 px-4 disabled:opacity-60" disabled={!interactive}>Search catalogue</button>
+        <div className="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-4">
+          <label className="flex min-h-11 items-center gap-2">
+            <input name="shortlisted" type="checkbox" disabled={!interactive} /> Shortlisted only
+          </label>
+          <button className="arth-btn-secondary min-h-11 px-4 disabled:opacity-60" disabled={!interactive}>Search catalogue</button>
+        </div>
       </form>
       <div>
         <p role="status">{busy || notice}</p>
@@ -100,6 +127,23 @@ export function CataloguePanel() {
                   <a href={row.website} target="_blank" rel="noreferrer" className="w-fit font-semibold underline underline-offset-4">{row.name}</a>
                   <p>{[row.city, row.region, row.country].filter(Boolean).join(', ')} · {row.industry}</p>
                   <p className="arth-page-sub">{row.source}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <button type="button" className="arth-btn-secondary min-h-11 px-4 disabled:opacity-60"
+                      aria-label={`${row.shortlistedAt ? 'Remove from shortlist:' : 'Shortlist'} ${row.name}`}
+                      disabled={!interactive} onClick={() => updateEntry(row, 'PATCH')}>
+                      {row.shortlistedAt ? 'Remove from shortlist' : 'Shortlist'}
+                    </button>
+                    {row.researchReport ? (
+                      <Link className="underline underline-offset-4" href={`/dashboard/reports/${row.researchReport.id}`} prefetch={false}>
+                        Open report ({row.researchReport.status === 'done' ? 'ready' : row.researchReport.status})
+                      </Link>
+                    ) : row.shortlistedAt ? (
+                      <button type="button" className="arth-btn-primary min-h-11 px-4 disabled:opacity-60"
+                        aria-label={`Request research for ${row.name}`} disabled={!interactive} onClick={() => updateEntry(row, 'POST')}>
+                        Request research
+                      </button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>

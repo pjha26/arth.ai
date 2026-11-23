@@ -50,7 +50,7 @@ model Lead {
   companyId         String
   fullName          String?
   email             String?
-  source            String   @default("manual") // manual | auto_discovered
+  source            String   @default("manual") // manual | auto_discovered | catalogue
   salesStatus       String   @default("new")
   painPoints        String
   challengeTags     String[] @default([])
@@ -113,6 +113,7 @@ model Report {
   events        ReportEvent[]
   followUps     FollowUp[]
   modelCalls    ModelCall[]
+  catalogueEntry CatalogueCompany?
   @@index([status, dispatchedAt])
   @@index([leadId, createdAt])
   @@index([providerMessageId])
@@ -282,6 +283,10 @@ model CatalogueCompany {
   industryKey String
   source      String
   importedAt  DateTime @default(now())
+  shortlistedAt DateTime?
+  researchSequence Int @default(0)
+  researchReportId String? @unique
+  researchReport Report? @relation(fields: [researchReportId], references: [id], onDelete: SetNull)
 
   @@unique([domain, countryKey, regionKey, cityKey])
   @@index([countryKey, cityKey, industryKey])

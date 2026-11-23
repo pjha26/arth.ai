@@ -536,6 +536,31 @@ try {
   assert.equal((await updateShortlist(staff, removeUpdate)).status, 200);
   assert.equal((await readShortlist()).some(company => company.id === matched.companyId), false);
   pass('Staff shortlist persists eligible companies once and supports removal');
+  const researchEntry = await prisma.catalogueCompany.create({ data: {
+    name: 'Fixture Research Account', domain: 'iana.org', website: 'https://www.iana.org',
+    country: 'United States', countryKey: 'united states', region: 'California', regionKey: 'california',
+    city: 'Los Angeles', cityKey: 'los angeles', industry: 'Accounting', industryKey: 'accounting', source: 'Synthetic fixture',
+  } });
+  const entryPath = `${cataloguePath}/${researchEntry.id}`;
+  assert.equal((await call(entryPath, { method: 'POST', jar: first.jar })).status, 401);
+  assert.equal((await call(entryPath, { method: 'POST', jar: staff })).status, 409);
+  assert.equal((await call(entryPath, { method: 'PATCH', jar: staff, body: { shortlisted: true } })).status, 200);
+  const linked = await Promise.all(Array.from({ length: 3 }, async () => {
+    const response = await call(entryPath, { method: 'POST', jar: staff });
+    assert.ok([200, 202].includes(response.status), await response.clone().text());
+    return response.json();
+  }));
+  assert.equal(new Set(linked.map(response => response.jobId)).size, 1);
+  assert.equal(linked.filter(response => response.created).length, 1);
+  const catalogueReport = await prisma.report.findUniqueOrThrow({ where: { id: linked[0].jobId }, include: { lead: true } });
+  assert.equal(catalogueReport.lead.source, 'catalogue');
+  assert.equal(catalogueReport.lead.email, null);
+  assert.equal(catalogueReport.lead.outreachConsent, false);
+  assert.equal(catalogueReport.deliveryStatus, 'skipped');
+  const shortlistResponse = await call(`${cataloguePath}?shortlisted=1&city=Los%20Angeles`, { jar: staff });
+  const shortlistEntries = (await shortlistResponse.json()).rows;
+  assert.equal(shortlistEntries.find(entry => entry.id === researchEntry.id)?.researchReport?.id, catalogueReport.id);
+  pass('Only staff can request one private report for a shortlisted catalogue location');
   const result = { passed: true, checkedAt: new Date().toISOString(), providers: 'simulated; no real email or paid AI calls', reportId: first.id, browserQa: { tool: 'existing Puppeteer', fallback: 'Browser plugin and Playwright unavailable', viewports: ['1365x900', '390x844'] }, checks };
   await writeFile('.data/staging/flow-check.json', JSON.stringify(result, null, 2));
   console.log(`Staging flow passed: ${checks.length} checks.`);

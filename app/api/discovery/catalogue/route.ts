@@ -23,9 +23,12 @@ export async function GET(request: Request) {
     return Response.json({ message: 'Filters must be at most 100 characters.' }, { status: 400, headers: noStore });
   }
   try {
+    const shortlistedOnly = query.get('shortlisted') === '1';
     const rows = await prisma.catalogueCompany.findMany({
-      where, orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: (page - 1) * 50, take: 51,
-      select: { id: true, name: true, website: true, country: true, region: true, city: true, industry: true, source: true },
+      where: { ...where, ...(shortlistedOnly ? { shortlistedAt: { not: null } } : {}) },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: (page - 1) * 50, take: 51,
+      select: { id: true, name: true, website: true, country: true, region: true, city: true, industry: true, source: true,
+        shortlistedAt: true, researchReport: { select: { id: true, status: true } } },
     });
     return Response.json({ rows: rows.slice(0, 50), page, hasMore: rows.length > 50 && page < 1000 }, { headers: noStore });
   } catch {
