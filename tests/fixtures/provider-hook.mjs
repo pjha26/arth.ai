@@ -70,7 +70,10 @@ globalThis.fetch = async (input, init) => {
       return json({ error: { code: 429, message: 'Controlled quota exhaustion', status: 'RESOURCE_EXHAUSTED' } }, 429);
     }
     const body = await request.json();
-    if (url.pathname.endsWith(':embedContent')) return json({ embedding: { values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) } });
+    if (url.pathname.endsWith(':embedContent')) {
+      const dimension = body.content?.parts?.some(part => part.text === 'Check invoice-review retrieval fixture') ? 1 : 0;
+      return json({ embedding: { values: Array.from({ length: 768 }, (_, i) => i === dimension ? 1 : 0) } });
+    }
     if (url.pathname.endsWith(':batchEmbedContents')) {
       return json({ embeddings: body.requests.map(() => ({ values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) })) });
     }
@@ -78,6 +81,12 @@ globalThis.fetch = async (input, init) => {
     const text = body.contents?.flatMap(c => c.parts).map(p => p.text || '').join('') || '';
     if (reportPilot && text.includes('Evaluator-only expectation')) throw new Error('Pilot expectations leaked into the model request');
     if (url.pathname.endsWith(':streamGenerateContent')) {
+      if (body.contents?.at(-1)?.parts?.some(part => part.text === 'Check invoice-review retrieval fixture')) {
+        const retrieved = system.split('RETRIEVED SECTIONS:\n')[1] || '';
+        if (!retrieved.startsWith('[fixture-invoice]') || /\[fixture-(wrong-model|other-report)\]/.test(retrieved)) {
+          throw new Error('Chat retrieval used the wrong evidence order or scope');
+        }
+      }
       await log({ provider: 'google-fixture', action: 'chat' });
       return new Response(`data: ${JSON.stringify(generation('The report recommends a small invoice-review pilot. This is a hypothesis; measure a baseline before implementation.'))}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
     }

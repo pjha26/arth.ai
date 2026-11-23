@@ -159,6 +159,18 @@ try {
     assert.equal(response.status, 200, `Chat failed: ${await response.clone().text()}`);
     assert.ok((await response.text()).includes('invoice-review')); return response;
   };
+  const matchingVector = JSON.stringify(Array.from({ length: 768 }, (_, index) => index === 1 ? 1 : 0));
+  const embeddingModel = process.env.EMBEDDING_MODEL || 'gemini-embedding-001';
+  for (const [target, model, chunk] of [
+    [first.id, embeddingModel, '[fixture-invoice] Invoice tracking evidence for invoice-review.'],
+    [first.id, 'staging-wrong-model', '[fixture-wrong-model] This chunk must stay out of retrieval.'],
+    [second.id, embeddingModel, '[fixture-other-report] This chunk must stay out of retrieval.'],
+  ]) {
+    await prisma.$executeRaw`INSERT INTO "Embedding" ("id", "companyId", "reportId", "chunk", "embedding", "metadata", "createdAt")
+      VALUES (${randomUUID()}, ${report.companyId}, ${target}, ${chunk}, ${matchingVector}::extensions.vector, ${JSON.stringify({ model })}::jsonb, NOW())`;
+  }
+  await sendChat(staff, 'Check invoice-review retrieval fixture');
+  pass('Chat sends the nearest evidence first and excludes other reports and embedding models');
   await sendChat(staff);
   assert.equal((await prisma.lead.findUnique({ where: { id: report.leadId } })).intentProbability, null); pass('Staff chat does not score a prospect');
   await sendChat(first.jar);

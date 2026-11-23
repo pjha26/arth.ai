@@ -1,4 +1,21 @@
 import assert from 'node:assert/strict';
+import { summarizeChatQuality } from '../shared/report-chat-quality.js';
+
+test('chat evaluation separates retrieval, reviewed support, and abstention', () => {
+  const cases = [
+    { id: 'known', expectedSourceIds: ['invoice', 'api'], retrievedSourceIds: ['invoice', 'invoice', 'pricing'], abstained: false,
+      claims: [{ citedSourceId: 'invoice', supported: true }, { citedSourceId: 'pricing', supported: false }, { citedSourceId: null, supported: false }] },
+    { id: 'unknown', expectedSourceIds: [], retrievedSourceIds: ['pricing'], abstained: true, claims: [] },
+  ];
+  const summary = summarizeChatQuality(cases);
+  assert.equal(summary.evidenceRecallAt3, 0.5);
+  assert.equal(summary.citationCoverage, 2 / 3);
+  assert.equal(summary.supportedClaimRate, 1 / 3);
+  assert.equal(summary.unanswerableAbstentionRate, 1);
+  assert.equal(summary.answerableAbstentionRate, 0);
+  assert.equal(summarizeChatQuality([cases[1]]).evidenceRecallAt3, null);
+  assert.throws(() => summarizeChatQuality([cases[0], cases[0]]), /unique/);
+});
 import test from 'node:test';
 import { summarizeReportQuality } from '../shared/report-quality.js';
 
