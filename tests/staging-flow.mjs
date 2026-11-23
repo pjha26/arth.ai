@@ -86,6 +86,28 @@ try {
   assert.equal(login.status, 303, `Login failed: ${await login.clone().text()}`);
   assert.equal(login.headers.get('location'), `${base}/dashboard`);
   const staff = cookie(login); assert.ok(staff.includes('arth_staff=')); pass('Staff login with real Redis-backed limits');
+  const cataloguePath = '/api/discovery/catalogue';
+  const catalogueId = randomUUID();
+  const catalogueTag = `Catalogue ${catalogueId}`;
+  const catalogue = `name,website,country,region,city,industry,source\nFixture Ledger,https://ledger-${catalogueId}.example,India,Karnataka,Bengaluru,${catalogueTag},Synthetic fixture`;
+  assert.equal((await call(cataloguePath)).status, 401);
+  assert.equal((await call(cataloguePath, { method: 'POST', jar: staff, headers: { Origin: 'https://untrusted.example' }, body: { csv: catalogue } })).status, 403);
+  const reportCount = await prisma.report.count();
+  const importCatalogue = async () => {
+    const response = await call(cataloguePath, { method: 'POST', jar: staff, body: { csv: catalogue } });
+    assert.equal(response.status, 200, await response.clone().text());
+    return response.json();
+  };
+  const industryQuery = encodeURIComponent(catalogueTag.toUpperCase());
+  assert.deepEqual(await importCatalogue(), { imported: 1, duplicates: 0 });
+  assert.deepEqual(await importCatalogue(), { imported: 0, duplicates: 1 });
+  const matches = await call(`${cataloguePath}?country=india&city=BENGALURU&industry=${industryQuery}`, { jar: staff });
+  assert.equal(matches.status, 200);
+  const rows = (await matches.json()).rows;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'Fixture Ledger');
+  assert.equal(await prisma.report.count(), reportCount);
+  pass('Staff-only catalogue imports are idempotent, filter by normalized location and industry, and generate no reports');
   const first = await submit(1);
   const repeated = await call('/api/leads', { method: 'POST', body: first.body, headers: { 'Idempotency-Key': first.key } });
   assert.equal(repeated.status, 202); assert.equal((await repeated.json()).jobId, first.id); pass('Repeated submission reuses its report');

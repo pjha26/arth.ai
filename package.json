@@ -2,14 +2,16 @@
   "name": "arth.ai",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "concurrently \"next dev\" \"npm --prefix worker run dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "test": "node --test tests/core.test.mjs tests/pipeline.test.mjs tests/delivery.test.mjs tests/storage.test.mjs tests/followups.test.mjs tests/staging-safety.test.mjs tests/research-cache.test.mjs tests/intent.test.mjs tests/operations.test.mjs tests/readiness.test.mjs tests/status.test.mjs tests/delivery-events.test.mjs tests/report-quality.test.mjs tests/report-quality-pilot.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/pipeline.test.mjs tests/delivery.test.mjs tests/storage.test.mjs tests/followups.test.mjs tests/staging-safety.test.mjs tests/research-cache.test.mjs tests/intent.test.mjs tests/operations.test.mjs tests/readiness.test.mjs tests/status.test.mjs tests/delivery-events.test.mjs tests/report-quality.test.mjs tests/report-quality-pilot.test.mjs tests/catalogue.test.mjs",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
@@ -36,6 +38,7 @@
     "axios": "^1.16.1",
     "bullmq": "^5.76.9",
     "cheerio": "^1.2.0",
+    "csv-parse": "7.0.3",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.40.0",
     "googleapis": "^171.4.0",
@@ -67,7 +70,11 @@
     "schema": "prisma/schema.prisma"
   },
   "overrides": {
-    "googleapis-common": { "gaxios": "^7.3.1" },
-    "@typescript-eslint/typescript-estree": { "minimatch": "^11.0.1" }
+    "googleapis-common": {
+      "gaxios": "^7.3.1"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
   }
 }

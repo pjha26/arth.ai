@@ -28,6 +28,10 @@ Chromium needs its normal sandbox support. Install its OS dependencies and run t
 
 ## Preserve and migrate existing data
 
+The CSV catalogue is staff-only and starts disabled. Apply the additive `20261123000000_company_catalogue` migration to the intended database before enabling `ENABLE_CSV_CATALOGUE=true`. Use only business data you are permitted to retain. The [synthetic CSV template](public/business-catalogue.csv) shows the required columns. A blank region is supported. Imports accept up to 1,000 rows and 256 KiB, reject invalid files before saving, and skip duplicate domains in the same country, region and city. Existing catalogue rows keep their values when reimported. Imports do not run research or send outreach.
+
+The authenticated `POST /api/discovery/catalogue` accepts a JSON object with the UTF-8 CSV text in `csv`. The authenticated `GET` at the same path supports exact, case-insensitive `country`, `region`, `city`, and `industry` filters, with `page` starting at 1. The catalogue keeps source attribution from the input. Entries are unverified and are separate from staff shortlists and report requests.
+
 **Do not reset or force-push the database schema.** Migrations are supplied but are not automatically applied by the web build.
 
 1. Back up the database. Stop old workers and pause intake during deployment. Inventory old queue jobs; their earlier payload shape is incompatible with the new validated contract. Do not replay them automatically against guessed lead associations.
