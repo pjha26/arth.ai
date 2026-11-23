@@ -3,7 +3,36 @@ import assert from 'node:assert/strict';
 import { processReport } from '../worker/services/pipeline.js';
 import { UnrecoverableError } from 'bullmq';
 import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../shared/report.js';
-import { runRecoveryTasks } from '../worker/services/reconcileReports.js';
+import { reconcilePendingReports, runRecoveryTasks } from '../worker/services/reconcileReports.js';
+
+test('recovery prioritizes undispatched reports and continues after an individual enqueue fails', async t => {
+  const firstId = '00000000-0000-4000-8000-000000000011';
+  const secondId = '00000000-0000-4000-8000-000000000012';
+  const leadId = '00000000-0000-4000-8000-000000000013';
+  const companyId = '00000000-0000-4000-8000-000000000014';
+  const first = { id: firstId, generationAttempt: 2, leadId, companyId, personaType: 'cto', createdAt: new Date(),
+    lead: { id: leadId, companyId, fullName: null, email: null, painPoints: '' },
+    company: { id: companyId, website: 'https://example.com', name: 'Example' } };
+  const second = { ...first, id: secondId, generationAttempt: 3 };
+  const updates = [];
+  const errors = t.mock.method(console, 'error', () => {});
+  await reconcilePendingReports({
+    prisma: { report: {
+      findMany: async ({ orderBy, take }) => {
+        assert.deepEqual(orderBy[0], { dispatchedAt: { sort: 'asc', nulls: 'first' } });
+        assert.equal(take, 50);
+        return [first, second];
+      },
+      updateMany: async ({ where }) => { updates.push(where); },
+    } },
+    leadsQueue: { add: async (_name, _data, { jobId }) => {
+      if (jobId === `${firstId}-2`) throw new Error('Temporary queue error');
+      assert.equal(jobId, `${secondId}-3`);
+    } },
+  });
+  assert.equal(errors.mock.callCount(), 1);
+  assert.deepEqual(updates, [{ id: secondId, status: 'pending', generationAttempt: 3 }]);
+});
 
 test('startup and scheduled recovery continue after synchronous or asynchronous task failure', async () => {
   const ran = [], failures = [];
