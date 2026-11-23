@@ -10,6 +10,7 @@ import { generateAiReport } from './services/aiReport.js';
 import { generatePDF } from './services/pdfGenerator.js';
 import { saveReportPdf, readReportPdf } from '../shared/storage.js';
 import { storeReportIntelligence } from './services/vectorStore.js';
+import { embeddingRetryBackoff, reconcileFailedEmbeddings, retryReportEmbedding } from './services/embeddingRecovery.js';
 import { processReport } from './services/pipeline.js';
 import { deliverReport, queuePendingDelivery, recoverInterruptedDeliveries } from './services/delivery.js';
 import { sendEmail, sendFollowUpEmail } from './services/emailService.js';
@@ -35,11 +36,13 @@ const deliver = reportId => deliverReport(reportId, deliveryServices);
 const worker = new Worker('leads', async job => {
   if (job.name === 'discover-companies') return processDiscoverySearch(job.data.searchId, job.data);
   if (job.name === 'deliver-report') return deliver(job.data.reportId);
+  if (job.name === 'retry-report-embedding') return retryReportEmbedding(job, { prisma, storeReportIntelligence });
   await processReport(job, { prisma, enrich: (lead, companyId, freshResearch) => enrichCompany(lead, companyId, freshResearch, { prisma, enrich }), generateAiReport, generatePDF, saveReportPdf, storeReportIntelligence });
   await deliver(job.data.reportId);
-}, { connection, concurrency: leadsConcurrency });
+}, { connection, concurrency: leadsConcurrency, settings: { backoffStrategy: embeddingRetryBackoff } });
 
 let reconciling = false;
+let embeddingRecoveryAfter;
 async function reconcile() {
   if (reconciling) return; reconciling = true;
   try {
@@ -47,6 +50,9 @@ async function reconcile() {
     await runRecoveryTasks([
       { name: 'follow-ups', run: () => reconcileFollowUps({ prisma, followupsQueue }) },
       { name: 'reports', run: () => reconcilePendingReports({ prisma, leadsQueue }) },
+      { name: 'embeddings', run: async () => {
+        embeddingRecoveryAfter = await reconcileFailedEmbeddings({ prisma, leadsQueue }, embeddingRecoveryAfter);
+      } },
       { name: 'discovery', run: async () => {
         const searches = await prisma.discoverySearch.findMany({ where: { status: 'pending' }, take: 10 });
         await runRecoveryTasks(searches.map(search => ({ name: `discovery-${search.id}`, run: () => leadsQueue.add('discover-companies', { ...search, searchId: search.id }, { jobId: `discovery-${search.id}` }) })), logFailure);

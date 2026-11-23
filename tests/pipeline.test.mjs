@@ -4,6 +4,53 @@ import { processReport } from '../worker/services/pipeline.js';
 import { UnrecoverableError } from 'bullmq';
 import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../shared/report.js';
 import { reconcilePendingReports, runRecoveryTasks } from '../worker/services/reconcileReports.js';
+import { embeddingRetryBackoff, reconcileFailedEmbeddings, retryReportEmbedding } from '../worker/services/embeddingRecovery.js';
+
+test('embedding recovery queues a delayed job, retries only indexing, and records terminal outcomes', async () => {
+  const f = fixture();
+  const id = f.state.id;
+  const report = { ...f.state, status: 'done', insights: { executiveSummary: 'Saved report' }, createdAt: new Date(),
+    personaType: 'cto', lead: { id, companyId: id, fullName: null, email: null, painPoints: '' },
+    company: { id, website: 'https://example.com', name: 'Example' } };
+  const history = [];
+  let indexCalls = 0, indexFailed = true;
+  const prisma = {
+    report: { findMany: async ({ where }) => {
+      assert.equal(where.stages.some.stage, 'embedding');
+      assert.equal(where.status, 'done');
+      assert.equal(where.id.gt, 'cursor');
+      return [report];
+    }, findFirst: async ({ where }) => where.generationAttempt === report.generationAttempt ? report : null },
+    embedding: { count: async () => indexCalls && !indexFailed ? 1 : 0 },
+    pipelineStage: { create: async ({ data }) => history.push(data) },
+  };
+  const leadsQueue = { add: async (name, data, opts) => {
+    assert.equal(name, 'retry-report-embedding');
+    assert.deepEqual(data, { reportId: id, attempt: 1 });
+    assert.equal(opts.jobId, `embedding-${id}-1`);
+    assert.equal(opts.delay, 300000);
+  } };
+  assert.equal(await reconcileFailedEmbeddings({ prisma, leadsQueue }, 'cursor'), undefined);
+  const services = { prisma, storeReportIntelligence: async () => {
+    indexCalls++;
+    if (indexFailed) throw new Error('Provider busy');
+  } };
+  const job = { data: { reportId: id, attempt: 1 }, attemptsMade: 0, opts: { attempts: 3 } };
+  await retryReportEmbedding({ ...job, data: { reportId: id, attempt: 0 } }, services);
+  assert.equal(indexCalls, 0);
+  await assert.rejects(retryReportEmbedding(job, services), /Provider busy/);
+  assert.equal(history.length, 0);
+  await assert.rejects(retryReportEmbedding({ ...job, attemptsMade: 2 }, services), /Provider busy/);
+  assert.equal(history[0].status, 'failed');
+  indexCalls = 0;
+  indexFailed = false;
+  await retryReportEmbedding(job, services);
+  await retryReportEmbedding(job, services); // A replay after the vectors were written uses the existing index.
+  assert.equal(indexCalls, 1);
+  assert.equal(history.at(-1).status, 'done');
+  assert.equal(embeddingRetryBackoff(1, 'retry-report-embedding', {}), 300000);
+  assert.equal(embeddingRetryBackoff(1, 'retry-report-embedding', { lastError: { responseHeaders: { 'retry-after': '3600' } } }), 3601000);
+});
 
 test('indexing batches report chunks, keeps their order, and preserves existing vectors on an incomplete response', async t => {
   const settings = { GEMINI_API_KEY: 'fixture-key', FREE_PILOT_MODE: 'false', EMBEDDING_MODEL: 'gemini-embedding-001' };
@@ -26,6 +73,7 @@ test('indexing batches report chunks, keeps their order, and preserves existing 
       .map((_, index) => ({ values: Array.from({ length: 768 }, (_value, dimension) => dimension === 0 ? index + 1 : 0) })) });
   });
   const transaction = t.mock.fn(async run => run({
+    $queryRaw: async () => [{ id: 'report-id' }],
     embedding: { deleteMany: async () => {} },
     $executeRaw: async (_sql, _company, _report, chunk, vector) => written.push([chunk, JSON.parse(vector)[0]]),
   }));

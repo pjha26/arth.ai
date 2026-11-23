@@ -93,8 +93,8 @@ export async function DELETE(
     }
 
     if (["pending", "processing"].includes(report.status)) return NextResponse.json({ message: "Wait for active work to finish" }, { status: 409 });
-    // Delete report (cascades to stages)
-    await prisma.$transaction([prisma.embedding.deleteMany({ where: { reportId: id } }), prisma.report.delete({ where: { id } })]);
+    // Lock the report before touching vectors, matching the index writer's lock order.
+    await prisma.$transaction([prisma.report.delete({ where: { id } }), prisma.embedding.deleteMany({ where: { reportId: id } })]);
 
     return NextResponse.json({ success: true, message: "Report deleted successfully" });
   } catch (error) {

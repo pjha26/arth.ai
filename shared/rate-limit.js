@@ -10,6 +10,7 @@ export const admissionScript = `
   end
   local n = tonumber(redis.call('GET', KEYS[1]) or '0')
   local g = tonumber(redis.call('GET', KEYS[2]) or '0')
+  if ARGV[5] == 'model-budget' and g >= tonumber(ARGV[3]) then return -2 end
   if n >= tonumber(ARGV[2]) or g >= tonumber(ARGV[3]) then return 0 end
   n = redis.call('INCR', KEYS[1]); if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
   g = redis.call('INCR', KEYS[2]); if g == 1 then redis.call('EXPIRE', KEYS[2], 86400) end

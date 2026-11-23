@@ -22,8 +22,11 @@ export function budgetedModelFetch(provider) {
     const keys = [`model-budget:${provider}:minute:${Math.floor(now / 60)}`, `model-budget:${provider}:day:${Math.floor(now / 86400)}`];
     try {
       const redis = Redis.fromEnv({ signal: AbortSignal.timeout(3000), retry: false });
-      const allowed = await redis.eval(admissionScript, keys, [60, minute, day, '']);
-      if (allowed === 0) return budgetError(429, 'The pilot model request budget is exhausted.');
+      const allowed = await redis.eval(admissionScript, keys, [60, minute, day, '', 'model-budget']);
+      if (allowed === 0 || allowed === -2) {
+        const windowSeconds = allowed === -2 ? 86400 : 60;
+        return budgetError(429, 'The pilot model request budget is exhausted.', windowSeconds - now % windowSeconds);
+      }
       if (allowed !== 1) return budgetError(503, 'Model request budget is unavailable.');
     } catch {
       return budgetError(503, 'Model request budget is unavailable.');
@@ -32,6 +35,8 @@ export function budgetedModelFetch(provider) {
   };
 }
 
-function budgetError(status, message) {
-  return Response.json({ error: { code: status, message } }, { status });
+function budgetError(status, message, retryAfter = 0) {
+  return Response.json({ error: { code: status, message } }, {
+    status, headers: retryAfter ? { 'Retry-After': String(retryAfter) } : {},
+  });
 }

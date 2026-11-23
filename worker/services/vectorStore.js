@@ -17,6 +17,8 @@ export async function storeReportIntelligence(lead, report, companyId, reportId,
     throw new Error('Embedding response does not match the report chunks and database dimensions');
   }
   await db.$transaction(async tx => {
+    const [current] = await tx.$queryRaw`SELECT id FROM "Report" WHERE id = ${reportId} FOR UPDATE`;
+    if (!current) throw new Error('Report was removed before indexing finished');
     await tx.embedding.deleteMany({ where: { reportId } });
     const metadata = JSON.stringify({ model: modelId, dimensions: 768, version: 1 });
     for (const [index, chunk] of chunks.entries()) {
