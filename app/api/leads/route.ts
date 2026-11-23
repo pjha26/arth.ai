@@ -8,13 +8,16 @@ import { dispatchReport } from '@/lib/dispatch';
 import { assertPublicUrl } from '@/shared/network.js';
 import { cookieOptions, reportCookie, sameReportRequestOrigin, signAccess } from '@/shared/access.js';
 import { pageNumber } from '@/shared/pagination.js';
+import { readBoundedJson } from '@/shared/request-json.js';
 
 export async function POST(request: Request) {
   if (!sameReportRequestOrigin(request)) return new Response('Invalid origin', { status: 403 });
   const limited = await limitRequest(request, 'report-ingress', 30, 60, 10000);
   if (limited) return limited;
   if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) return Response.json({ message: 'Report access is not configured' }, { status: 503 });
-  const input = LeadSchema.safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJson(request, 32 * 1024);
+  if (body.response) return body.response;
+  const input = LeadSchema.safeParse(body.value);
   if (!input.success) return Response.json({ message: 'Validation failed', errors: input.error.flatten().fieldErrors }, { status: 400 });
   const website = new URL(input.data.website);
   const domain = website.hostname.replace(/^www\./, '').toLowerCase();

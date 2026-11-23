@@ -8,6 +8,7 @@ import { limitRequest } from '@/lib/rateLimit';
 import { chatSchema, latestText, uiMessage, waitForFirstText } from '@/shared/chat.js';
 import { storeIntentScore, markIntentUnavailable } from '@/shared/intent.js';
 import { measureModelCall, recordModelUsage } from '@/shared/usage.js';
+import { readBoundedJson } from '@/shared/request-json.js';
 import { ML_SERVICE_URL } from '@/lib/config';
 
 export const maxDuration = 120;
@@ -32,7 +33,9 @@ export async function POST(request: Request, { params }: Context) {
   const access = (await accessFor(id))!;
   const actor = access.staff ? 'staff' : access.leadId;
   const limited = await limitRequest(request, 'chat', 20, 600, 2000, `${id}:${actor}`); if (limited) return limited;
-  const parsed = chatSchema.safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJson(request, 1024 * 1024);
+  if (body.response) return body.response;
+  const parsed = chatSchema.safeParse(body.value);
   if (!parsed.success) return Response.json({ error: 'Invalid chat message' }, { status: 400 });
   let userText: string;
   try { userText = latestText(parsed.data); } catch { return Response.json({ error: 'Enter a message of 1–2000 characters' }, { status: 400 }); }

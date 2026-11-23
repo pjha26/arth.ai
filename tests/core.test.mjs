@@ -6,6 +6,22 @@ import { makeReportJob, reportChunks } from '../shared/jobs.js';
 import { pageNumber } from '../shared/pagination.js';
 import { Redis } from '@upstash/redis';
 import { limitRequest } from '../shared/rate-limit.js';
+import { readBoundedJson } from '../shared/request-json.js';
+
+test('JSON body limits count streamed bytes independently of content length', async () => {
+  const encoder = new TextEncoder();
+  const json = encoder.encode('{"text":"é"}');
+  const request = () => new Request('https://example.com', { method: 'POST', duplex: 'half',
+    headers: { 'Content-Length': '1' }, body: new ReadableStream({ start(controller) {
+      controller.enqueue(json.slice(0, 10));
+      controller.enqueue(json.slice(10));
+      controller.close();
+    } }) });
+  assert.deepEqual((await readBoundedJson(request(), json.length)).value, { text: 'é' });
+  assert.equal((await readBoundedJson(request(), json.length - 1)).response.status, 413);
+  const invalid = new Request('https://example.com', { method: 'POST', body: '{' });
+  assert.equal((await readBoundedJson(invalid, 100)).value, null);
+});
 
 test('admission passes an idempotency reservation and reports quota, conflict, and dependency errors', async t => {
   const keys = ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'];

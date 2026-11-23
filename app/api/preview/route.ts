@@ -8,11 +8,14 @@ import { limitRequest } from '@/lib/rateLimit';
 import { scrapeWebsite } from '@/worker/services/enrichment.js';
 import { prisma } from '@/lib/prisma';
 import { measureModelCall } from '@/shared/usage.js';
+import { readBoundedJson } from '@/shared/request-json.js';
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return new Response('Invalid origin', { status: 403 });
   const limited = await limitRequest(request, 'preview', 5, 600, 200); if (limited) return limited;
-  const input = z.object({ query: z.string().trim().min(3).max(200) }).safeParse(await request.json().catch(() => null));
+  const body = await readBoundedJson(request, 8 * 1024);
+  if (body.response) return body.response;
+  const input = z.object({ query: z.string().trim().min(3).max(200) }).safeParse(body.value);
   if (!input.success) return Response.json({ message: 'Enter a public company website URL' }, { status: 400 });
   const query = input.data.query;
   if (!query.includes('.')) return Response.json({ message: 'Paste the company website URL so we can verify the source.' }, { status: 400 });
