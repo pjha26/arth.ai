@@ -7,6 +7,47 @@ import { pageNumber } from '../shared/pagination.js';
 import { Redis } from '@upstash/redis';
 import { limitRequest } from '../shared/rate-limit.js';
 import { readBoundedJson } from '../shared/request-json.js';
+import { budgetedModelFetch } from '../shared/model-budget.js';
+
+test('model requests fail closed on a shared pilot budget, with separate provider counters', async t => {
+  const env = { FREE_PILOT_MODE: 'true', UPSTASH_REDIS_REST_URL: 'https://example.invalid',
+    UPSTASH_REDIS_REST_TOKEN: 'fixture', GEMINI_PILOT_REQUESTS_PER_MINUTE: '6', GEMINI_PILOT_REQUESTS_PER_DAY: '40',
+    GROQ_PILOT_REQUESTS_PER_MINUTE: '2', GROQ_PILOT_REQUESTS_PER_DAY: '20' };
+  const previous = Object.entries(env).map(([key]) => [key, process.env[key]]);
+  Object.assign(process.env, env);
+  t.after(() => {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  });
+  const counters = [];
+  let result = 0;
+  t.mock.method(Redis, 'fromEnv', () => ({ eval: async (_script, keys, args) => {
+    counters.push({ keys, args });
+    if (result instanceof Error) throw result;
+    return result;
+  } }));
+  const provider = t.mock.method(globalThis, 'fetch', async () => new Response('OK'));
+  const google = budgetedModelFetch('google');
+  const groq = budgetedModelFetch('groq');
+  const url = 'https://model.example.invalid';
+  assert.equal((await google(url)).status, 429);
+  assert.match(counters[0].keys[0], /^model-budget:google:minute:/);
+  assert.deepEqual(counters[0].args, [60, 6, 40, '']);
+  result = new Error('Redis unavailable');
+  assert.equal((await google(url)).status, 503);
+  assert.equal(provider.mock.callCount(), 0);
+  result = 1;
+  assert.equal((await groq(url)).status, 200);
+  assert.match(counters.at(-1).keys[0], /^model-budget:groq:minute:/);
+  assert.deepEqual(counters.at(-1).args, [60, 2, 20, '']);
+  process.env.GEMINI_PILOT_REQUESTS_PER_DAY = '0';
+  assert.equal((await google(url)).status, 429);
+  assert.equal(provider.mock.callCount(), 1);
+  process.env.FREE_PILOT_MODE = 'false';
+  assert.equal((await google(url)).status, 200);
+  assert.equal(provider.mock.callCount(), 2);
+});
 
 test('JSON body limits count streamed bytes independently of content length', async () => {
   const encoder = new TextEncoder();

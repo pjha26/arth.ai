@@ -2,15 +2,16 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { measureModelCall } from '../../shared/usage.js';
+import { budgetedModelFetch } from '../../shared/model-budget.js';
 import { hasEvidenceQuote, reportSchema, validateEvidence } from '../../shared/report.js';
 import { captureWebsiteScreenshot } from './visualAnalysis.js';
 
-const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY });
+const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY, fetch: budgetedModelFetch('google') });
 export const reportModelName = () => process.env.REPORT_MODEL || 'gemini-2.5-flash';
 const options = () => {
   const name = reportModelName();
   return {
-    model: google(name), maxRetries: 1, abortSignal: AbortSignal.timeout(60000), maxOutputTokens: 8192,
+    model: google(name), maxRetries: process.env.FREE_PILOT_MODE === 'true' ? 0 : 1, abortSignal: AbortSignal.timeout(60000), maxOutputTokens: 8192,
     // Gemini counts thinking against the same limit as the structured response.
     ...(name === 'gemini-2.5-flash' ? { providerOptions: { google: { thinkingConfig: { thinkingBudget: 2048 } } } } : {}),
   };

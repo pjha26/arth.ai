@@ -9,12 +9,13 @@ import { chatSchema, latestText, uiMessage, waitForFirstText } from '@/shared/ch
 import { storeIntentScore, markIntentUnavailable } from '@/shared/intent.js';
 import { measureModelCall, recordModelUsage } from '@/shared/usage.js';
 import { readBoundedJson } from '@/shared/request-json.js';
+import { budgetedModelFetch } from '@/shared/model-budget.js';
 import { ML_SERVICE_URL } from '@/lib/config';
 
 export const maxDuration = 120;
 type Context = { params: Promise<{ id: string }> };
-const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY });
-const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
+const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY, fetch: budgetedModelFetch('google') });
+const groq = createGroq({ apiKey: process.env.GROQ_API_KEY, fetch: budgetedModelFetch('groq') });
 
 export async function GET(request: Request, { params }: Context) {
   const { id } = await params;

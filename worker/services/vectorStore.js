@@ -1,10 +1,11 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed } from 'ai';
 import { measureModelCall } from '../../shared/usage.js';
+import { budgetedModelFetch } from '../../shared/model-budget.js';
 import { prisma } from '../../shared/db.js';
 import { reportChunks } from '../../shared/jobs.js';
 
-const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY });
+const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY, fetch: budgetedModelFetch('google') });
 export async function storeReportIntelligence(lead, report, companyId, reportId) {
   const rows = [];
   const modelId = process.env.EMBEDDING_MODEL || 'gemini-embedding-001';
