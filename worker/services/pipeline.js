@@ -43,7 +43,8 @@ export async function processReport(job, services) {
       });
       row = await prisma.report.update({ where: { id: reportId }, data: { pdfUrl: reference, artifactStatus: 'ready' } });
     }
-    await storeReportIntelligence(lead, insights, data.companyId, reportId).catch(error => console.warn('Embedding unavailable; full report context retained:', error.message));
+    await stage('embedding', () => storeReportIntelligence(lead, insights, data.companyId, reportId))
+      .catch(() => console.warn('Embedding unavailable; full report context retained:', reportId));
     await prisma.report.update({ where: { id: reportId }, data: { status: 'done', generatedAt: row.generatedAt || new Date(), chatEnabled: true } });
   } catch (error) {
     const noEvidence = error.message === INSUFFICIENT_RESEARCH_EVIDENCE;

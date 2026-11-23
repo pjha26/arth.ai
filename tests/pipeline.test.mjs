@@ -117,6 +117,19 @@ test('insufficient evidence stops automatic retries on the first attempt without
   assert.equal(f.stages[0].status, 'failed');
 });
 
+test('failed embeddings are recorded separately without blocking the PDF or fallback chat', async t => {
+  const f = fixture();
+  t.mock.method(console, 'warn', () => {});
+  f.services.storeReportIntelligence = async () => { throw new Error('Embedding quota exhausted'); };
+  await processReport(f.job, f.services);
+  assert.equal(f.state.status, 'done');
+  assert.equal(f.state.artifactStatus, 'ready');
+  assert.equal(f.state.chatEnabled, true);
+  const indexing = f.stages.find(entry => entry.stage === 'embedding');
+  assert.equal(indexing?.status, 'failed');
+  assert.equal(indexing.message, 'Embedding quota exhausted');
+});
+
 test('old attempt jobs cannot mutate a new report attempt', async () => {
   const f = fixture(); f.state.generationAttempt = 2;
   await processReport(f.job, f.services); assert.equal(f.stages.length, 0); assert.equal(f.state.status, 'pending');
@@ -145,5 +158,7 @@ test('restart after a saved PDF reuses both analysis and artifact checkpoints', 
   f.services.enrich = f.services.generateAiReport = f.services.generatePDF = f.services.saveReportPdf = async () => { throw new Error('Checkpoint repeated'); };
   await processReport(f.job, f.services);
   assert.equal(f.state.status, 'done'); assert.equal(f.state.pdfUrl, 'drive:existing');
-  assert.equal(f.stages.length, 1); assert.equal(f.stages[0].status, 'failed'); assert.match(f.stages[0].message, /interrupted/); assert.equal(f.generationCalls(), 0);
+  assert.deepEqual(f.stages.map(stage => [stage.stage, stage.status]), [['pdf', 'failed'], ['embedding', 'done']]);
+  assert.match(f.stages[0].message, /interrupted/);
+  assert.equal(f.generationCalls(), 0);
 });
