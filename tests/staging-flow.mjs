@@ -536,11 +536,13 @@ try {
   assert.equal((await updateShortlist(staff, removeUpdate)).status, 200);
   assert.equal((await readShortlist()).some(company => company.id === matched.companyId), false);
   pass('Staff shortlist persists eligible companies once and supports removal');
-  const researchEntry = await prisma.catalogueCompany.create({ data: {
-    name: 'Fixture Research Account', domain: 'iana.org', website: 'https://www.iana.org',
-    country: 'United States', countryKey: 'united states', region: 'California', regionKey: 'california',
-    city: 'Los Angeles', cityKey: 'los angeles', industry: 'Accounting', industryKey: 'accounting', source: 'Synthetic fixture',
-  } });
+  const researchCity = `Fixture City ${randomUUID()}`;
+  const researchCsv = `name,website,country,region,city,industry,source\nFixture Research Account,https://www.iana.org,United States,California,${researchCity},Accounting,Synthetic fixture`;
+  assert.equal((await call(cataloguePath, { method: 'POST', jar: staff, body: { csv: researchCsv } })).status, 200);
+  const researchFilter = `city=${encodeURIComponent(researchCity)}`;
+  const researchMatches = await call(`${cataloguePath}?${researchFilter}`, { jar: staff });
+  const [researchEntry] = (await researchMatches.json()).rows;
+  assert.equal(researchEntry.name, 'Fixture Research Account');
   const entryPath = `${cataloguePath}/${researchEntry.id}`;
   assert.equal((await call(entryPath, { method: 'POST', jar: first.jar })).status, 401);
   assert.equal((await call(entryPath, { method: 'POST', jar: staff })).status, 409);
@@ -557,10 +559,57 @@ try {
   assert.equal(catalogueReport.lead.email, null);
   assert.equal(catalogueReport.lead.outreachConsent, false);
   assert.equal(catalogueReport.deliveryStatus, 'skipped');
-  const shortlistResponse = await call(`${cataloguePath}?shortlisted=1&city=Los%20Angeles`, { jar: staff });
+  const shortlistResponse = await call(`${cataloguePath}?shortlisted=1&${researchFilter}`, { jar: staff });
   const shortlistEntries = (await shortlistResponse.json()).rows;
   assert.equal(shortlistEntries.find(entry => entry.id === researchEntry.id)?.researchReport?.id, catalogueReport.id);
   pass('Only staff can request one private report for a shortlisted catalogue location');
+  const readyCatalogue = await until(async () => {
+    const report = await prisma.report.findUniqueOrThrow({ where: { id: catalogueReport.id }, include: { sources: true } });
+    assert.notEqual(report.status, 'failed', report.errorMessage ?? 'Catalogue research failed');
+    return report.status === 'done' && report;
+  }, 'Catalogue research did not complete');
+  assert.equal(readyCatalogue.deliveryStatus, 'skipped');
+  assert.equal(await prisma.followUp.count({ where: { reportId: readyCatalogue.id } }), 0);
+  const [source] = readyCatalogue.sources;
+  const foreignSource = await prisma.reportSource.findFirstOrThrow({ where: { reportId: first.id } });
+  const qualificationPath = `/api/reports/${readyCatalogue.id}/qualification`;
+  const input = { decision: 'qualified', reason: 'Public product evidence supports fit.', sourceIds: [source.id], generationAttempt: readyCatalogue.generationAttempt };
+  const qualify = (jar, body = input, headers) => call(qualificationPath, { method: 'PUT', jar, body, headers });
+  assert.equal((await qualify(first.jar)).status, 401);
+  assert.equal((await qualify(staff, input, { Origin: 'https://untrusted.example' })).status, 403);
+  assert.equal((await qualify(staff, { ...input, generationAttempt: input.generationAttempt + 1 })).status, 409);
+  assert.equal((await qualify(staff, { ...input, sourceIds: [foreignSource.id] })).status, 400);
+  assert.equal((await qualify(staff, { ...input, sourceIds: [] })).status, 400);
+  const reviewBrowser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  try {
+    const page = await reviewBrowser.newPage();
+    await page.setCookie(...staff.split('; ').map(part => {
+      const split = part.indexOf('=');
+      return { name: part.slice(0, split), value: part.slice(split + 1), domain: '127.0.0.1', path: '/' };
+    }));
+    const reportUrl = `${base}/dashboard/reports/${readyCatalogue.id}`;
+    await page.goto(reportUrl, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.cr-lead-review button:enabled');
+    await page.click('.cr-lead-review > summary');
+    await page.select('.cr-lead-review select', 'qualified');
+    await page.type('.cr-lead-review input[name="reason"]', input.reason);
+    await page.click(`.cr-lead-review input[value="${source.id}"]`);
+    await page.click('.cr-lead-review button');
+    await page.waitForFunction(() => document.querySelector('.cr-lead-review [role="status"]')?.textContent === 'Lead qualification saved.');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.cr-lead-review button:enabled');
+    await page.click('.cr-lead-review > summary');
+    assert.equal(await page.$eval('.cr-lead-review input[name="reason"]', field => field.value), input.reason);
+    assert.equal(await page.$eval(`.cr-lead-review input[value="${source.id}"]`, field => field.checked), true);
+  } finally { await reviewBrowser.close(); }
+  const savedQualification = await prisma.leadQualification.findUniqueOrThrow({
+    where: { reportId_generationAttempt: { reportId: readyCatalogue.id, generationAttempt: input.generationAttempt } },
+  });
+  assert.equal(savedQualification.decision, input.decision);
+  assert.equal(savedQualification.actor, 'staff');
+  assert.deepEqual(savedQualification.sourceIds, input.sourceIds);
+  assert.equal(savedQualification.evidence[0].excerpt, source.excerpt);
+  pass('Imported catalogue lead reaches staff qualification with saved report evidence and no outreach');
   const result = { passed: true, checkedAt: new Date().toISOString(), providers: 'simulated; no real email or paid AI calls', reportId: first.id, browserQa: { tool: 'existing Puppeteer', fallback: 'Browser plugin and Playwright unavailable', viewports: ['1365x900', '390x844'] }, checks };
   await writeFile('.data/staging/flow-check.json', JSON.stringify(result, null, 2));
   console.log(`Staging flow passed: ${checks.length} checks.`);

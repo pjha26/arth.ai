@@ -10,9 +10,17 @@ ArthAI is an inbound research and CRM platform. A prospect shares a company webs
 2. **Collect evidence.** A BullMQ worker reads up to four relevant pages from the company site and records their URLs, excerpts, and retrieval dates.
 3. **Generate and check the report.** Gemini researches the company from several angles, writes recommendations for the prospect's challenge, and checks the draft against the original excerpts. If the evidence is insufficient, the pipeline records that outcome.
 4. **Deliver it privately.** Puppeteer renders a PDF, and Resend can deliver it with a report-scoped access link. The report also supports follow-up questions in chat.
-5. **Follow up in the CRM.** Staff track report and email status, review inbound leads, and record sales outcomes. Automated follow-up requires opt-in. Optional Slack alerts use experimental prospect-intent scoring.
+5. **Follow up in the CRM.** Staff track report and email status, qualify leads against report evidence, and record lead-level sales outcomes. Automated follow-up requires opt-in. Optional Slack alerts use experimental prospect-intent scoring.
 
 The landing-page sample illustrates the link between a finding, its source quote, and a recommended next step. It uses a fictional company.
+
+## Staff discovery and qualification
+
+1. In **Lead Discovery → Open CSV catalogue**, import a permitted business list. Use the [sample CSV](public/business-catalogue.csv) to check the format. Staff can filter by country, region, city, or industry.
+2. Shortlist a location and select **Request research**. The worker produces one linked private report per catalogue entry. Staff open it from the catalogue, and the report stays in the dashboard with email and outreach disabled for this lead.
+3. Open **Report-based lead qualification** on a catalogue or inbound lead report. Choose **Qualified**, **Needs more evidence**, or **Rejected**, and enter a reason. A qualified decision requires at least one source from that report. The CRM saves the selected excerpts and review time under the shared staff identity for that report attempt.
+
+The catalogue and report-based qualification are opt-in features. Apply the relevant [database migrations](DEPLOYMENT.md#preserve-and-migrate-existing-data) before setting `ENABLE_CSV_CATALOGUE=true` and `ENABLE_LEAD_QUALIFICATION=true` for the web app. Qualification is a human decision. Optional intent scoring measures signals in prospect messages and has its own review workflow.
 
 ## Run locally
 
@@ -49,7 +57,7 @@ You'll need Node.js **22.12 or later**, PostgreSQL with **pgvector**, and Redis 
 | `ml/` | Optional experimental intent scoring and offline evaluation |
 | `tests/` | Pipeline, access, delivery, and browser regression checks |
 
-The report pipeline uses Gemini through the AI SDK. Report chat can fall back between Gemini and Groq when configured. Production PDFs use private Google Drive storage. The landing page uses Framer Motion and supports reduced motion.
+The report pipeline uses Gemini through the AI SDK. Report chat can fall back between Gemini and Groq when configured. Hosted PDFs can use a private Supabase Storage bucket, and legacy Google Drive artifacts remain readable with the corresponding credentials. The landing page uses Framer Motion and supports reduced motion.
 
 ## Testing and report quality
 

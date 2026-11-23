@@ -114,9 +114,23 @@ model Report {
   followUps     FollowUp[]
   modelCalls    ModelCall[]
   catalogueEntry CatalogueCompany?
+  leadQualifications LeadQualification[]
   @@index([status, dispatchedAt])
   @@index([leadId, createdAt])
   @@index([providerMessageId])
+}
+
+model LeadQualification {
+  reportId String
+  generationAttempt Int
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  decision String
+  reason String
+  actor String
+  sourceIds String[]
+  evidence Json
+  reviewedAt DateTime @default(now())
+  @@id([reportId, generationAttempt])
 }
 
 model FollowUp {

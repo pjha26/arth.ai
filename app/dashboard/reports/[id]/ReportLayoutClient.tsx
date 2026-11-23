@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReportView } from "@/lib/ui-types";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import ReportChatUI from "./ReportChatUI";
 import "./report-chat.css";
 
@@ -59,7 +59,7 @@ function QualificationReview({ reportId, alert }: { reportId: string; alert: Rev
   );
 }
 
-export default function ReportLayoutClient({ report, alert }: { report: ReportView; alert?: ReviewableAlert }) {
+export default function ReportLayoutClient({ report, alert, qualification }: { report: ReportView; alert?: ReviewableAlert; qualification?: ReactNode }) {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfZoom, setPdfZoom] = useState(100);
@@ -101,6 +101,7 @@ export default function ReportLayoutClient({ report, alert }: { report: ReportVi
         </div>
 
         {alert && <QualificationReview key={alert.id} reportId={report.id} alert={alert} />}
+        {qualification}
         {/* ── Body ── */}
         <div className="cr-body">
           {/* ── PDF Panel ── */}
