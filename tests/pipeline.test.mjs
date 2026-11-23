@@ -5,6 +5,43 @@ import { UnrecoverableError } from 'bullmq';
 import { INSUFFICIENT_RESEARCH_EVIDENCE } from '../shared/report.js';
 import { reconcilePendingReports, runRecoveryTasks } from '../worker/services/reconcileReports.js';
 
+test('indexing batches report chunks, keeps their order, and preserves existing vectors on an incomplete response', async t => {
+  const settings = { GEMINI_API_KEY: 'fixture-key', FREE_PILOT_MODE: 'false', EMBEDDING_MODEL: 'gemini-embedding-001' };
+  const previous = Object.keys(settings).map(key => [key, process.env[key]]);
+  Object.assign(process.env, settings);
+  t.after(() => {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  });
+  const { storeReportIntelligence } = await import('../worker/services/vectorStore.js');
+  const written = [];
+  let incomplete = false;
+  const provider = t.mock.method(globalThis, 'fetch', async (input, init) => {
+    assert.match(String(input), /:batchEmbedContents$/);
+    const { requests } = JSON.parse(init.body);
+    assert.equal(requests.length, 2);
+    assert.ok(requests.every(request => request.outputDimensionality === 768));
+    return Response.json({ embeddings: requests.slice(0, incomplete ? 1 : 2)
+      .map((_, index) => ({ values: Array.from({ length: 768 }, (_value, dimension) => dimension === 0 ? index + 1 : 0) })) });
+  });
+  const transaction = t.mock.fn(async run => run({
+    embedding: { deleteMany: async () => {} },
+    $executeRaw: async (_sql, _company, _report, chunk, vector) => written.push([chunk, JSON.parse(vector)[0]]),
+  }));
+  const db = { modelCall: { create: async () => {} }, $transaction: transaction };
+  const index = () => storeReportIntelligence({ companyName: 'Example' },
+    { executiveSummary: 'Summary', painPoints: ['Verify invoices'] }, 'company-id', 'report-id', db);
+  await index();
+  assert.equal(provider.mock.callCount(), 1);
+  assert.match(written[0][0], /Summary/);
+  assert.deepEqual(written[1], ['Pain point: Verify invoices', 2]);
+  assert.equal(written[0][1], 1);
+  incomplete = true;
+  await assert.rejects(index());
+  assert.equal(transaction.mock.callCount(), 1);
+});
+
 test('recovery prioritizes undispatched reports and continues after an individual enqueue fails', async t => {
   const firstId = '00000000-0000-4000-8000-000000000011';
   const secondId = '00000000-0000-4000-8000-000000000012';

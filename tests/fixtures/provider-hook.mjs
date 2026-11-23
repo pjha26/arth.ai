@@ -71,6 +71,9 @@ globalThis.fetch = async (input, init) => {
     }
     const body = await request.json();
     if (url.pathname.endsWith(':embedContent')) return json({ embedding: { values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) } });
+    if (url.pathname.endsWith(':batchEmbedContents')) {
+      return json({ embeddings: body.requests.map(() => ({ values: Array.from({ length: 768 }, (_, i) => i === 0 ? 1 : 0) })) });
+    }
     const system = body.systemInstruction?.parts?.map(p => p.text || '').join('') || '';
     const text = body.contents?.flatMap(c => c.parts).map(p => p.text || '').join('') || '';
     if (reportPilot && text.includes('Evaluator-only expectation')) throw new Error('Pilot expectations leaked into the model request');
