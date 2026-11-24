@@ -61,7 +61,9 @@ try {
   await run('deploy', ['scripts/staging-migrate.mjs']);
   const bridge = start('redis-rest', ['tests/fixtures/redis-rest.mjs']);
   await ready(58079, bridge);
-  const web = start('web', ['scripts/staging-web.mjs'], { ...env, ENABLE_CSV_CATALOGUE: 'true', ENABLE_LEAD_QUALIFICATION: 'true' });
+  const web = start('web', ['scripts/staging-web.mjs'], {
+    ...env, ENABLE_CSV_CATALOGUE: 'true', ENABLE_LEAD_QUALIFICATION: 'true', ENABLE_DEAL_TRACKING: 'true',
+  });
   await ready(3101, web);
   const worker = start('worker', ['--import', hook, 'worker/bootstrap.js'], {
     ...env, SLACK_WEBHOOK_URL: 'http://127.0.0.1:58001/slack', GOOGLE_PLACES_API_KEY: 'staging-places-fixture-key',

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type FormEvent } from 'react';
+import Link from 'next/link';
 
 const decisions = [
   { value: 'qualified', label: 'Qualified' },
@@ -14,8 +15,8 @@ const serverReady = () => false;
 type SavedReview = { decision: string; reason: string; sourceIds: string[]; reviewedAt: string };
 type Source = { id: string; title: string; url: string; excerpt: string };
 
-export default function LeadQualificationForm({ reportId, generationAttempt, sources, saved }: {
-  reportId: string; generationAttempt: number; sources: Source[]; saved: SavedReview | null;
+export default function LeadQualificationForm({ reportId, generationAttempt, sources, saved, allowDeal }: {
+  reportId: string; generationAttempt: number; sources: Source[]; saved: SavedReview | null; allowDeal: boolean;
 }) {
   const [review, setReview] = useState(saved);
   const [saving, setSaving] = useState(false);
@@ -67,6 +68,7 @@ export default function LeadQualificationForm({ reportId, generationAttempt, sou
         </fieldset>}
         {sources.length === 0 && <p>No source excerpts are available for this report.</p>}
         <button type="submit" className="cr-btn-outline" disabled={!interactive}>{saving ? 'Saving…' : 'Save lead qualification'}</button>
+        {allowDeal && review?.decision === 'qualified' && <Link className="cr-btn-outline" href={`/dashboard/deals?from=${reportId}`}>Create deal</Link>}
       </form>
       <p role="status">{feedback}</p>
     </details>

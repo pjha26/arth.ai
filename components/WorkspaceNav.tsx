@@ -12,15 +12,16 @@ const links = [
   { href: "/dashboard/discover", icon: "search", label: "Discovery" },
 ];
 
-export function WorkspaceNav() {
+export function WorkspaceNav({ showDeals }: { showDeals: boolean }) {
   const pathname = usePathname();
   const active = pathname.startsWith("/dashboard/reports/") ? "/dashboard" : pathname;
+  const navigation = showDeals ? [...links, { href: '/dashboard/deals', icon: 'handshake', label: 'Deals' }] : links;
   return (
     <aside className="ui-workspace-nav">
       <div className="ui-workspace-brand"><Wordmark /><ThemeToggle /></div>
       <p className="ui-label">Research workspace</p>
       <nav aria-label="Workspace">
-        {links.map(({ href, icon, label }) => (
+        {navigation.map(({ href, icon, label }) => (
           <Link key={href} href={href} aria-current={href === active ? "page" : undefined}>
             <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{label}
           </Link>

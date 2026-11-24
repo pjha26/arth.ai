@@ -36,6 +36,8 @@ Staff can shortlist individual locations and explicitly request one private repo
 
 Apply `20261124000100_lead_qualification` before setting `ENABLE_LEAD_QUALIFICATION=true` on the web app. This enables staff report-based qualification for both catalogue and inbound reports with a linked lead. Completed reports and reports stopped for insufficient evidence are eligible for review. The current decision is saved per generation attempt with its reason, evidence snapshot, timestamp, and shared staff identity.
 
+Apply `20261124000200_deal_tracking` before setting `ENABLE_DEAL_TRACKING=true` on the web app alongside lead qualification. Staff can create deals from currently qualified, completed reports. Updates record the next action or a final won/lost outcome in the activity history. The workspace displays the latest 20 activities per deal. Closed deals are read-only in this version.
+
 **Do not reset or force-push the database schema.** Migrations are supplied but are not automatically applied by the web build.
 
 1. Back up the database. Stop old workers and pause intake during deployment. Inventory old queue jobs; their earlier payload shape is incompatible with the new validated contract. Do not replay them automatically against guessed lead associations.

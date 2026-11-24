@@ -22,6 +22,10 @@ The landing-page sample illustrates the link between a finding, its source quote
 
 The catalogue and report-based qualification are opt-in features. Apply the relevant [database migrations](DEPLOYMENT.md#preserve-and-migrate-existing-data) before setting `ENABLE_CSV_CATALOGUE=true` and `ENABLE_LEAD_QUALIFICATION=true` for the web app. Qualification is a human decision. Optional intent scoring measures signals in prospect messages and has its own review workflow.
 
+### Deals
+
+After saving a **Qualified** decision on a completed report, choose **Create deal**. Enter a title, a next action, and an optional due date. The **Deals** workspace tracks open deals and lets staff close them as **Won** or **Lost** with a reason. Each saved change adds an activity entry. A lead can have multiple deals. Enable `ENABLE_DEAL_TRACKING=true` after applying the deal migration and enabling report qualification.
+
 ## Run locally
 
 You'll need Node.js **22.12 or later**, PostgreSQL with **pgvector**, and Redis with both a connection URL and a REST endpoint for rate limits. Configure Gemini for report generation and Resend for email delivery. The optional Python intent scorer has its own setup.

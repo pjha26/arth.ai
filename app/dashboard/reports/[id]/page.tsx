@@ -2,6 +2,7 @@ import { requireStaff } from "@/lib/auth";
 import type { ReportView } from "@/lib/ui-types";
 import { prisma } from "@/lib/prisma";
 import { canQualifyLead } from "@/lib/lead-qualification";
+import { dealsEnabled } from "@/lib/deals";
 import { notFound } from "next/navigation";
 import ReportLayoutClient from "./ReportLayoutClient";
 import LeadQualificationForm from "./LeadQualificationForm";
@@ -36,6 +37,7 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
         select: { decision: true, reason: true, sourceIds: true, reviewedAt: true } }),
     ]);
     qualification = <LeadQualificationForm reportId={id} generationAttempt={report.generationAttempt} sources={sources}
+      allowDeal={dealsEnabled() && report.status === 'done'}
       saved={saved && { ...saved, reviewedAt: saved.reviewedAt.toISOString() }} />;
   }
   return <ReportLayoutClient report={view as unknown as ReportView} alert={review && { ...review, message: message?.content ?? null }}

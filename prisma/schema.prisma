@@ -69,6 +69,7 @@ model Lead {
   createdAt         DateTime @default(now())
   company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   reports           Report[]
+  deals             Deal[]
 }
 
 model Report {
@@ -115,6 +116,7 @@ model Report {
   modelCalls    ModelCall[]
   catalogueEntry CatalogueCompany?
   leadQualifications LeadQualification[]
+  originatingDeals Deal[]
   @@index([status, dispatchedAt])
   @@index([leadId, createdAt])
   @@index([providerMessageId])
@@ -131,6 +133,40 @@ model LeadQualification {
   evidence Json
   reviewedAt DateTime @default(now())
   @@id([reportId, generationAttempt])
+}
+
+model Deal {
+  id String @id
+  leadId String
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  reportId String?
+  report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  qualificationReviewedAt DateTime
+  title String
+  stage String @default("open")
+  nextAction String?
+  nextActionOn DateTime? @db.Date
+  outcomeReason String?
+  closedAt DateTime?
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  activities DealActivity[]
+  @@index([createdAt, id])
+  @@index([leadId])
+  @@index([reportId])
+}
+
+model DealActivity {
+  dealId String
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  version Int
+  actor String
+  stage String
+  nextAction String?
+  nextActionOn DateTime? @db.Date
+  outcomeReason String?
+  createdAt DateTime @default(now())
+  @@id([dealId, version])
 }
 
 model FollowUp {
