@@ -8,7 +8,7 @@ const clientReady = () => true;
 const serverReady = () => false;
 
 type Props = { reportId: string; companyName: string } | {
-  dealId: string; version: number; nextAction: string | null; nextActionOn: string | null;
+  dealId: string; version: number; nextAction: string | null; nextActionOn: string | null; nextActionCompletedAt: string | null;
 };
 
 export function DealForm(props: Props) {
@@ -23,10 +23,13 @@ export function DealForm(props: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const submittingButton = (event.nativeEvent as SubmitEvent).submitter;
+    const completing = submittingButton instanceof HTMLButtonElement && submittingButton.value === 'complete_action';
     const action = { nextAction: form.get('nextAction'), nextActionOn: form.get('nextActionOn') || null };
     const body = creating
       ? { ...action, id: requestId.current ??= crypto.randomUUID(), reportId: props.reportId, title: form.get('title') }
-      : { id: props.dealId, version: props.version, stage, ...(stage === 'open' ? action : { outcomeReason: form.get('outcomeReason') }) };
+      : { id: props.dealId, version: props.version, ...(completing ? { command: 'complete_action' }
+        : { stage, ...(stage === 'open' ? action : { outcomeReason: form.get('outcomeReason') }) }) };
     setError('');
     setSaving(true);
     try {
@@ -46,6 +49,7 @@ export function DealForm(props: Props) {
 
   return (
     <form className="mt-4 max-w-xl" method="post" onSubmit={submit}>
+      {!creating && props.nextActionCompletedAt && <p role="status">Action completed on {props.nextActionCompletedAt} UTC. {props.nextAction}</p>}
       <fieldset className="grid gap-4" disabled={!interactive}>
         {creating ? <label className="grid gap-1">Deal title
           <input className="ui-input" name="title" defaultValue={props.companyName} required maxLength={150} />
@@ -56,10 +60,10 @@ export function DealForm(props: Props) {
         </label>}
         {stage === 'open' && <>
           <label className="grid gap-1">Next action
-            <input className="ui-input" name="nextAction" defaultValue={creating ? '' : props.nextAction ?? ''} required maxLength={500} />
+            <input className="ui-input" name="nextAction" defaultValue={creating || props.nextActionCompletedAt ? '' : props.nextAction ?? ''} required maxLength={500} />
           </label>
           <label className="grid gap-1">Due date (optional)
-            <input className="ui-input" type="date" name="nextActionOn" defaultValue={creating ? '' : props.nextActionOn ?? ''} />
+            <input className="ui-input" type="date" name="nextActionOn" defaultValue={creating || props.nextActionCompletedAt ? '' : props.nextActionOn ?? ''} />
           </label>
         </>}
         {stage !== 'open' && <label className="grid gap-1">Outcome reason
@@ -68,6 +72,11 @@ export function DealForm(props: Props) {
         <button className="ui-button justify-self-start" type="submit" disabled={!interactive}>
           {saving ? 'Saving…' : creating ? 'Create deal' : stage === 'open' ? 'Save next action' : `Close as ${stage}`}
         </button>
+        {!creating && stage === 'open' && !props.nextActionCompletedAt && (
+          <button className="ui-button ui-button-secondary justify-self-start" type="submit" value="complete_action" formNoValidate disabled={!interactive}>
+            Mark saved action complete
+          </button>
+        )}
       </fieldset>
       {error && <p className="ui-error mt-3" role="alert">{error}</p>}
     </form>

@@ -14,7 +14,7 @@ async function authorize(request: Request) {
 }
 
 async function recordActivity(tx: Prisma.TransactionClient, id: string, version: number, state: {
-  stage: string; nextAction: string | null; nextActionOn: Date | null; outcomeReason: string | null;
+  stage: string; nextAction: string | null; nextActionOn: Date | null; outcomeReason: string | null; nextActionCompletedAt?: Date | null;
 }) {
   await tx.dealActivity.create({ data: { ...state, dealId: id, version, actor: 'staff' } });
 }
@@ -69,22 +69,27 @@ export async function PATCH(request: Request) {
   const body = await readBoundedJson(request, 4096);
   if (body.response) return body.response;
   const input = editDeal.safeParse(body.value);
-  if (!input.success) return message('Enter a next action or a reason for closing the deal.', 400);
+  if (!input.success) return message('Provide a valid action update or a reason for closing the deal.', 400);
   const change = input.data;
-  const state = change.stage === 'open'
-    ? { stage: change.stage, nextAction: change.nextAction, nextActionOn: change.nextActionOn ? new Date(change.nextActionOn) : null, outcomeReason: null }
-    : { stage: change.stage, nextAction: null, nextActionOn: null, outcomeReason: change.outcomeReason };
+  const completing = 'command' in change;
+  const now = new Date();
+  const state = completing ? { nextActionCompletedAt: now } : change.stage === 'open'
+    ? { nextAction: change.nextAction, nextActionOn: change.nextActionOn ? new Date(change.nextActionOn) : null, nextActionCompletedAt: null }
+    : { stage: change.stage, nextAction: null, nextActionOn: null, nextActionCompletedAt: null, outcomeReason: change.outcomeReason, closedAt: now };
   try {
     return await prisma.$transaction(async tx => {
       const updated = await tx.deal.updateMany({
-        where: { id: change.id, version: change.version, stage: 'open' },
-        data: { ...state, closedAt: state.stage === 'open' ? null : new Date(), version: { increment: 1 } },
+        where: { id: change.id, version: change.version, stage: 'open', ...(completing ? { nextActionCompletedAt: null } : {}) },
+        data: { ...state, version: { increment: 1 } },
       });
       if (!updated.count) {
         const current = await tx.deal.findUnique({ where: { id: change.id }, select: { stage: true } });
-        return current ? message('This deal has changed or closed. Reload to see the latest version.', 409) : message('Deal not found.', 404);
+        return current ? message('This deal or action has already changed. Reload to see the latest version.', 409) : message('Deal not found.', 404);
       }
-      await recordActivity(tx, change.id, change.version + 1, state);
+      const snapshot = await tx.deal.findUniqueOrThrow({ where: { id: change.id }, select: {
+        stage: true, nextAction: true, nextActionOn: true, outcomeReason: true, nextActionCompletedAt: true,
+      } });
+      await recordActivity(tx, change.id, change.version + 1, snapshot);
       return Response.json({ id: change.id });
     });
   } catch {

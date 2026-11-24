@@ -146,6 +146,7 @@ model Deal {
   stage String @default("open")
   nextAction String?
   nextActionOn DateTime? @db.Date
+  nextActionCompletedAt DateTime?
   outcomeReason String?
   closedAt DateTime?
   version Int @default(1)
@@ -154,6 +155,7 @@ model Deal {
   @@index([createdAt, id])
   @@index([leadId])
   @@index([reportId])
+  @@index([stage, nextActionCompletedAt, nextActionOn])
 }
 
 model DealActivity {
@@ -164,6 +166,7 @@ model DealActivity {
   stage String
   nextAction String?
   nextActionOn DateTime? @db.Date
+  nextActionCompletedAt DateTime?
   outcomeReason String?
   createdAt DateTime @default(now())
   @@id([dealId, version])

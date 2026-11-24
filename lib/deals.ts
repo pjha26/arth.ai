@@ -12,6 +12,7 @@ export const createDeal = z.object({
 export const editDeal = z.union([
   z.object({ id, version, stage: z.literal('open'), nextAction, nextActionOn }).strict(),
   z.object({ id, version, stage: z.enum(['won', 'lost']), outcomeReason: z.string().trim().min(1).max(500) }).strict(),
+  z.object({ id, version, command: z.literal('complete_action') }).strict(),
 ]);
 
 export const dealsEnabled = () => process.env.ENABLE_DEAL_TRACKING === 'true' && process.env.ENABLE_LEAD_QUALIFICATION === 'true';

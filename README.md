@@ -24,7 +24,9 @@ The catalogue and report-based qualification are opt-in features. Apply the rele
 
 ### Deals
 
-After saving a **Qualified** decision on a completed report, choose **Create deal**. Enter a title, a next action, and an optional due date. The **Deals** workspace tracks open deals and lets staff close them as **Won** or **Lost** with a reason. Each saved change adds an activity entry. A lead can have multiple deals. Enable `ENABLE_DEAL_TRACKING=true` after applying the deal migration and enabling report qualification.
+After saving a **Qualified** decision on a completed report, choose **Create deal**. Enter a title, a next action, and an optional due date. The **Deals** workspace tracks open deals and lets staff close them as **Won** or **Lost** with a reason. Each saved change adds an activity entry. A lead can have multiple deals. Enable `ENABLE_DEAL_TRACKING=true` after applying the deal migrations and enabling report qualification.
+
+Use **Due today** or **Overdue** to find pending actions by UTC date. Open a deal to mark its saved action complete, then enter a new action when there is more work. The completion stays in the deal history.
 
 ## Run locally
 
