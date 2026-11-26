@@ -588,19 +588,25 @@ try {
       return { name: part.slice(0, split), value: part.slice(split + 1), domain: '127.0.0.1', path: '/' };
     }));
     const reportUrl = `${base}/dashboard/reports/${readyCatalogue.id}`;
+    const evidenceInput = `.cr-lead-review input[value="${source.id}"]`;
     await page.goto(reportUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.cr-lead-review button:enabled');
-    await page.click('.cr-lead-review > summary');
+    await page.locator('.cr-lead-review > summary').click();
     await page.select('.cr-lead-review select', 'qualified');
-    await page.type('.cr-lead-review input[name="reason"]', input.reason);
-    await page.click(`.cr-lead-review input[value="${source.id}"]`);
-    await page.click('.cr-lead-review button');
+    await page.locator('.cr-lead-review input[name="reason"]').fill(input.reason);
+    await page.locator(evidenceInput).click();
+    assert.equal(await page.$eval(evidenceInput, field => field.checked), true, 'The report evidence checkbox must be selected');
+    const [saved] = await Promise.all([
+      page.waitForResponse(response => response.url() === `${base}${qualificationPath}` && response.request().method() === 'PUT'),
+      page.locator('.cr-lead-review button[type="submit"]:enabled').click(),
+    ]);
+    assert.equal(saved.status(), 200);
     await page.waitForFunction(() => document.querySelector('.cr-lead-review [role="status"]')?.textContent === 'Lead qualification saved.');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.cr-lead-review button:enabled');
-    await page.click('.cr-lead-review > summary');
+    await page.locator('.cr-lead-review > summary').click();
     assert.equal(await page.$eval('.cr-lead-review input[name="reason"]', field => field.value), input.reason);
-    assert.equal(await page.$eval(`.cr-lead-review input[value="${source.id}"]`, field => field.checked), true);
+    assert.equal(await page.$eval(evidenceInput, field => field.checked), true);
   } finally { await reviewBrowser.close(); }
   const savedQualification = await prisma.leadQualification.findUniqueOrThrow({
     where: { reportId_generationAttempt: { reportId: readyCatalogue.id, generationAttempt: input.generationAttempt } },
