@@ -50,8 +50,14 @@ try {
     const lead = await prisma.lead.create({ data: { companyId: company.id, fullName: 'Recovery Test', email: `recovery-${randomUUID()}@example.invalid`, painPoints: 'Controlled recovery test', outreachConsent: boundary === 'email' } });
     const report = await prisma.report.create({ data: { companyId: company.id, leadId: lead.id, freshResearch: true } });
     if (boundary === 'queued') {
-      await assert.rejects(reconcilePendingReports({ prisma, leadsQueue: { add: async () => { throw new Error('Injected producer outage'); } } }), /producer outage/);
-      assert.equal((await prisma.report.findUnique({ where: { id: report.id } })).dispatchedAt, null);
+      const dispatchAttempts = [];
+      await reconcilePendingReports({ prisma, leadsQueue: { add: async (_name, _payload, { jobId }) => {
+        dispatchAttempts.push(jobId);
+        throw new Error('Injected producer outage');
+      } } });
+      assert.equal(dispatchAttempts.filter(jobId => jobId === `${report.id}-1`).length, 1);
+      const pending = await prisma.report.findUniqueOrThrow({ where: { id: report.id }, select: { status: true, dispatchedAt: true } });
+      assert.deepEqual(pending, { status: 'pending', dispatchedAt: null });
       start(report.id, '');
     } else {
       start(report.id, boundary);
