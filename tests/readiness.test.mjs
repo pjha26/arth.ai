@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { configurationChecks, assertWorkerConfiguration, hotLeadConfigurationChecks, intentScorerHealthy } from '../shared/readiness.js';
+import { configurationChecks, assertWorkerConfiguration, hotLeadConfigurationChecks, intentScorerHealthy, migrationHistoryCheck, redisProbeNote } from '../shared/readiness.js';
 
 const configured = { AUTH_SECRET: 'a'.repeat(32), STAFF_PASSWORD: 'p'.repeat(16), NEXT_PUBLIC_APP_URL: 'https://example.com', DATABASE_URL: 'postgresql://user:pass@db.example.com/app', DIRECT_URL: 'postgresql://user:pass@db.example.com/app', UPSTASH_REDIS_URL: 'rediss://redis.example.com', UPSTASH_REDIS_REST_URL: 'https://redis.example.com', UPSTASH_REDIS_REST_TOKEN: 'test', GEMINI_API_KEY: 'test', REPORT_STORAGE: 'drive', GOOGLE_SERVICE_ACCOUNT_EMAIL: 'test@example.invalid', GOOGLE_PRIVATE_KEY: 'test', GOOGLE_DRIVE_FOLDER_ID: 'test', RESEND_API_KEY: 'test', RESEND_WEBHOOK_SECRET: 'test', EMAIL_FROM: 'test@example.invalid' };
 test('release config checks distinguish missing configuration without exposing values', () => {
@@ -16,6 +16,26 @@ test('workers reject missing services before paid processing and enforce product
   assert.throws(() => assertWorkerConfiguration({}), /Worker configuration incomplete/);
   assert.throws(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'production', REPORT_STORAGE: 'local' }), /private-storage-config/);
   assert.doesNotThrow(() => assertWorkerConfiguration({ ...configured, NODE_ENV: 'development', REPORT_STORAGE: 'local', UPSTASH_REDIS_URL: 'redis://127.0.0.1:56379' }));
+});
+
+test('release checks identify pending and unfinished migrations using only repository names', () => {
+  const row = (migration_name, finished_at = null, rolled_back_at = null) => ({ migration_name, finished_at, rolled_back_at });
+  const result = migrationHistoryCheck(['applied', 'never-run', 'incomplete', 'rolled-back'], [
+    row('applied', new Date()), row('incomplete'), row('rolled-back', null, new Date()), row('private-db-value'),
+  ]);
+  assert.equal(result.status, 'fail');
+  assert.deepEqual(result.pendingMigrations, ['never-run', 'rolled-back']);
+  assert.deepEqual(result.unfinishedMigrations, ['incomplete']);
+  assert.ok(!JSON.stringify(result).includes('private-db-value'));
+  assert.equal(migrationHistoryCheck(['applied'], [row('applied', new Date())]).status, 'pass');
+});
+
+test('Redis diagnosis never prints the error message or endpoint', () => {
+  assert.match(redisProbeNote({ message: 'WRONGPASS sensitive-value' }), /authentication or permissions/);
+  const note = redisProbeNote({ cause: { code: 'ENOTFOUND', hostname: 'private.example' } });
+  assert.match(note, /hostname could not be resolved/);
+  assert.ok(!note.includes('private.example'));
+  assert.ok(!redisProbeNote({ message: 'sensitive-value' }).includes('sensitive-value'));
 });
 
 test('free storage and dashboard delivery work without Drive or sender credentials', () => {

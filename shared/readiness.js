@@ -28,6 +28,29 @@ export function configurationChecks(env) {
   return checks;
 }
 
+export function migrationHistoryCheck(expected, rows) {
+  const applied = new Set(rows.filter(row => row.finished_at && !row.rolled_back_at).map(row => row.migration_name));
+  const pending = expected.filter(name => !applied.has(name));
+  const unfinished = new Set(rows.filter(row => !row.finished_at && !row.rolled_back_at).map(row => row.migration_name));
+  return {
+    name: 'database-migrations', status: pending.length || unfinished.size ? 'fail' : 'pass',
+    pendingMigrations: pending.filter(name => !unfinished.has(name)),
+    unfinishedMigrations: expected.filter(name => unfinished.has(name)),
+    note: unfinished.size ? 'An unfinished migration exists. Inspect its history before applying pending migrations.'
+      : 'Read-only migration-history comparison. No schema changes applied.',
+  };
+}
+
+export function redisProbeNote(error) {
+  if (/^(NOAUTH|WRONGPASS|NOPERM)\b/.test(error?.message ?? '')) return 'Redis rejected authentication or permissions. Check the configured credentials.';
+  const code = error?.code ?? error?.cause?.code;
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return 'Redis hostname could not be resolved. Check the configured endpoint.';
+  if (['ETIMEDOUT', 'ECONNREFUSED', 'ECONNRESET', 'UND_ERR_CONNECT_TIMEOUT'].includes(code) || error?.name === 'TimeoutError' || error?.message === 'Command timed out') {
+    return 'Redis did not accept a connection. Check service availability and network access.';
+  }
+  return 'Redis connectivity could not be verified. Check the endpoint and credentials.';
+}
+
 export function hotLeadConfigurationChecks(env) {
   const check = (name, valid) => ({ name, status: valid ? 'pass' : 'fail' });
   function serviceUrl(value, protocols) {
