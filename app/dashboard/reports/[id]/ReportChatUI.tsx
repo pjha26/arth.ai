@@ -81,7 +81,7 @@ export default function ReportChatUI({ report, onClose }: { report: ReportView, 
   const showFollowup = !isLoading && messages.length > 0 && messages[messages.length - 1].role === 'assistant';
 
   const MAX_CHARS = 500;
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const CHIPS = [
@@ -139,9 +139,10 @@ export default function ReportChatUI({ report, onClose }: { report: ReportView, 
 
 
 
-  // Auto-scroll
+  // Scroll the chat independently so loading history never moves the report page.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const messagesPanel = messagesRef.current;
+    if (messagesPanel) messagesPanel.scrollTo({ top: messagesPanel.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
 
   return (
@@ -223,7 +224,7 @@ export default function ReportChatUI({ report, onClose }: { report: ReportView, 
       </div>
 
       {/* Messages */}
-      <div className="cr-messages">
+      <div className="cr-messages" ref={messagesRef}>
         {messages.length === 0 ? (
           <div className="cr-empty-state">
             <div className="cr-empty-icon">✦</div>
@@ -280,7 +281,6 @@ export default function ReportChatUI({ report, onClose }: { report: ReportView, 
             )}
           </>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
