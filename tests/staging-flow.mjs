@@ -329,8 +329,8 @@ try {
       await context.setCookie(...staff.split('; ').map(part => { const split = part.indexOf('='); return { name: part.slice(0, split), value: part.slice(split + 1), domain: '127.0.0.1', path: '/' }; }));
       await page.setViewport({ width: 1365, height: 900 });
       await page.goto(`${base}/dashboard`, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some(button => button.innerText.includes('Leads & Reports')), { timeout: 60000 });
-      await page.evaluate(() => Array.from(document.querySelectorAll('button')).find(button => button.innerText.includes('Leads & Reports')).click());
+      await page.waitForSelector('.ui-workspace-controls .ui-sync', { timeout: 60000 });
+      await page.locator('::-p-aria(Leads & Reports[role="button"])').click();
       await page.waitForSelector(`[data-report-id="${processing.id}"]`, { timeout: 60000 });
       await page.select('select.arth-toolbar-select', 'pending');
       await page.waitForFunction(() => document.querySelectorAll('[data-report-id]').length === 1, { timeout: 10000 });
