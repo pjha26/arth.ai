@@ -9,7 +9,7 @@ import { assertStaging } from '../tests/fixtures/staging-safety.mjs';
 
 const env = { ...process.env, ...parseEnv(await readFile('.env.staging', 'utf8')) };
 assertStaging(env);
-const children = [], streams = [];
+const children = [], streams = new Map();
 const hook = pathToFileURL(path.resolve('tests/fixtures/provider-hook.mjs')).href;
 await mkdir('.data/staging', { recursive: true });
 // Invalidate an old passing summary before attempting a fresh run.
@@ -17,7 +17,7 @@ for (const name of ['flow-check', 'migration-check', 'recovery-check', 'load-che
 
 function start(name, args, childEnv = env) {
   const log = createWriteStream(`.data/staging/${name}.log`);
-  streams.push(log);
+  streams.set(name, log);
   const child = spawn(process.execPath, args, { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
@@ -26,8 +26,19 @@ function start(name, args, childEnv = env) {
 }
 async function run(name, args) {
   const child = start(name, args);
-  const code = await new Promise((resolve, reject) => { child.once('exit', resolve); child.once('error', reject); });
-  if (code !== 0) throw new Error(`${name} failed; inspect .data/staging/${name}.log`);
+  const code = await new Promise((resolve, reject) => { child.once('close', resolve); child.once('error', reject); });
+  if (code === 0) return;
+  const file = args[0];
+  const logPath = `.data/staging/${name}.log`;
+  if (env.GITHUB_ACTIONS === 'true') {
+    await new Promise(resolve => streams.get(name).write('', resolve));
+    const output = await readFile(logPath, 'utf8');
+    // Publish only the known script path, a source line number, and a count. Logs can contain request data.
+    const location = output.split(`${file}:`).slice(1).map(frame => /^([1-9]\d*):\d+/.exec(frame)).find(Boolean);
+    const passed = (output.match(/^PASS /gm) ?? []).length;
+    console.error(`::error file=${file}${location ? `,line=${location[1]}` : ''},title=Staging ${name} failed::${passed} checkpoints passed before the failure. See the staging step log for details.`);
+  }
+  throw new Error(`${name} failed; inspect ${logPath}`);
 }
 function connects(port) {
   return new Promise(resolve => {
@@ -51,7 +62,7 @@ async function stop() {
     const timer = setTimeout(() => { child.kill('SIGKILL'); resolve(); }, 5000); timer.unref();
     child.once('exit', () => { clearTimeout(timer); resolve(); }); child.kill('SIGTERM');
   })));
-  for (const stream of streams) stream.end();
+  for (const stream of streams.values()) stream.end();
 }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { void stop().finally(() => process.exit(1)); });
 try {
@@ -78,6 +89,7 @@ try {
 } catch (error) {
   console.error(error.message);
   for (const name of ['migrations', 'deploy', 'web', 'worker', 'flow', 'recovery']) {
+    if (!streams.has(name)) continue;
     let content;
     try { content = await readFile(`.data/staging/${name}.log`, 'utf8'); } catch { continue; }
     for (const [key, value] of Object.entries(env)) if (/SECRET|PASSWORD|TOKEN|KEY|DATABASE_URL|DIRECT_URL/.test(key) && value) content = content.replaceAll(value, '[redacted]');
