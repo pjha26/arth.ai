@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { summarizeChatQuality } from '../shared/report-chat-quality.js';
+import { compareChatQuality, summarizeChatQuality } from '../shared/report-chat-quality.js';
 
 test('chat evaluation separates retrieval, reviewed support, and abstention', () => {
   const cases = [
@@ -15,6 +15,20 @@ test('chat evaluation separates retrieval, reviewed support, and abstention', ()
   assert.equal(summary.answerableAbstentionRate, 0);
   assert.equal(summarizeChatQuality([cases[1]]).evidenceRecallAt3, null);
   assert.throws(() => summarizeChatQuality([cases[0], cases[0]]), /unique/);
+});
+
+test('chat comparison requires the same cases and expected evidence', () => {
+  const known = { id: 'known', expectedSourceIds: ['one', 'two'], retrievedSourceIds: ['one'], abstained: false, claims: [] };
+  const unknown = { id: 'unknown', expectedSourceIds: [], retrievedSourceIds: [], abstained: true, claims: [] };
+  const improved = { ...known, expectedSourceIds: ['two', 'one'], retrievedSourceIds: ['one', 'two'],
+    claims: [{ citedSourceId: 'two', supported: true }] };
+  const result = compareChatQuality([known, unknown], [unknown, improved]);
+  assert.equal(result.delta.evidenceRecallAt3, 0.5);
+  assert.equal(result.delta.supportedClaimRate, null);
+  assert.equal(result.candidate.supportedClaims, 1);
+  assert.equal(result.delta.unanswerableAbstentionRate, 0);
+  assert.throws(() => compareChatQuality([known, unknown], [improved]), /same case IDs/);
+  assert.throws(() => compareChatQuality([known], [{ ...improved, expectedSourceIds: ['one'] }]), /Expected evidence must match/);
 });
 import test from 'node:test';
 import { summarizeReportQuality } from '../shared/report-quality.js';

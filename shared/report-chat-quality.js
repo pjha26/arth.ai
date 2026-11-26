@@ -10,9 +10,13 @@ const caseSchema = z.object({
 }).strict().refine(row => row.claims.every(claim => !claim.supported || claim.citedSourceId !== null),
   'A supported claim needs a cited source reviewed against the original excerpt');
 
-export function summarizeChatQuality(input) {
+function reviewedCases(input) {
   const cases = z.array(caseSchema).min(1).max(1000).parse(input);
   if (new Set(cases.map(row => row.id)).size !== cases.length) throw new Error('Case IDs must be unique');
+  return cases;
+}
+
+function summarizeCases(cases) {
   const totals = { expectedSources: 0, retrievedExpectedSources: 0, factualClaims: 0, citedClaims: 0,
     supportedClaims: 0, unanswerableCases: 0, unanswerableAbstentions: 0, answerableCases: 0, answerableAbstentions: 0 };
   for (const row of cases) {
@@ -41,4 +45,31 @@ export function summarizeChatQuality(input) {
     unanswerableAbstentionRate: rate(totals.unanswerableAbstentions, totals.unanswerableCases),
     answerableAbstentionRate: rate(totals.answerableAbstentions, totals.answerableCases),
   };
+}
+
+export function summarizeChatQuality(input) {
+  return summarizeCases(reviewedCases(input));
+}
+
+export function compareChatQuality(baselineInput, candidateInput) {
+  const baselineCases = reviewedCases(baselineInput);
+  const candidateCases = reviewedCases(candidateInput);
+  const byId = new Map(candidateCases.map(row => [row.id, row]));
+  if (baselineCases.length !== byId.size || baselineCases.some(row => !byId.has(row.id))) {
+    throw new Error('Baseline and candidate must contain the same case IDs');
+  }
+  for (const row of baselineCases) {
+    const expected = new Set(row.expectedSourceIds);
+    const candidateExpected = new Set(byId.get(row.id).expectedSourceIds);
+    if (expected.size !== candidateExpected.size || [...expected].some(id => !candidateExpected.has(id))) {
+      throw new Error('Expected evidence must match between baseline and candidate');
+    }
+  }
+  const baseline = summarizeCases(baselineCases);
+  const candidate = summarizeCases(candidateCases);
+  const rates = ['evidenceRecallAt3', 'citationCoverage', 'supportedClaimRate', 'unanswerableAbstentionRate', 'answerableAbstentionRate'];
+  const delta = Object.fromEntries(rates.map(key => [key,
+    baseline[key] === null || candidate[key] === null ? null : candidate[key] - baseline[key],
+  ]));
+  return { baseline, candidate, delta };
 }

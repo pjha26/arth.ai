@@ -78,4 +78,6 @@ GitHub Actions also runs the workflow against isolated PostgreSQL and Redis with
 
 Live report accuracy is still being evaluated. The [pilot runner](scripts/report-quality-pilot.mjs) saves source excerpts and review templates. A reviewer checks whether each cited excerpt supports its claim, and the [benchmark](scripts/report-quality-benchmark.mjs) summarizes claim support, citation coverage, and case outcomes. Company statements remain self-reported, and recommendations and readiness scores are assessments.
 
+The [chat benchmark](scripts/report-chat-benchmark.mjs) measures retrieval, claim support, and when chat declines to answer. Its `--compare` mode compares two runs on the same reviewer-labelled question set without calling a model.
+
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for scope and remaining validation.
